@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"unsafe"
@@ -70,7 +69,6 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 				updatedRecord[k.(string)] = value
 				break
 			default:
-				fmt.Println("we are default")
 				updatedRecord[k.(string)] = value
 			}
 		}
@@ -84,6 +82,9 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			buffer = nil
 		}
 	}
+	if len(buffer) > 0 {
+		prepare(buffer)
+	}
 
 	// Return options:
 	//
@@ -94,7 +95,10 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 }
 
 func prepare(records []map[string]interface{}) {
-	data, _ := packagePayload(records)
+	data, err := packagePayload(records)
+	if err != nil {
+		panic(err)
+	}
 	if int64(data.Cap()) >= maxBufferSize {
 		first := records[0 : len(records)/2]
 		second := records[len(records)/2 : len(records)]
@@ -107,22 +111,37 @@ func prepare(records []map[string]interface{}) {
 }
 
 func makeRequest(buffer *bytes.Buffer) {
-	req, _ := http.NewRequest("POST", endpoint, buffer)
+	req, err := http.NewRequest("POST", endpoint, buffer)
+	if err != nil {
+		panic(err)
+	}
 	req.Header.Add("X-Insert-Key", apiKey)
 	req.Header.Add("Content-Encoding", "gzip")
-	client.Do(req)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
 }
 
-func packagePayload(records []map[string]interface{}) (buffer *bytes.Buffer, err error) {
+func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
+	var buffer bytes.Buffer
 	data, err := json.Marshal(records)
-	g := gzip.NewWriter(buffer)
+	if err != nil {
+		panic(err)
+	}
+	g := gzip.NewWriter(&buffer)
 	if _, err = g.Write(data); err != nil {
-		return
+		panic(err)
+	}
+	if err := g.Flush(); err != nil {
+		panic(err)
 	}
 	if err = g.Close(); err != nil {
-		return
+		panic(err)
 	}
-	return
+	return &buffer, nil
 }
 
 //export FLBPluginExit
