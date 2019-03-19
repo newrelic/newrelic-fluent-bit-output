@@ -28,8 +28,8 @@ This is a Fluent Bit plugin that will forward your logs to New Relic. Prerequisi
 [OUTPUT]
     	Name  newrelic
     	Match *
-	apiKey someKey // new relic api key
-	endpoint someendpoint // rest endpoint to hit
+	apiKey someKey // your new relic insights insert key
+	endpoint https://insights-collector.newrelic.com/logs/v1 // new relic's rest endpoint
 	maxBufferSize 512000  // Number of bytes per payload
 	maxRecords 1023 // Number of records per payload
 ```
