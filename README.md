@@ -1,3 +1,43 @@
+This is a Fluent Bit plugin that will forward your logs to New Relic. Prerequisites include knowledge of Fluent Bit, and a Go environment set up.
+
+## Building the plugin
+```make all```
+
+## Using the plugin
+```fluent-bit -e /path/to/out_newrelic.so -i cpu -o newrelic```
+
+## Configuration
+```
+[SERVICE]
+	Flush          1
+        Daemon         Off
+        Log_Level      info
+        Parsers_File   parsers.conf
+[INPUT]
+        Name           tail
+        Tag            kube.*
+        Path           /var/log/containers/*.log
+        Parser         docker
+        DB             /var/log/flb_kube.db
+        Mem_Buf_Limit  5MB
+[FILTER]
+        Name           kubernetes
+        Match          kube.*
+        Kube_URL       https://kubernetes.default.svc:443
+        Merge_JSON_Log On
+[OUTPUT]
+    	Name  newrelic
+    	Match *
+	apiKey someKey // new relic api key
+	endpint someendpoint // rest endpoint to hit
+	maxBufferSize 512000  // Number of bytes per payload
+	maxRecords 1023 // Number of records per payload
+```
+
+
+# For more context, 
+
+
 Go fluent bit plugins
 
 Every output plugin go through four callbacks associated to different phases:
@@ -67,38 +107,4 @@ When Fluent Bit will stop using the instance of the plugin, it will trigger the 
 func FLBPluginExit() int {
 	return output.FLB_OK
 }
-```
-
-## Building the plugin
-```make all```
-
-## Using the plugin
-```fluent-bit -e /path/to/out_newrelic.so -i cpu -o newrelic```
-
-## Configuration
-```
-[SERVICE]
-	Flush          1
-        Daemon         Off
-        Log_Level      info
-        Parsers_File   parsers.conf
-[INPUT]
-        Name           tail
-        Tag            kube.*
-        Path           /var/log/containers/*.log
-        Parser         docker
-        DB             /var/log/flb_kube.db
-        Mem_Buf_Limit  5MB
-[FILTER]
-        Name           kubernetes
-        Match          kube.*
-        Kube_URL       https://kubernetes.default.svc:443
-        Merge_JSON_Log On
-[OUTPUT]
-    	Name  newrelic
-    	Match *
-	apiKey someKey // new relic api key
-	endpint someendpoint // rest endpoint to hit
-	maxBufferSize 512000  // Number of bytes per payload
-	maxRecords 1023 // Number of records per payload
 ```
