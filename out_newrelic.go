@@ -19,7 +19,6 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 }
 
 var client = http.Client{}
-
 var endpoint, apiKey string
 var maxBufferSize, maxRecords int64
 
@@ -28,7 +27,12 @@ var maxBufferSize, maxRecords int64
 // ctx (context) pointer to fluentbit context (state/ c code)
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	// Example to retrieve an optional configuration parameter
-	endpoint = output.FLBPluginConfigKey(ctx, "endpoint")
+	possibleOverride := output.FLBPluginConfigKey(ctx, "endpoint")
+	if len(possibleOverride) > 0 {
+		endpoint = possibleOverride
+	} else {
+		endpoint = "https://insights-collector.newrelic.com/logs/v1"
+	}
 	apiKey = output.FLBPluginConfigKey(ctx, "apiKey")
 	maxBufferSize, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxBufferSize"), 10, 64)
 	maxRecords, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxRecords"), 10, 64)
