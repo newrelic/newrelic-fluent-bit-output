@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -25,9 +26,11 @@ var _ = Describe("Out New Relic", func() {
 					time.Now(),
 				}
 				inputMap["log"] = "message"
-				output := prepareRecord(inputMap, inputTimestamp)
-				Expect(output["message"]).To(Equal("message"))
-				Expect(output["log"]).To(BeNil())
+				foundOutput := prepareRecord(inputMap, inputTimestamp)
+				fmt.Println(foundOutput)
+				Expect(foundOutput["message"]).To(Equal("message"))
+				Expect(foundOutput["log"]).To(BeNil())
+				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
 			})
 	})
 
