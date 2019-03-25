@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/fluent/fluent-bit-go/output"
 )
 import (
@@ -50,13 +48,36 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	return output.FLB_OK
 }
 
+func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
+	outputRecord = make(map[string]interface{})
+	timestamp := inputTimestamp.(output.FLBTime)
+	inputRecord["timestamp"] = timestamp.UnixNano() / 1000000
+	for k, v := range inputRecord {
+		// TODO:  We may have to do flattening
+		switch value := v.(type) {
+		case []byte:
+			outputRecord[k.(string)] = string(value)
+			break
+		case string:
+			outputRecord[k.(string)] = value
+			break
+		default:
+			outputRecord[k.(string)] = value
+		}
+	}
+	if val, ok := outputRecord["log"]; ok {
+		outputRecord["message"] = val
+		delete(outputRecord, "log")
+	}
+	return
+}
+
 //export FLBPluginFlush
 func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	var count int64
 	var ret int
 	var ts interface{}
 	var record map[interface{}]interface{}
-	var updatedRecord = make(map[string]interface{})
 	var buffer []map[string]interface{}
 
 	// Create Fluent Bit decoder
@@ -71,27 +92,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			break
 		}
 
-		// Print record keys and values
-		timestamp := ts.(output.FLBTime)
-		record["timestamp"] = timestamp.UnixNano() / 1000000
-		for k, v := range record {
-			// TODO:  We may have to do flattening
-			switch value := v.(type) {
-			case []byte:
-				updatedRecord[k.(string)] = string(value)
-				break
-			case string:
-				updatedRecord[k.(string)] = value
-				break
-			default:
-				updatedRecord[k.(string)] = value
-			}
-		}
-		if val, ok := updatedRecord["log"]; ok {
-			updatedRecord["message"] = val
-			delete(updatedRecord, "log")
-		}
-
+		updatedRecord := prepareRecord(record, ts)
 		buffer = append(buffer, updatedRecord)
 		count++
 		if config.maxRecords >= count {
@@ -114,7 +115,8 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	return output.FLB_OK
 }
 
-func prepare(records []map[string]interface{}, config *PluginConfig) {
+func prepare(records []map[string]interface{}, config *PluginConfig) (responseChan chan *http.Response) {
+	responseChan = make(chan *http.Response)
 	data, err := packagePayload(records)
 	if err != nil {
 		panic(err)
@@ -126,11 +128,13 @@ func prepare(records []map[string]interface{}, config *PluginConfig) {
 		prepare(second, config)
 	} else {
 		// TODO: error handling, retry, exponential backoff
-		go makeRequest(data, config)
+		go makeRequest(data, config, responseChan)
+		return responseChan
 	}
+	return nil
 }
 
-func makeRequest(buffer *bytes.Buffer, config *PluginConfig) {
+func makeRequest(buffer *bytes.Buffer, config *PluginConfig, responseChan chan *http.Response) {
 	req, err := http.NewRequest("POST", config.endpoint, buffer)
 	if err != nil {
 		panic(err)
@@ -138,12 +142,12 @@ func makeRequest(buffer *bytes.Buffer, config *PluginConfig) {
 	req.Header.Add("X-Insert-Key", config.apiKey)
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
-	fmt.Println(req)
 	resp, err := client.Do(req)
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
+	responseChan <- resp
 }
 
 func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
