@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/fluent/fluent-bit-go/output"
 )
 import (
@@ -19,25 +21,32 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 }
 
 var client = http.Client{}
-var endpoint, apiKey string
-var maxBufferSize, maxRecords int64
+
+type PluginConfig struct {
+	endpoint      string
+	apiKey        string
+	maxBufferSize int64
+	maxRecords    int64
+}
+
+var config PluginConfig
 
 //export FLBPluginInit
 // (fluentbit will call this)
 // ctx (context) pointer to fluentbit context (state/ c code)
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	// Example to retrieve an optional configuration parameter
-	endpoint := output.FLBPluginConfigKey(ctx, "endpoint")
-	if len(endpoint) == 0 {
-		endpoint = "https://insights-collector.newrelic.com/logs/v1"
+	config.endpoint = output.FLBPluginConfigKey(ctx, "endpoint")
+	if len(config.endpoint) == 0 {
+		config.endpoint = "https://insights-collector.newrelic.com/logs/v1"
 	}
-	apiKey = output.FLBPluginConfigKey(ctx, "apiKey")
-	if len(apiKey) == 0 {
+	config.apiKey = output.FLBPluginConfigKey(ctx, "apiKey")
+	if len(config.apiKey) == 0 {
 		return output.FLB_ERROR
 	}
 
-	maxBufferSize, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxBufferSize"), 10, 64)
-	maxRecords, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxRecords"), 10, 64)
+	config.maxBufferSize, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxBufferSize"), 10, 64)
+	config.maxRecords, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxRecords"), 10, 64)
 	return output.FLB_OK
 }
 
@@ -85,16 +94,16 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 
 		buffer = append(buffer, updatedRecord)
 		count++
-		if maxRecords >= count {
+		if config.maxRecords >= count {
 			newBuffer := make([]map[string]interface{}, len(buffer))
 			copy(newBuffer, buffer)
-			prepare(buffer)
+			prepare(buffer, &config)
 			count = 0
 			buffer = nil
 		}
 	}
 	if len(buffer) > 0 {
-		prepare(buffer)
+		prepare(buffer, &config)
 	}
 
 	// Return options:
@@ -105,30 +114,31 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	return output.FLB_OK
 }
 
-func prepare(records []map[string]interface{}) {
+func prepare(records []map[string]interface{}, config *PluginConfig) {
 	data, err := packagePayload(records)
 	if err != nil {
 		panic(err)
 	}
-	if int64(data.Cap()) >= maxBufferSize {
+	if int64(data.Cap()) >= config.maxBufferSize {
 		first := records[0 : len(records)/2]
 		second := records[len(records)/2 : len(records)]
-		prepare(first)
-		prepare(second)
+		prepare(first, config)
+		prepare(second, config)
 	} else {
 		// TODO: error handling, retry, exponential backoff
-		go makeRequest(data)
+		go makeRequest(data, config)
 	}
 }
 
-func makeRequest(buffer *bytes.Buffer) {
-	req, err := http.NewRequest("POST", endpoint, buffer)
+func makeRequest(buffer *bytes.Buffer, config *PluginConfig) {
+	req, err := http.NewRequest("POST", config.endpoint, buffer)
 	if err != nil {
 		panic(err)
 	}
-	req.Header.Add("X-Insert-Key", apiKey)
+	req.Header.Add("X-Insert-Key", config.apiKey)
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
+	fmt.Println(req)
 	resp, err := client.Do(req)
 	if err != nil {
 		panic(err)
