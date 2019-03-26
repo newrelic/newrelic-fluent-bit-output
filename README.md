@@ -1,46 +1,53 @@
+The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
+
 ## Getting started
-This is a Fluent Bit plugin that will forward your logs to New Relic. Prerequisites include knowledge of Fluent Bit, and a Go environment set up.
+
+In order to insert records into New Relic, you can run the plugin from the command line or through the configuration file.
 
 You need to initially compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
 
 ## Building the plugin
-First, import dependencies, with `go get github.com/fluent/fluent-bit-go/output`, then
 
-```make all```
+Prerequisites:
+* Fluent Bit
+* a Go environment
 
-## Using the plugin
-```fluent-bit -e /path/to/out_newrelic.so -c /etc/fluent-bit/fluent.conf```
+To build the plugin:
+* Install dependencies: `go get github.com/fluent/fluent-bit-go/output`
+* Build plugin: `make all`
 
-## Configuration
-We recommend putting the fluent bit configuration in /etc/fluent-bit/fluent.conf
+## Configuration Parameters
 
+The plugin supports the following configuration parameters:
 
-|key           |default  |meaning                               |
+|Key           |Description |Default                               |
 |--------------|---------|--------------------------------------|
-|apiKey        |  NONE   | insights insert api key              |
-|maxBufferSize |  256000 | max size the payloads sent in bytes  |
-|maxRecords    |  1024   | max number of records sent           |
-
+|apiKey        |  Your New Relic API Insert key |NONE   | 
+|maxBufferSize |  The maximum size the payloads sent in bytes  |256000 | 
+|maxRecords    |  The maximum number of records to send at a time  |1024   | 
 
 Example:
-Modify this to suit your needs.  This configuration will work for tailing and shipping all logs
-in /var/log matching the pattern *.log.
 ```
-[SERVICE]
-        Flush          1
-        Daemon         Off
-        Log_Level      info
-[INPUT]
-        Name           tail
-        Path           /var/log/*.log
-        DB             /var/log/flb.db
-        Mem_Buf_Limit  5MB
 [OUTPUT]
         Name            newrelic
         Match           *
-        apiKey s        omeKey
-        maxBufferSize   256000
-        maxRecords      1023
+        apiKey          <API_INSERT_KEY>
 ```
 
-For more details on the configuration of fluent bit check out the official documentation [here] (https://fluentbit.io/documentation/0.12/configuration/)
+## Testing
+
+* Add the following block to your Fluent Bit configuration file (with your specific API Insert key)
+
+```
+        [INPUT]
+                Name           tail
+                Path           /path/to/your/log/file
+        [OUTPUT]
+                Name            newrelic
+                Match           *
+                apiKey          <API_INSERT_KEY>
+```
+
+* Restart Fluent Bit: `fluent-bit -e /path/to/out_newrelic.so -c /path/to/fluent.conf`
+* Append a test log message to your log file: `echo "test message" >> /path/to/your/log/file`
+* Search New Relic Logs for `"test message"`
