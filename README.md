@@ -4,6 +4,8 @@ This is a Fluent Bit plugin that will forward your logs to New Relic. Prerequisi
 You need to initially compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
 
 ## Building the plugin
+First, import dependencies, with `go get github.com/fluent/fluent-bit-go/output`, then
+
 ```make all```
 
 ## Using the plugin
