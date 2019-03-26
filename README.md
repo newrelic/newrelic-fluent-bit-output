@@ -23,11 +23,11 @@ We recommend putting the fluent bit configuration in /etc/fluent-bit/fluent.conf
 
 
 Example:
-Modify this to suit your needs.  This configuraiton will work for tailing and shipping all logs
+Modify this to suit your needs.  This configuration will work for tailing and shipping all logs
 in /var/log matching the pattern *.log.
 ```
 [SERVICE]
-	Flush          1
+        Flush          1
         Daemon         Off
         Log_Level      info
 [INPUT]
@@ -36,11 +36,11 @@ in /var/log matching the pattern *.log.
         DB             /var/log/flb.db
         Mem_Buf_Limit  5MB
 [OUTPUT]
-    	Name  newrelic
-    	Match *
-	apiKey someKey
-	maxBufferSize 256000
-	maxRecords 1023
+        Name            newrelic
+        Match           *
+        apiKey s        omeKey
+        maxBufferSize   256000
+        maxRecords      1023
 ```
 
 For more details on the configuration of fluent bit check out the official documentation [here] (https://fluentbit.io/documentation/0.12/configuration/)
