@@ -19,26 +19,57 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 }
 
 var client = http.Client{}
-var endpoint, apiKey string
-var maxBufferSize, maxRecords int64
+
+type PluginConfig struct {
+	endpoint      string
+	apiKey        string
+	maxBufferSize int64
+	maxRecords    int64
+}
+
+var config PluginConfig
 
 //export FLBPluginInit
 // (fluentbit will call this)
 // ctx (context) pointer to fluentbit context (state/ c code)
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	// Example to retrieve an optional configuration parameter
-	endpoint := output.FLBPluginConfigKey(ctx, "endpoint")
-	if len(endpoint) == 0 {
-		endpoint = "https://insights-collector.newrelic.com/logs/v1"
+	config.endpoint = output.FLBPluginConfigKey(ctx, "endpoint")
+	if len(config.endpoint) == 0 {
+		config.endpoint = "https://insights-collector.newrelic.com/logs/v1"
 	}
-	apiKey = output.FLBPluginConfigKey(ctx, "apiKey")
-	if len(apiKey) == 0 {
+	config.apiKey = output.FLBPluginConfigKey(ctx, "apiKey")
+	if len(config.apiKey) == 0 {
 		return output.FLB_ERROR
 	}
 
-	maxBufferSize, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxBufferSize"), 10, 64)
-	maxRecords, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxRecords"), 10, 64)
+	config.maxBufferSize, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxBufferSize"), 10, 64)
+	config.maxRecords, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxRecords"), 10, 64)
 	return output.FLB_OK
+}
+
+func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
+	outputRecord = make(map[string]interface{})
+	timestamp := inputTimestamp.(output.FLBTime)
+	inputRecord["timestamp"] = timestamp.UnixNano() / 1000000
+	for k, v := range inputRecord {
+		// TODO:  We may have to do flattening
+		switch value := v.(type) {
+		case []byte:
+			outputRecord[k.(string)] = string(value)
+			break
+		case string:
+			outputRecord[k.(string)] = value
+			break
+		default:
+			outputRecord[k.(string)] = value
+		}
+	}
+	if val, ok := outputRecord["log"]; ok {
+		outputRecord["message"] = val
+		delete(outputRecord, "log")
+	}
+	return
 }
 
 //export FLBPluginFlush
@@ -47,7 +78,6 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	var ret int
 	var ts interface{}
 	var record map[interface{}]interface{}
-	var updatedRecord = make(map[string]interface{})
 	var buffer []map[string]interface{}
 
 	// Create Fluent Bit decoder
@@ -62,39 +92,19 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			break
 		}
 
-		// Print record keys and values
-		timestamp := ts.(output.FLBTime)
-		record["timestamp"] = timestamp.UnixNano() / 1000000
-		for k, v := range record {
-			// TODO:  We may have to do flattening
-			switch value := v.(type) {
-			case []byte:
-				updatedRecord[k.(string)] = string(value)
-				break
-			case string:
-				updatedRecord[k.(string)] = value
-				break
-			default:
-				updatedRecord[k.(string)] = value
-			}
-		}
-		if val, ok := updatedRecord["log"]; ok {
-			updatedRecord["message"] = val
-			delete(updatedRecord, "log")
-		}
-
+		updatedRecord := prepareRecord(record, ts)
 		buffer = append(buffer, updatedRecord)
 		count++
-		if maxRecords >= count {
+		if config.maxRecords >= count {
 			newBuffer := make([]map[string]interface{}, len(buffer))
 			copy(newBuffer, buffer)
-			prepare(buffer)
+			prepare(buffer, &config)
 			count = 0
 			buffer = nil
 		}
 	}
 	if len(buffer) > 0 {
-		prepare(buffer)
+		prepare(buffer, &config)
 	}
 
 	// Return options:
@@ -105,28 +115,31 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	return output.FLB_OK
 }
 
-func prepare(records []map[string]interface{}) {
+func prepare(records []map[string]interface{}, config *PluginConfig) (responseChan chan *http.Response) {
+	responseChan = make(chan *http.Response)
 	data, err := packagePayload(records)
 	if err != nil {
 		panic(err)
 	}
-	if int64(data.Cap()) >= maxBufferSize {
+	if int64(data.Cap()) >= config.maxBufferSize {
 		first := records[0 : len(records)/2]
 		second := records[len(records)/2 : len(records)]
-		prepare(first)
-		prepare(second)
+		prepare(first, config)
+		prepare(second, config)
 	} else {
 		// TODO: error handling, retry, exponential backoff
-		go makeRequest(data)
+		go makeRequest(data, config, responseChan)
+		return responseChan
 	}
+	return nil
 }
 
-func makeRequest(buffer *bytes.Buffer) {
-	req, err := http.NewRequest("POST", endpoint, buffer)
+func makeRequest(buffer *bytes.Buffer, config *PluginConfig, responseChan chan *http.Response) {
+	req, err := http.NewRequest("POST", config.endpoint, buffer)
 	if err != nil {
 		panic(err)
 	}
-	req.Header.Add("X-Insert-Key", apiKey)
+	req.Header.Add("X-Insert-Key", config.apiKey)
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
@@ -134,6 +147,7 @@ func makeRequest(buffer *bytes.Buffer) {
 		panic(err)
 	}
 	defer resp.Body.Close()
+	responseChan <- resp
 }
 
 func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
