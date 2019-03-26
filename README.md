@@ -14,7 +14,7 @@ We recommend putting the fluent bit configuration in /etc/fluent-bit/fluent.conf
 
 
 |key           |default  |meaning                               |
-|---------------------------------------------------------------|
+|--------------|---------|--------------------------------------|
 |apiKey        |  NONE   | insights insert api key              |
 |maxBufferSize |  256000 | max size the payloads sent in bytes  |
 |maxRecords    |  1024   | max number of records sent           |
