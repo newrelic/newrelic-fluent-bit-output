@@ -1,3 +1,5 @@
+# Fluent Bit readme
+
 The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
 
 ## Getting started
@@ -14,38 +16,33 @@ Prerequisites:
 
 To build the plugin:
 * Install dependencies: `go get github.com/fluent/fluent-bit-go/output`
-* Build plugin: `make all`
+* clone (this repo)[https://github.com/newrelic/newrelic-fluent-bit-output]
+* Build plugin: `cd newrelic-fluent-bit-output && make all`
 
 ## Configuration Parameters
 
 The plugin supports the following configuration parameters:
 
 |Key           |Description |Default                               |
-|--------------|---------|--------------------------------------|
-|apiKey        |  Your New Relic API Insert key |NONE   | 
-|maxBufferSize |  The maximum size the payloads sent in bytes  |256000 | 
-|maxRecords    |  The maximum number of records to send at a time  |1024   | 
+|———————|————|———————————————————|
+|apiKey        |  Your New Relic API Insert key |NONE   |
+|maxBufferSize |  The maximum size the payloads sent in bytes  |256000 |
+|maxRecords    |  The maximum number of records to send at a time  |1024   |
 
 Example:
 ```
+[INPUT]
+    Name tail
+    Path /path/to/your/log/file
+
 [OUTPUT]
-        Name            newrelic
-        Match           *
-        apiKey          <API_INSERT_KEY>
-```
+    Name newrelic
+    Match *
+    apiKey <API_INSERT_KEY>
 
-## Testing
-
-* Add the following block to your Fluent Bit configuration file (with your specific API Insert key)
-
-```
-        [INPUT]
-                Name           tail
-                Path           /path/to/your/log/file
-        [OUTPUT]
-                Name            newrelic
-                Match           *
-                apiKey          <API_INSERT_KEY>
+    # Optional
+    maxBufferSize 256000
+    maxRecords 1024
 ```
 
 * Restart Fluent Bit: `fluent-bit -e /path/to/out_newrelic.so -c /path/to/fluent.conf`
