@@ -72,8 +72,8 @@ And at the end of `fluent-bit.conf`, add the following to set up input and outpu
 The plugin supports the following configuration parameters:
 
 
-| Key | Description | Default |
-|-----|———----------|---------|
-|apiKey        |  Your New Relic API Insert key | NONE   |
-|maxBufferSize |  The maximum size the payloads sent in bytes  | 256000 |
-|maxRecords    |  The maximum number of records to send at a time  | 1024 |
+| Key | Description | Default |  
+|-----|———----------|---------|  
+|apiKey        |  Your New Relic API Insert key | NONE   |  
+|maxBufferSize |  The maximum size the payloads sent in bytes  | 256000 |  
+|maxRecords    |  The maximum number of records to send at a time  | 1024 |   
