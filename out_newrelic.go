@@ -55,8 +55,6 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	} else {
 		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
 	}
-
-	config.maxBufferSize, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxBufferSize"), 10, 64)
 	return output.FLB_OK
 }
 
