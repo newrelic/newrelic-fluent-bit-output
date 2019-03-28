@@ -45,9 +45,9 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 
 	possibleeMaxBufferSize := output.FLBPluginConfigKey(ctx, "maxBufferSize")
 	if len(possibleeMaxBufferSize) == 0 {
-		config.maxBufferSize, _ = strconv.ParseInt(possibleeMaxBufferSize, 10, 64)
-	} else {
 		config.maxBufferSize = 256000
+	} else {
+		config.maxBufferSize, _ = strconv.ParseInt(possibleeMaxBufferSize, 10, 64)
 	}
 	possibleMaxRecords := output.FLBPluginConfigKey(ctx, "maxRecords")
 	if len(possibleMaxRecords) == 0 {
@@ -55,6 +55,8 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	} else {
 		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
 	}
+
+	config.maxBufferSize, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxBufferSize"), 10, 64)
 	return output.FLB_OK
 }
 
