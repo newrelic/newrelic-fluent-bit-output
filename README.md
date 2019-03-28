@@ -16,7 +16,7 @@ Prerequisites:
 
 To build the plugin:
 1. Install dependencies: `go get github.com/fluent/fluent-bit-go/output`
-2. clone (this repo)[https://github.com/newrelic/newrelic-fluent-bit-output]
+2. clone [https://github.com/newrelic/newrelic-fluent-bit-output](https://github.com/newrelic/newrelic-fluent-bit-output)
 3. Build plugin: `cd newrelic-fluent-bit-output && make all`
 
 ## Configuring Fluent Bit
