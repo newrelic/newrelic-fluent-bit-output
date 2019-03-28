@@ -1,4 +1,4 @@
-# Fluent Bit readme
+# Fluent Bit Output for New Relic
 
 The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
 
@@ -8,28 +8,43 @@ In order to insert records into New Relic, you can run the plugin from the comma
 
 You need to initially compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
 
-## Building the plugin
+## Compiling out_newrelic.so
 
 Prerequisites:
 * Fluent Bit
 * a Go environment
 
 To build the plugin:
-* Install dependencies: `go get github.com/fluent/fluent-bit-go/output`
-* clone (this repo)[https://github.com/newrelic/newrelic-fluent-bit-output]
-* Build plugin: `cd newrelic-fluent-bit-output && make all`
+1. Install dependencies: `go get github.com/fluent/fluent-bit-go/output`
+2. clone (this repo)[https://github.com/newrelic/newrelic-fluent-bit-output]
+3. Build plugin: `cd newrelic-fluent-bit-output && make all`
 
-## Configuration Parameters
+## Configuring Fluent Bit
 
-The plugin supports the following configuration parameters:
+Fluent Bit needs to know the location of the New Relic plugin, and the license key for outputting to New Relic.
 
-|Key           |Description |Default                               |
-|———————|————|———————————————————|
-|apiKey        |  Your New Relic API Insert key |NONE   |
-|maxBufferSize |  The maximum size the payloads sent in bytes  |256000 |
-|maxRecords    |  The maximum number of records to send at a time  |1024   |
+### plugins.conf
+Find or create a `plugins.conf` file and add a referencee to out_newrelic.so, adjacent to your `fluent-bit.conf` file.
 
-Example:
+in plugins.conf
+```
+[PLUGINS]
+    Path /path/to/newrelic-fluent-bit-output/out_newrelic.so
+```
+
+### fluent-bit.conf
+Modify flient-bit.conf and add the following line under the `[SERVICE]` block:
+
+in fluentd.conf
+```
+[SERVICE]
+    # This is the main configuration block for fluent bit.
+    # Ensure the follow line exists somewhere in the SERVICE block
+    Plugins_File plugins.conf
+
+```
+
+And at the end of `fluent-bit.conf`, add the following to set up input and output filter:
 ```
 [INPUT]
     Name tail
@@ -45,6 +60,17 @@ Example:
     maxRecords 1024
 ```
 
-* Restart Fluent Bit: `fluent-bit -e /path/to/out_newrelic.so -c /path/to/fluent.conf`
+* Restart Fluent Bit: `fluent-bit -c /path/to/fluent.conf`
 * Append a test log message to your log file: `echo "test message" >> /path/to/your/log/file`
 * Search New Relic Logs for `"test message"`
+
+## Configuration Parameters
+
+The plugin supports the following configuration parameters:
+
+|Key           |Description |Default                               |
+|———————|————|———————————————————|
+|apiKey        |  Your New Relic API Insert key |NONE   |
+|maxBufferSize |  The maximum size the payloads sent in bytes  |256000 |
+|maxRecords    |  The maximum number of records to send at a time  |1024   |
+
