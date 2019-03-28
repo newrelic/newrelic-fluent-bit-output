@@ -43,8 +43,18 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		return output.FLB_ERROR
 	}
 
-	config.maxBufferSize, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxBufferSize"), 10, 64)
-	config.maxRecords, _ = strconv.ParseInt(output.FLBPluginConfigKey(ctx, "maxRecords"), 10, 64)
+	possibleeMaxBufferSize := output.FLBPluginConfigKey(ctx, "maxBufferSize")
+	if len(possibleeMaxBufferSize) == 0 {
+		config.maxBufferSize = 256000
+	} else {
+		config.maxBufferSize, _ = strconv.ParseInt(possibleeMaxBufferSize, 10, 64)
+	}
+	possibleMaxRecords := output.FLBPluginConfigKey(ctx, "maxRecords")
+	if len(possibleMaxRecords) == 0 {
+		config.maxRecords = 1024
+	} else {
+		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
+	}
 	return output.FLB_OK
 }
 
