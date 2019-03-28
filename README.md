@@ -16,12 +16,14 @@ Prerequisites:
 
 To build the plugin:
 1. Install dependencies: `go get github.com/fluent/fluent-bit-go/output`
-2. clone [https://github.com/newrelic/newrelic-fluent-bit-output](https://github.com/newrelic/newrelic-fluent-bit-output)
+2. Clone [https://github.com/newrelic/newrelic-fluent-bit-output](https://github.com/newrelic/newrelic-fluent-bit-output)
 3. Build plugin: `cd newrelic-fluent-bit-output && make all`
 
 ## Configuring Fluent Bit
 
 Fluent Bit needs to know the location of the New Relic plugin, and the license key for outputting to New Relic.
+
+It is vitally important to pay attention to white space in your config files. Please use four spaces to indent, and one space between keys and values.
 
 ### plugins.conf
 Find or create a `plugins.conf` file and add a referencee to out_newrelic.so, adjacent to your `fluent-bit.conf` file.
@@ -35,7 +37,7 @@ in plugins.conf
 ### fluent-bit.conf
 Modify flient-bit.conf and add the following line under the `[SERVICE]` block:
 
-in fluentd.conf
+in fluent-bit.conf
 ```
 [SERVICE]
     # This is the main configuration block for fluent bit.
@@ -68,9 +70,9 @@ And at the end of `fluent-bit.conf`, add the following to set up input and outpu
 
 The plugin supports the following configuration parameters:
 
-|Key           |Description |Default                               |
-|———————|————|———————————————————|
-|apiKey        |  Your New Relic API Insert key |NONE   |
-|maxBufferSize |  The maximum size the payloads sent in bytes  |256000 |
-|maxRecords    |  The maximum number of records to send at a time  |1024   |
 
+| Key | Description | Default |
+|-----|———----------|---------|
+|apiKey        |  Your New Relic API Insert key | NONE   |
+|maxBufferSize |  The maximum size the payloads sent in bytes  | 256000 |
+|maxRecords    |  The maximum number of records to send at a time  | 1024 |
