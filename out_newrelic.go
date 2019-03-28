@@ -1,6 +1,11 @@
 package main
 
 import (
+	"io"
+	"io/ioutil"
+	"net"
+	"time"
+
 	"github.com/fluent/fluent-bit-go/output"
 )
 import (
@@ -18,7 +23,7 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 	return output.FLBPluginRegister(ctx, "newrelic", "New relic output plugin")
 }
 
-var client = http.Client{}
+var client *http.Client
 
 type PluginConfig struct {
 	endpoint      string
@@ -55,6 +60,20 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	} else {
 		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
 	}
+	keepAliveTimeout := 600 * time.Second
+	timeout := 5 * time.Second
+	defaultTransport := &http.Transport{
+		Dial: (&net.Dialer{
+			KeepAlive: keepAliveTimeout,
+		}).Dial,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+	}
+	client = &http.Client{
+		Transport: defaultTransport,
+		Timeout:   timeout,
+	}
+
 	return output.FLB_OK
 }
 
@@ -157,6 +176,10 @@ func makeRequest(buffer *bytes.Buffer, config *PluginConfig, responseChan chan *
 		panic(err)
 	}
 	defer resp.Body.Close()
+	_, err = io.Copy(ioutil.Discard, resp.Body) // WE READ THE BODY
+	if err != nil {
+		panic(err)
+	}
 	responseChan <- resp
 }
 
