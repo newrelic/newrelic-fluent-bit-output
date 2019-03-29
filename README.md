@@ -63,7 +63,7 @@ And at the end of `fluent-bit.conf`, add the following to set up input and outpu
     maxRecords 1024
 ```
 
-* Restart Fluent Bit: `fluent-bit -c /path/to/fluent.conf`
+* Restart Fluent Bit: `fluent-bit -c /path/to/fluent-bit.conf`
 * Append a test log message to your log file: `echo "test message" >> /path/to/your/log/file`
 * Search New Relic Logs for `"test message"`
 
