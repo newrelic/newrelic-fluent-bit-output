@@ -14,7 +14,6 @@ Prerequisites:
 * a Go environment
 
 To build the plugin:
-* Install dependencies: `go get github.com/fluent/fluent-bit-go/output`
 * Build plugin: `make all`
 
 ## Configuration Parameters
