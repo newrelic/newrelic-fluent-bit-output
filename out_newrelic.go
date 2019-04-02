@@ -17,7 +17,7 @@ import (
 	"github.com/fluent/fluent-bit-go/output"
 )
 
-// FLBPluginRegister exported
+//export FLBPluginRegister
 func FLBPluginRegister(ctx unsafe.Pointer) int {
 	return output.FLBPluginRegister(ctx, "newrelic", "New relic output plugin")
 }
@@ -115,7 +115,7 @@ func (bufferManager *BufferManager) makeRequest(buffer *bytes.Buffer, responseCh
 	responseChan <- resp
 }
 
-// FLBPluginInit
+//export FLBPluginInit
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	var config PluginConfig
 	// Example to retrieve an optional configuration parameter
@@ -144,7 +144,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	return output.FLB_OK
 }
 
-// FLBPluginFlush exported
+//export FLBPluginFlush
 func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	var ret int
 	var ts interface{}
@@ -221,7 +221,7 @@ func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
 	return &buffer, nil
 }
 
-// FLBPluginExit exported
+//export FLBPluginExit
 func FLBPluginExit() int {
 	if !bufferManager.isEmpty() {
 		bufferManager.sendRecords()
