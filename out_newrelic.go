@@ -170,7 +170,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	return output.FLB_OK
 }
 
-func flattenRecord(inputRecord map[interface{}]interface{}) (outputRecord map[string]interface{}) {
+func remapRecord(inputRecord map[interface{}]interface{}) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
 	for k, v := range inputRecord {
 		// TODO:  We may have to do flattening
@@ -182,7 +182,7 @@ func flattenRecord(inputRecord map[interface{}]interface{}) (outputRecord map[st
 			outputRecord[k.(string)] = value
 			break
 		case map[interface{}]interface{}:
-			outputRecord[k.(string)] = flattenRecord(value)
+			outputRecord[k.(string)] = remapRecord(value)
 		default:
 			outputRecord[k.(string)] = value
 		}
@@ -193,7 +193,7 @@ func flattenRecord(inputRecord map[interface{}]interface{}) (outputRecord map[st
 func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
 	timestamp := inputTimestamp.(output.FLBTime)
-	outputRecord = flattenRecord(inputRecord)
+	outputRecord = remapRecord(inputRecord)
 	outputRecord["timestamp"] = timestamp.UnixNano() / 1000000
 	if val, ok := outputRecord["log"]; ok {
 		outputRecord["message"] = val
