@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -27,11 +26,27 @@ var _ = Describe("Out New Relic", func() {
 				}
 				inputMap["log"] = "message"
 				foundOutput := prepareRecord(inputMap, inputTimestamp)
-				fmt.Println(foundOutput)
 				Expect(foundOutput["message"]).To(Equal("message"))
 				Expect(foundOutput["log"]).To(BeNil())
 				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
-			})
+			},
+		)
+
+		It("Correctly massage nested map[interface]interface{} to map[string]interface{}",
+			func() {
+				inputMap := make(map[interface{}]interface{})
+				nestedMap := make(map[interface{}]interface{})
+				expectedOutput := make(map[string]interface{})
+				expectedNestedOutput := make(map[string]interface{})
+				expectedNestedOutput["foo"] = "bar"
+				expectedOutput["nested"] = expectedNestedOutput
+				nestedMap["foo"] = "bar"
+				inputMap["nested"] = nestedMap
+				foundOutput := remapRecord(inputMap)
+				Expect(foundOutput).To(Equal(expectedOutput))
+
+			},
+		)
 	})
 
 	Describe("HTTP Request body", func() {
@@ -64,6 +79,7 @@ var _ = Describe("Out New Relic", func() {
 				maxRecords:    2,
 			}
 
+			bufferManager := newBufferManager(testConfig)
 			var testRecords []map[string]interface{}
 			var testRecord map[string]interface{}
 
@@ -71,7 +87,7 @@ var _ = Describe("Out New Relic", func() {
 			testRecord["timestamp"] = time.Now().UnixNano() / int64(time.Millisecond)
 			testRecord["message"] = "cool story"
 			testRecords = append(testRecords, testRecord)
-			responseChan := prepare(testRecords, &testConfig)
+			responseChan := bufferManager.prepare(testRecords)
 			<-responseChan
 		})
 	})
