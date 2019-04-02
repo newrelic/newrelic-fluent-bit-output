@@ -55,7 +55,7 @@ And at the end of `fluent-bit.conf`, add the following to set up input and outpu
 [OUTPUT]
     Name newrelic
     Match *
-    apiKey <API_INSERT_KEY>
+    apiKey <NEW_RELIC_INSIGHTS_INSERT_KEY>
 
     # Optional
     maxBufferSize 256000
@@ -73,6 +73,8 @@ The plugin supports the following configuration parameters:
 
 | Key | Description | Default |  
 |-----|-------------|---------|  
-|apiKey        |  Your New Relic API Insert key | NONE   |  
+|apiKey        |  Your New Relic Insights Insert key | NONE   |  
 |maxBufferSize |  The maximum size the payloads sent in bytes  | 256000 |  
 |maxRecords    |  The maximum number of records to send at a time  | 1024 |   
+
+For information on how to find your New Relic Insights Insert key, take a look at the documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/send-custom-events-event-api#register).
