@@ -1,7 +1,7 @@
 # Fluent Bit Output for New Relic
 
 The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
-It works on all versions greater than 0.12 but we recommend 1.X
+It works on all versions of Fluent Bit greater than 0.12 but for the best experience we recommend using versions greater than 1.0.
 
 ## Getting started
 
@@ -16,9 +16,8 @@ Prerequisites:
 * a Go environment
 
 To build the plugin:
-1. Install dependencies: `go get github.com/fluent/fluent-bit-go/output`
-2. Clone [https://github.com/newrelic/newrelic-fluent-bit-output](https://github.com/newrelic/newrelic-fluent-bit-output)
-3. Build plugin: `cd newrelic-fluent-bit-output && make all`
+1. Clone [https://github.com/newrelic/newrelic-fluent-bit-output](https://github.com/newrelic/newrelic-fluent-bit-output)
+2. Build plugin: `cd newrelic-fluent-bit-output && make all`
 
 ## Configuring Fluent Bit
 
@@ -56,14 +55,14 @@ And at the end of `fluent-bit.conf`, add the following to set up input and outpu
 [OUTPUT]
     Name newrelic
     Match *
-    apiKey <API_INSERT_KEY>
+    apiKey <NEW_RELIC_INSIGHTS_INSERT_KEY>
 
     # Optional
     maxBufferSize 256000
     maxRecords 1024
 ```
 
-* Restart Fluent Bit: `fluent-bit -c /path/to/fluent.conf`
+* Restart Fluent Bit: `fluent-bit -c /path/to/fluent-bit.conf`
 * Append a test log message to your log file: `echo "test message" >> /path/to/your/log/file`
 * Search New Relic Logs for `"test message"`
 
@@ -74,6 +73,8 @@ The plugin supports the following configuration parameters:
 
 | Key | Description | Default |  
 |-----|-------------|---------|  
-|apiKey        |  Your New Relic API Insert key | NONE   |  
+|apiKey        |  Your New Relic Insights Insert key | NONE   |  
 |maxBufferSize |  The maximum size the payloads sent in bytes  | 256000 |  
 |maxRecords    |  The maximum number of records to send at a time  | 1024 |   
+
+For information on how to find your New Relic Insights Insert key, take a look at the documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/send-custom-events-event-api#register).
