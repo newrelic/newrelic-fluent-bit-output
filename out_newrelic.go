@@ -72,7 +72,7 @@ func (bufferManager *BufferManager) shouldSend() bool {
 }
 
 func (bufferManager *BufferManager) sendRecords() {
-
+	bufferManager.prepare(bufferManager.buffer)
 }
 
 func (bufferManager *BufferManager) prepare(records []map[string]interface{}) (responseChan chan *http.Response) {
