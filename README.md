@@ -1,7 +1,7 @@
 # Fluent Bit Output for New Relic
 
 The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
-It works on all versions greater than 0.12 but we recommend 1.X
+It works on all versions of Fluent Bit greater than 0.12 but we recommend 1.X
 
 ## Getting started
 
