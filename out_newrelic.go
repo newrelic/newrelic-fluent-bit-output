@@ -56,11 +56,13 @@ func newBufferManager(config PluginConfig) BufferManager {
 	}
 }
 
-func (bufferManager *BufferManager) addRecord(record map[string]interface{}) {
+func (bufferManager *BufferManager) addRecord(record map[string]interface{}) chan *http.Response {
 	bufferManager.buffer = append(bufferManager.buffer, record)
 	if bufferManager.shouldSend() {
-		bufferManager.sendRecords()
+		return bufferManager.sendRecords()
 	}
+
+	return nil
 }
 
 func (bufferManager *BufferManager) isEmpty() bool {
@@ -71,12 +73,17 @@ func (bufferManager *BufferManager) shouldSend() bool {
 	return int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords
 }
 
-func (bufferManager *BufferManager) sendRecords() {
-	bufferManager.prepare(bufferManager.buffer)
+func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
+	newBuffer := make([]map[string]interface{}, len(bufferManager.buffer))
+	copy(newBuffer, bufferManager.buffer)
+	bufferManager.buffer = nil
+
+	responseChan = make(chan *http.Response, 1)
+	bufferManager.prepare(newBuffer, responseChan)
+	return responseChan
 }
 
-func (bufferManager *BufferManager) prepare(records []map[string]interface{}) (responseChan chan *http.Response) {
-	responseChan = make(chan *http.Response, 1)
+func (bufferManager *BufferManager) prepare(records []map[string]interface{}, responseChan chan *http.Response) {
 	config := &bufferManager.config
 	data, err := packagePayload(records)
 	if err != nil {
@@ -85,14 +92,12 @@ func (bufferManager *BufferManager) prepare(records []map[string]interface{}) (r
 	if int64(data.Cap()) >= config.maxBufferSize {
 		first := records[0 : len(records)/2]
 		second := records[len(records)/2 : len(records)]
-		bufferManager.prepare(first)
-		bufferManager.prepare(second)
+		bufferManager.prepare(first, responseChan)
+		bufferManager.prepare(second, responseChan)
 	} else {
 		// TODO: error handling, retry, exponential backoff
 		go bufferManager.makeRequest(data, responseChan)
-		return responseChan
 	}
-	return nil
 }
 
 func (bufferManager *BufferManager) makeRequest(buffer *bytes.Buffer, responseChan chan *http.Response) {
