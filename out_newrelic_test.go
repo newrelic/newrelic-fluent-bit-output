@@ -54,6 +54,8 @@ var _ = Describe("Out New Relic", func() {
 		var server *ghttp.Server
 		const expectedInsertKey = "sweetKey"
 		var expectedEndpoint string
+		var testConfig PluginConfig
+
 		BeforeEach(func() {
 			server = ghttp.NewServer()
 			expectedEndpoint = server.URL() + "/v1/logs"
@@ -65,30 +67,33 @@ var _ = Describe("Out New Relic", func() {
 						"Content-Encoding": []string{"gzip"},
 					}),
 				))
-		})
 
-		AfterEach(func() {
-			server.Close()
-		})
-		It("correctly packages and posts json", func() {
-
-			var testConfig = PluginConfig{
+			testConfig = PluginConfig{
 				apiKey:        expectedInsertKey,
 				endpoint:      expectedEndpoint,
 				maxBufferSize: 256000,
 				maxRecords:    2,
 			}
+		})
 
+		AfterEach(func() {
+			server.Close()
+		})
+
+		It("flushes when buffer is full, resets buffer", func() {
 			bufferManager := newBufferManager(testConfig)
-			var testRecords []map[string]interface{}
-			var testRecord map[string]interface{}
+			testRecord := make(map[string]interface{})
+			responseChan := bufferManager.addRecord(testRecord)
 
-			testRecord = make(map[string]interface{})
-			testRecord["timestamp"] = time.Now().UnixNano() / int64(time.Millisecond)
-			testRecord["message"] = "cool story"
-			testRecords = append(testRecords, testRecord)
-			responseChan := bufferManager.prepare(testRecords)
+			Expect(responseChan).To(BeNil())
+
+			testRecord2 := make(map[string]interface{})
+			responseChan = bufferManager.addRecord(testRecord2)
+
+			Expect(responseChan).ToNot(BeNil())
 			<-responseChan
+
+			Expect(bufferManager.shouldSend()).To(BeFalse())
 		})
 	})
 })
