@@ -61,6 +61,19 @@ var _ = Describe("Out New Relic", func() {
 				Expect(foundOutput["hostname"]).To(Equal("bar"))
 			},
 		)
+		It("Correctly parses nested json sent as a message",
+			func() {
+				inputMap := make(map[interface{}]interface{})
+				var inputTimestamp interface{}
+				inputTimestamp = output.FLBTime{
+					time.Now(),
+				}
+				inputMap["log"] = string(`{"coolStories": {"foo": "bar", "hostname": "bar"}}`)
+				foundOutput := prepareRecord(inputMap, inputTimestamp)
+				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
+				Expect(foundOutput["coolStories"]).To(Equal(map[string]interface{}{"foo": "bar", "hostname": "bar"}))
+			},
+		)
 	})
 
 	Describe("HTTP Request body", func() {

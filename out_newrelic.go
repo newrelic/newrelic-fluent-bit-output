@@ -195,6 +195,26 @@ func remapRecord(inputRecord map[interface{}]interface{}) (outputRecord map[stri
 	return
 }
 
+func remapRecordString(inputRecord map[string]interface{}) (outputRecord map[string]interface{}) {
+	outputRecord = make(map[string]interface{})
+	for k, v := range inputRecord {
+		// TODO:  We may have to do flattening
+		switch value := v.(type) {
+		case []byte:
+			outputRecord[k] = string(value)
+			break
+		case string:
+			outputRecord[k] = value
+			break
+		case map[interface{}]interface{}:
+			outputRecord[k] = remapRecord(value)
+		default:
+			outputRecord[k] = value
+		}
+	}
+	return
+}
+
 func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
 	timestamp := inputTimestamp.(output.FLBTime)
@@ -203,7 +223,8 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 	if val, ok := outputRecord["log"]; ok {
 		var nested map[string]interface{}
 		if err := json.Unmarshal([]byte(val.(string)), &nested); err == nil {
-			for k, v := range nested {
+			remapped := remapRecordString(nested)
+			for k, v := range remapped {
 				switch k {
 				case "timestamp":
 					break
