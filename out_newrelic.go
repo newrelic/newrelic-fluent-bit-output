@@ -223,10 +223,7 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 		if err := json.Unmarshal([]byte(val.(string)), &nested); err == nil {
 			remapped := remapRecordString(nested)
 			for k, v := range remapped {
-				switch k {
-				case "timestamp":
-					break
-				default:
+				if _, ok := outputRecord[k]; !ok {
 					outputRecord[k] = v
 				}
 			}
