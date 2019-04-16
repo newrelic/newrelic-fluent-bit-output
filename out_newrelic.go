@@ -178,7 +178,6 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 func remapRecord(inputRecord map[interface{}]interface{}) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
 	for k, v := range inputRecord {
-		// TODO:  We may have to do flattening
 		switch value := v.(type) {
 		case []byte:
 			outputRecord[k.(string)] = string(value)
@@ -198,7 +197,6 @@ func remapRecord(inputRecord map[interface{}]interface{}) (outputRecord map[stri
 func remapRecordString(inputRecord map[string]interface{}) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
 	for k, v := range inputRecord {
-		// TODO:  We may have to do flattening
 		switch value := v.(type) {
 		case []byte:
 			outputRecord[k] = string(value)
