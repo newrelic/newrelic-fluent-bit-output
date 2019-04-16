@@ -201,7 +201,19 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 	outputRecord = remapRecord(inputRecord)
 	outputRecord["timestamp"] = timestamp.UnixNano() / 1000000
 	if val, ok := outputRecord["log"]; ok {
-		outputRecord["message"] = val
+		var nested map[string]interface{}
+		if err := json.Unmarshal([]byte(val.(string)), &nested); err == nil {
+			for k, v := range nested {
+				switch k {
+				case "timestamp":
+					break
+				default:
+					outputRecord[k] = v
+				}
+			}
+		} else {
+			outputRecord["message"] = val
+		}
 		delete(outputRecord, "log")
 	}
 	return

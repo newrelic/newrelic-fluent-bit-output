@@ -47,6 +47,20 @@ var _ = Describe("Out New Relic", func() {
 
 			},
 		)
+		It("Correctly parses json sent as a message and doesn't overwrite reserved keys",
+			func() {
+				inputMap := make(map[interface{}]interface{})
+				var inputTimestamp interface{}
+				inputTimestamp = output.FLBTime{
+					time.Now(),
+				}
+				inputMap["log"] = string(`{"message": "foo", "timestamp": 9001, "hostname": "bar"}`)
+				foundOutput := prepareRecord(inputMap, inputTimestamp)
+				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
+				Expect(foundOutput["message"]).To(Equal("foo"))
+				Expect(foundOutput["hostname"]).To(Equal("bar"))
+			},
+		)
 	})
 
 	Describe("HTTP Request body", func() {
