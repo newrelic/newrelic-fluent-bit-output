@@ -23,11 +23,8 @@ To test, update line 32 in `new-relic-fluent-plugin.yml` in the [kubernetes logg
 
 Come up with a name for your latest build. Check [quay.io](https://quay.io/repository/newrelic/fluent-bit-output?tab=info) to see what the latest tag is. Increment yours by 1. 
 
-Run `docker build -t BUILD_NAME:YOUR_TAG .` 
-
-Run `docker tag BUILD_NAME:YOUR_TAG quay.io/newrelic/fluent-bit-output:YOUR_TAG`
-
-Run `docker push quay.io/newrelic/fluent-bit-output:YOUR_TAG`. 
+Update VERSION file wiht a version bump
+Run `./build.sh` 
 
 If you had tested and changed the image name on line 32 in `new-relic-fluent-plugin.yml` in the [kubernetes logging repo](https://source.datanerd.us/logging/newrelic-kubernetes-logging), change it back to `quay.io/newrelic/fluent-bit-output`.
 
