@@ -178,7 +178,6 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 func remapRecord(inputRecord map[interface{}]interface{}) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
 	for k, v := range inputRecord {
-		// TODO:  We may have to do flattening
 		switch value := v.(type) {
 		case []byte:
 			outputRecord[k.(string)] = string(value)
@@ -195,13 +194,42 @@ func remapRecord(inputRecord map[interface{}]interface{}) (outputRecord map[stri
 	return
 }
 
+func remapRecordString(inputRecord map[string]interface{}) (outputRecord map[string]interface{}) {
+	outputRecord = make(map[string]interface{})
+	for k, v := range inputRecord {
+		switch value := v.(type) {
+		case []byte:
+			outputRecord[k] = string(value)
+			break
+		case string:
+			outputRecord[k] = value
+			break
+		case map[interface{}]interface{}:
+			outputRecord[k] = remapRecord(value)
+		default:
+			outputRecord[k] = value
+		}
+	}
+	return
+}
+
 func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
 	timestamp := inputTimestamp.(output.FLBTime)
 	outputRecord = remapRecord(inputRecord)
 	outputRecord["timestamp"] = timestamp.UnixNano() / 1000000
 	if val, ok := outputRecord["log"]; ok {
-		outputRecord["message"] = val
+		var nested map[string]interface{}
+		if err := json.Unmarshal([]byte(val.(string)), &nested); err == nil {
+			remapped := remapRecordString(nested)
+			for k, v := range remapped {
+				if _, ok := outputRecord[k]; !ok {
+					outputRecord[k] = v
+				}
+			}
+		} else {
+			outputRecord["message"] = val
+		}
 		delete(outputRecord, "log")
 	}
 	return
