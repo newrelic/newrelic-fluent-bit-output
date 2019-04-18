@@ -228,7 +228,7 @@ func timeToMillis(time int64) int64 {
 	} else if time < maxNanoseconds {
 		return time / 1000000
 	} else {
-		// TODO: throw instead?
+		// TODO: throw?
 		return time
 	}
 }
@@ -238,14 +238,12 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 	outputRecord = remapRecord(inputRecord)
 
 	switch inputTimestamp.(type) {
-
-	// TODO: range valuation
 	case output.FLBTime:
-		outputRecord["timestamp"] = timeToMillis(inputTimestamp.(output.FLBTime).UnixNano() / 1000000)
+		outputRecord["timestamp"] = timeToMillis(inputTimestamp.(output.FLBTime).UnixNano())
 	case uint64:
-		outputRecord["timestamp"] = timeToMillis(int64(inputTimestamp.(uint64) * 1000))
+		outputRecord["timestamp"] = timeToMillis(int64(inputTimestamp.(uint64)))
 	default:
-		// TODO: throw
+		// TODO: log? throw?
 	}
 
 	if val, ok := outputRecord["log"]; ok {

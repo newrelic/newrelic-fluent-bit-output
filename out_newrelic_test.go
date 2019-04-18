@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/fluent/fluent-bit-go/output"
@@ -32,32 +33,40 @@ var _ = Describe("Out New Relic", func() {
 			},
 		)
 
-		It("handles uint64 timestamp that macOS sends as seconds",
+		It("handles FLBTime timestamps",
 			func() {
+				inputTimestamp := time.Unix(1234567890, 123456789)
+				expectedOutputTime := 1234567890123
 				inputMap := make(map[interface{}]interface{})
-				var inputTimestamp interface{}
-				timeInSeconds := 1234567890
-				timeInMilliseconds := timeInSeconds * 1000
-				inputTimestamp = uint64(timeInSeconds)
+				var inputTimestampInterface interface{}
+				inputTimestampInterface = output.FLBTime{inputTimestamp}
 
-				foundOutput := prepareRecord(inputMap, inputTimestamp)
+				foundOutput := prepareRecord(inputMap, inputTimestampInterface)
 
-				Expect(foundOutput["timestamp"]).To(Equal(int64(timeInMilliseconds)))
+				Expect(foundOutput["timestamp"]).To(Equal(int64(expectedOutputTime)))
 			},
 		)
 
-		It("handles uint64 timestamp even if it's millis",
-			func() {
-				inputMap := make(map[interface{}]interface{})
-				var inputTimestamp interface{}
-				timeInMilliseconds := 1234567890123
-				inputTimestamp = uint64(timeInMilliseconds)
+		inputTimestampToExpectedOutput := map[uint64]int64{
+			1234567890:          1234567890000,
+			1234567890123:       1234567890123,
+			1234567890123456:    1234567890123,
+			1234567890123456789: 1234567890123,
+		}
 
-				foundOutput := prepareRecord(inputMap, inputTimestamp)
+		for inputTimestamp, expectedOutputTime := range inputTimestampToExpectedOutput {
+			It("handles uint64 timestamp that macOS sends : "+strconv.FormatUint(inputTimestamp, 10),
+				func() {
+					inputMap := make(map[interface{}]interface{})
+					var inputTimestampInterface interface{}
+					inputTimestampInterface = uint64(inputTimestamp)
 
-				Expect(foundOutput["timestamp"]).To(Equal(int64(timeInMilliseconds)))
-			},
-		)
+					foundOutput := prepareRecord(inputMap, inputTimestampInterface)
+
+					Expect(foundOutput["timestamp"]).To(Equal(int64(expectedOutputTime)))
+				},
+			)
+		}
 
 		It("Correctly massage nested map[interface]interface{} to map[string]interface{}",
 			func() {
