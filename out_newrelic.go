@@ -239,7 +239,7 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 	case uint64:
 		outputRecord["timestamp"] = timeToMillis(int64(inputTimestamp.(uint64)))
 	default:
-		// Do not add a timestamp
+		// Unhandled timestamp type, just ignore (don't log, since I assume we'll fill up someone's disk)
 	}
 
 	if val, ok := outputRecord["log"]; ok {
