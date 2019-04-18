@@ -213,11 +213,41 @@ func remapRecordString(inputRecord map[string]interface{}) (outputRecord map[str
 	return
 }
 
+func timeToMillis(time int64) int64 {
+	// 18 Apr 2019 == 1555612951401 msecs
+	const maxSeconds = 2000000000
+	const maxMilliseconds = maxSeconds * 1000
+	const maxMicroseconds = maxMilliseconds * 1000
+	const maxNanoseconds = maxMicroseconds * 1000
+	if time < maxSeconds {
+		return time * 1000
+	} else if time < maxMilliseconds {
+		return time
+	} else if time < maxMicroseconds {
+		return time / 1000
+	} else if time < maxNanoseconds {
+		return time / 1000000
+	} else {
+		// TODO: throw instead?
+		return time
+	}
+}
+
 func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
-	timestamp := inputTimestamp.(output.FLBTime)
 	outputRecord = remapRecord(inputRecord)
-	outputRecord["timestamp"] = timestamp.UnixNano() / 1000000
+
+	switch inputTimestamp.(type) {
+
+	// TODO: range valuation
+	case output.FLBTime:
+		outputRecord["timestamp"] = timeToMillis(inputTimestamp.(output.FLBTime).UnixNano() / 1000000)
+	case uint64:
+		outputRecord["timestamp"] = timeToMillis(int64(inputTimestamp.(uint64) * 1000))
+	default:
+		// TODO: throw
+	}
+
 	if val, ok := outputRecord["log"]; ok {
 		var nested map[string]interface{}
 		if err := json.Unmarshal([]byte(val.(string)), &nested); err == nil {

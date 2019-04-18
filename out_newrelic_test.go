@@ -32,6 +32,33 @@ var _ = Describe("Out New Relic", func() {
 			},
 		)
 
+		It("handles uint64 timestamp that macOS sends as seconds",
+			func() {
+				inputMap := make(map[interface{}]interface{})
+				var inputTimestamp interface{}
+				timeInSeconds := 1234567890
+				timeInMilliseconds := timeInSeconds * 1000
+				inputTimestamp = uint64(timeInSeconds)
+
+				foundOutput := prepareRecord(inputMap, inputTimestamp)
+
+				Expect(foundOutput["timestamp"]).To(Equal(int64(timeInMilliseconds)))
+			},
+		)
+
+		It("handles uint64 timestamp even if it's millis",
+			func() {
+				inputMap := make(map[interface{}]interface{})
+				var inputTimestamp interface{}
+				timeInMilliseconds := 1234567890123
+				inputTimestamp = uint64(timeInMilliseconds)
+
+				foundOutput := prepareRecord(inputMap, inputTimestamp)
+
+				Expect(foundOutput["timestamp"]).To(Equal(int64(timeInMilliseconds)))
+			},
+		)
+
 		It("Correctly massage nested map[interface]interface{} to map[string]interface{}",
 			func() {
 				inputMap := make(map[interface{}]interface{})
