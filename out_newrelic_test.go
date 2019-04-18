@@ -106,6 +106,17 @@ var _ = Describe("Out New Relic", func() {
 				},
 			)
 		}
+
+		It("ignores timestamps of unhandled types",
+			func() {
+				inputMap := make(map[interface{}]interface{})
+
+				// We don't handle string types
+				foundOutput := prepareRecord(inputMap, "1234567890"))
+
+				Expect(foundOutput["timestamp"]).To(BeNil())
+			},
+		)
 	})
 
 	Describe("HTTP Request body", func() {

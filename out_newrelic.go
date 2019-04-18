@@ -218,18 +218,14 @@ func timeToMillis(time int64) int64 {
 	const maxSeconds = 2000000000
 	const maxMilliseconds = maxSeconds * 1000
 	const maxMicroseconds = maxMilliseconds * 1000
-	const maxNanoseconds = maxMicroseconds * 1000
 	if time < maxSeconds {
 		return time * 1000
 	} else if time < maxMilliseconds {
 		return time
 	} else if time < maxMicroseconds {
 		return time / 1000
-	} else if time < maxNanoseconds {
+	} else { // Assume nanoseconds
 		return time / 1000000
-	} else {
-		// TODO: throw?
-		return time
 	}
 }
 
@@ -243,7 +239,7 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 	case uint64:
 		outputRecord["timestamp"] = timeToMillis(int64(inputTimestamp.(uint64)))
 	default:
-		// TODO: log? throw?
+		// Do not add a timestamp
 	}
 
 	if val, ok := outputRecord["log"]; ok {
