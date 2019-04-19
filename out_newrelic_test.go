@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -15,8 +16,11 @@ import (
 
 var _ = Describe("Out New Relic", func() {
 
+	// This lets the matching library (gomega) be able to notify the testing framework (ginkgo)
+	gomega.RegisterFailHandler(ginkgo.Fail)
+
 	Describe("Prepares payload", func() {
-		gomega.RegisterFailHandler(ginkgo.Fail)
+
 		It("converts the map[interface{}] inteface{} to map[string] interface[], "+
 			"updates the timestamp, and renames the log field to message",
 			func() {
@@ -124,31 +128,31 @@ var _ = Describe("Out New Relic", func() {
 		)
 	})
 
-	Describe("HTTP Request body", func() {
-		gomega.RegisterFailHandler(ginkgo.Fail)
+	Describe("HTTP Request", func() {
+
 		var server *ghttp.Server
-		const expectedInsertKey = "sweetKey"
-		var expectedEndpoint string
+		const insertKey = "sweetKey"
+		var endpoint string
 		var testConfig PluginConfig
+		var bufferManager BufferManager
+		vortexSuccessCode := 202
+		vortexFailureCode := 500
+		const maxRetries int64 = 7
 
 		BeforeEach(func() {
 			server = ghttp.NewServer()
-			expectedEndpoint = server.URL() + "/v1/logs"
-			server.AppendHandlers(
-				ghttp.CombineHandlers(ghttp.VerifyRequest("POST", "/v1/logs"),
-					ghttp.VerifyHeader(http.Header{
-						"X-Insert-Key":     []string{expectedInsertKey},
-						"Content-Type":     []string{"application/json"},
-						"Content-Encoding": []string{"gzip"},
-					}),
-				))
+			endpoint = server.URL() + "/v1/logs"
 
 			testConfig = PluginConfig{
-				apiKey:        expectedInsertKey,
-				endpoint:      expectedEndpoint,
+				apiKey:        insertKey,
+				endpoint:      endpoint,
 				maxBufferSize: 256000,
-				maxRecords:    2,
-				maxTimeBetweenFlushes: 5000,
+				maxRecords:    1,
+				maxRetries:    maxRetries,
+				// Don't sleep in tests, to keep tests fast
+				initialRetryDelayInSeconds: 0,
+				maxRetryDelayInSeconds:     0,
+				maxTimeBetweenFlushes: 			5000,
 			}
 		})
 
@@ -156,14 +160,30 @@ var _ = Describe("Out New Relic", func() {
 			server.Close()
 		})
 
+		It("Makes the expected HTTP call", func() {
+			server.AppendHandlers(
+				ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/v1/logs"),
+					ghttp.VerifyHeader(http.Header{
+						"X-Insert-Key":     []string{insertKey},
+						"Content-Type":     []string{"application/json"},
+						"Content-Encoding": []string{"gzip"},
+					})))
+			bufferManager = newBufferManager(testConfig)
+
+			responseChan := bufferManager.addRecord(emptyMessage())
+
+			// Wait for message to be sent
+			Expect(responseChan).ToNot(BeNil())
+			waitForChannel(responseChan)
+		})
+
 		It("test buffering by time", func() {
-			testConfig = PluginConfig{
-				apiKey:        expectedInsertKey,
-				endpoint:      expectedEndpoint,
-				maxBufferSize: 256000,
-				maxRecords:    3,
-				maxTimeBetweenFlushes: 1000,
-			}
+			server.AppendHandlers(ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""))
+
+			testConfig.maxRecords = math.MaxInt64 // Do not flush by count (we are testing flushing by time) 
+			testConfig.maxTimeBetweenFlushes = int64((1 * time.Second) / time.Millisecond) // Flush after one second
 			bufferManager = newBufferManager(testConfig)
 
 			responseChan := bufferManager.addRecord(make(map[string]interface{}))
@@ -180,20 +200,78 @@ var _ = Describe("Out New Relic", func() {
 			Expect(bufferManager.shouldSend()).To(BeFalse())
 		})
 
-		It("flushes when buffer is full, resets buffer", func() {
-			bufferManager := newBufferManager(testConfig)
-			testRecord := make(map[string]interface{})
-			responseChan := bufferManager.addRecord(testRecord)
+		It("only flushes when buffer is full, then resets buffer", func() {
+			server.AppendHandlers(ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""))
 
+			// Don't send message until we've added two messages
+			testConfig.maxRecords = 2
+			bufferManager = newBufferManager(testConfig)
+
+			// Add one message, should not send yet
+			responseChan := bufferManager.addRecord(emptyMessage())
 			Expect(responseChan).To(BeNil())
 
-			testRecord2 := make(map[string]interface{})
-			responseChan = bufferManager.addRecord(testRecord2)
+			// Add another message, should send
+			responseChan = bufferManager.addRecord(emptyMessage())
+			Expect(responseChan).ToNot(BeNil())
+
+			// Check that buffer is cleared after sending
+			waitForChannel(responseChan)
+			Expect(bufferManager.shouldSend()).To(BeFalse())
+		})
+
+		It("retries if first call fails", func() {
+			server.AppendHandlers(
+				ghttp.RespondWithJSONEncodedPtr(&vortexFailureCode, ""),
+				ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""))
+			bufferManager = newBufferManager(testConfig)
+
+			responseChan := bufferManager.addRecord(emptyMessage())
 
 			Expect(responseChan).ToNot(BeNil())
-			<-responseChan
+			waitForChannel(responseChan)
+		})
 
-			Expect(bufferManager.shouldSend()).To(BeFalse())
+		It("retries if first two calls fail", func() {
+			server.AppendHandlers(
+				ghttp.RespondWithJSONEncodedPtr(&vortexFailureCode, ""),
+				ghttp.RespondWithJSONEncodedPtr(&vortexFailureCode, ""),
+				ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""))
+			bufferManager = newBufferManager(testConfig)
+
+			responseChan := bufferManager.addRecord(emptyMessage())
+
+			Expect(responseChan).ToNot(BeNil())
+			waitForChannel(responseChan)
+		})
+
+		It("quits retrying if all calls fail", func() {
+			server.SetAllowUnhandledRequests(true)
+			server.AppendHandlers(
+				ghttp.RespondWithJSONEncodedPtr(&vortexFailureCode, ""))
+			bufferManager = newBufferManager(testConfig)
+
+			bufferManager.addRecord(emptyMessage())
+
+			// If the production code doesn't obey the max retries configuration, then this test
+			// may not fail if the Eventually checks exactly when there have been the right amount of retries.
+			// However, with zero sleep time, on a laptop the POST was done 0 times on the first check, and
+			// ~50 times on the second check, so if you have a maxRetries in between, this should be relatively safe.
+			Eventually(func() int { return len(server.ReceivedRequests()) }).Should(Equal(int(maxRetries) + 1))
 		})
 	})
 })
+
+func emptyMessage() map[string]interface{} {
+	return make(map[string]interface{})
+}
+
+func waitForChannel(responseChan chan *http.Response) {
+	maximumWaitInSeconds := 10
+	maximumWait := time.Duration(maximumWaitInSeconds) * time.Second
+	select {
+	case <-responseChan:
+	case <-time.After(maximumWait):
+		Fail(fmt.Sprintf("Channel was not written to within %d seconds", maximumWaitInSeconds))
+	}
+}
