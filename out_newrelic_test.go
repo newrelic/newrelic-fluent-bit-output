@@ -30,6 +30,11 @@ var _ = Describe("Out New Relic", func() {
 				Expect(foundOutput["message"]).To(Equal("message"))
 				Expect(foundOutput["log"]).To(BeNil())
 				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
+				pluginMap := foundOutput["plugin"].(map[string]string)
+				typeVal := pluginMap["type"]
+				version := pluginMap["version"]
+				Expect(typeVal).To(Equal("fluent-bit"))
+				Expect(version).To(Equal("0.0.26"))
 			},
 		)
 

@@ -10,6 +10,12 @@
 * Write tests and production code!
 * Run tests: `go test`
 
+## Updating Version 
+
+* update in out_newrelic.go
+* update in out_newrelic_test.go
+* update in the VERSION file
+
 ## Pushing changes to the public repo
 
 After updating the New Relic repo with changes, changes will need to be pushed to the public GitHub repo at: https://github.com/newrelic/newrelic-fluent-bit-output
@@ -17,7 +23,6 @@ After updating the New Relic repo with changes, changes will need to be pushed t
 * `git push public master:name-of-branch-to-create`
 * Create a PR from that branch in https://github.com/newrelic/newrelic-fluent-bit-output
 * Get the PR reviewed, merged, and delete the branch!
-
 
 ## Testing it with a local fluent-bit
 
