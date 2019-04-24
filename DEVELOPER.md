@@ -10,6 +10,11 @@
 * Write tests and production code!
 * Run tests: `go test`
 
+## Updating Version 
+
+* update version in out_newrelic.go
+* update version in out_newrelic_test.go
+
 ## Testing it with a local fluent-bit
 
 ```fluent-bit -c yourconfig.conf -e path/to/the/newrelic_out.so -i dummy```
