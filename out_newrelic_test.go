@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -72,6 +73,48 @@ var _ = Describe("Out New Relic", func() {
 				foundOutput := prepareRecord(inputMap, inputTimestamp)
 				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
 				Expect(foundOutput["coolStories"]).To(Equal(map[string]interface{}{"foo": "bar", "hostname": "bar"}))
+			},
+		)
+	})
+
+	Describe("Timestamp handling", func() {
+
+		inputTimestampToExpectedOutput := map[interface{}]int64{
+			// Modern Fluent Bit does uses FLBTime
+			output.FLBTime{time.Unix(1234567890, 123456789)}: 1234567890123,
+
+			// We've seen older of Fluent Bit versions use uint64
+			// (generally being sent in seconds, but we handle other granularities out of paranoia)
+			uint64(1234567890):          1234567890000,
+			uint64(1234567890123):       1234567890123,
+			uint64(1234567890123456):    1234567890123,
+			uint64(1234567890123456789): 1234567890123,
+		}
+
+		for inputTimestamp, expectedOutputTime := range inputTimestampToExpectedOutput {
+			// Lock in current values (otherwise all tests will run with the last values in the map)
+			input := inputTimestamp
+			expected := expectedOutputTime
+
+			It("handles timestamps of various types and granularites : "+fmt.Sprintf("%v", input),
+				func() {
+					inputMap := make(map[interface{}]interface{})
+
+					foundOutput := prepareRecord(inputMap, input)
+
+					Expect(foundOutput["timestamp"]).To(Equal(int64(expected)))
+				},
+			)
+		}
+
+		It("ignores timestamps of unhandled types",
+			func() {
+				inputMap := make(map[interface{}]interface{})
+
+				// We don't handle string types
+				foundOutput := prepareRecord(inputMap, "1234567890")
+
+				Expect(foundOutput["timestamp"]).To(BeNil())
 			},
 		)
 	})
