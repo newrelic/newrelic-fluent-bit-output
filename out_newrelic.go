@@ -256,6 +256,10 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 		}
 		delete(outputRecord, "log")
 	}
+	outputRecord["plugin"] = map[string]string {
+		"type": "fluent-bit",
+		"version": "0.0.26",
+	}
 	return
 }
 
