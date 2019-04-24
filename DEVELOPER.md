@@ -12,8 +12,9 @@
 
 ## Updating Version 
 
-* update version in out_newrelic.go
-* update version in out_newrelic_test.go
+* update in out_newrelic.go
+* update in out_newrelic_test.go
+* update in the VERSION file
 
 ## Testing it with a local fluent-bit
 
