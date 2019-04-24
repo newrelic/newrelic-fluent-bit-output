@@ -6,9 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/fluent/fluent-bit-go/output"
-)
-import (
 	"C"
 	"bytes"
 	"compress/gzip"
@@ -16,14 +13,14 @@ import (
 	"net/http"
 	"strconv"
 	"unsafe"
+
+	"github.com/fluent/fluent-bit-go/output"
 )
 
 //export FLBPluginRegister
 func FLBPluginRegister(ctx unsafe.Pointer) int {
 	return output.FLBPluginRegister(ctx, "newrelic", "New relic output plugin")
 }
-
-var client *http.Client
 
 type PluginConfig struct {
 	endpoint      string
@@ -32,12 +29,100 @@ type PluginConfig struct {
 	maxRecords    int64
 }
 
-var config PluginConfig
+type BufferManager struct {
+	config PluginConfig
+	buffer []map[string]interface{}
+	client *http.Client
+}
+
+var bufferManager BufferManager
+
+func newBufferManager(config PluginConfig) BufferManager {
+	keepAliveTimeout := 600 * time.Second
+	timeout := 5 * time.Second
+	defaultTransport := &http.Transport{
+		Dial: (&net.Dialer{
+			KeepAlive: keepAliveTimeout,
+		}).Dial,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+	}
+	return BufferManager{
+		config: config,
+		client: &http.Client{
+			Transport: defaultTransport,
+			Timeout:   timeout,
+		},
+	}
+}
+
+func (bufferManager *BufferManager) addRecord(record map[string]interface{}) chan *http.Response {
+	bufferManager.buffer = append(bufferManager.buffer, record)
+	if bufferManager.shouldSend() {
+		return bufferManager.sendRecords()
+	}
+
+	return nil
+}
+
+func (bufferManager *BufferManager) isEmpty() bool {
+	return len(bufferManager.buffer) == 0
+}
+
+func (bufferManager *BufferManager) shouldSend() bool {
+	return int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords
+}
+
+func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
+	newBuffer := make([]map[string]interface{}, len(bufferManager.buffer))
+	copy(newBuffer, bufferManager.buffer)
+	bufferManager.buffer = nil
+
+	responseChan = make(chan *http.Response, 1)
+	bufferManager.prepare(newBuffer, responseChan)
+	return responseChan
+}
+
+func (bufferManager *BufferManager) prepare(records []map[string]interface{}, responseChan chan *http.Response) {
+	config := &bufferManager.config
+	data, err := packagePayload(records)
+	if err != nil {
+		panic(err)
+	}
+	if int64(data.Cap()) >= config.maxBufferSize {
+		first := records[0 : len(records)/2]
+		second := records[len(records)/2 : len(records)]
+		bufferManager.prepare(first, responseChan)
+		bufferManager.prepare(second, responseChan)
+	} else {
+		// TODO: error handling, retry, exponential backoff
+		go bufferManager.makeRequest(data, responseChan)
+	}
+}
+
+func (bufferManager *BufferManager) makeRequest(buffer *bytes.Buffer, responseChan chan *http.Response) {
+	req, err := http.NewRequest("POST", bufferManager.config.endpoint, buffer)
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Add("X-Insert-Key", bufferManager.config.apiKey)
+	req.Header.Add("Content-Encoding", "gzip")
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := bufferManager.client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(ioutil.Discard, resp.Body) // WE READ THE BODY
+	if err != nil {
+		panic(err)
+	}
+	responseChan <- resp
+}
 
 //export FLBPluginInit
-// (fluentbit will call this)
-// ctx (context) pointer to fluentbit context (state/ c code)
 func FLBPluginInit(ctx unsafe.Pointer) int {
+	var config PluginConfig
 	// Example to retrieve an optional configuration parameter
 	config.endpoint = output.FLBPluginConfigKey(ctx, "endpoint")
 	if len(config.endpoint) == 0 {
@@ -60,82 +145,28 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	} else {
 		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
 	}
-	keepAliveTimeout := 600 * time.Second
-	timeout := 5 * time.Second
-	defaultTransport := &http.Transport{
-		Dial: (&net.Dialer{
-			KeepAlive: keepAliveTimeout,
-		}).Dial,
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 100,
-	}
-	client = &http.Client{
-		Transport: defaultTransport,
-		Timeout:   timeout,
-	}
-
+	bufferManager = newBufferManager(config)
 	return output.FLB_OK
-}
-
-func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
-	outputRecord = make(map[string]interface{})
-	timestamp := inputTimestamp.(output.FLBTime)
-	inputRecord["timestamp"] = timestamp.UnixNano() / 1000000
-	for k, v := range inputRecord {
-		// TODO:  We may have to do flattening
-		switch value := v.(type) {
-		case []byte:
-			outputRecord[k.(string)] = string(value)
-			break
-		case string:
-			outputRecord[k.(string)] = value
-			break
-		default:
-			outputRecord[k.(string)] = value
-		}
-	}
-	if val, ok := outputRecord["log"]; ok {
-		outputRecord["message"] = val
-		delete(outputRecord, "log")
-	}
-	return
 }
 
 //export FLBPluginFlush
 func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
-	var count int64
 	var ret int
 	var ts interface{}
 	var record map[interface{}]interface{}
-	var buffer []map[string]interface{}
 
 	// Create Fluent Bit decoder
 	dec := output.NewDecoder(data, int(length))
-
 	// Iterate Records
-	count = 0
 	for {
 		// Extract Record
 		ret, ts, record = output.GetRecord(dec)
 		if ret != 0 {
 			break
 		}
-
 		updatedRecord := prepareRecord(record, ts)
-		buffer = append(buffer, updatedRecord)
-		count++
-		if config.maxRecords >= count {
-			newBuffer := make([]map[string]interface{}, len(buffer))
-			copy(newBuffer, buffer)
-			prepare(buffer, &config)
-			count = 0
-			buffer = nil
-		}
+		bufferManager.addRecord(updatedRecord)
 	}
-	if len(buffer) > 0 {
-		prepare(buffer, &config)
-	}
-
 	// Return options:
 	//
 	// output.FLB_OK    = data have been processed.
@@ -144,43 +175,64 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	return output.FLB_OK
 }
 
-func prepare(records []map[string]interface{}, config *PluginConfig) (responseChan chan *http.Response) {
-	responseChan = make(chan *http.Response)
-	data, err := packagePayload(records)
-	if err != nil {
-		panic(err)
+func remapRecord(inputRecord map[interface{}]interface{}) (outputRecord map[string]interface{}) {
+	outputRecord = make(map[string]interface{})
+	for k, v := range inputRecord {
+		switch value := v.(type) {
+		case []byte:
+			outputRecord[k.(string)] = string(value)
+			break
+		case string:
+			outputRecord[k.(string)] = value
+			break
+		case map[interface{}]interface{}:
+			outputRecord[k.(string)] = remapRecord(value)
+		default:
+			outputRecord[k.(string)] = value
+		}
 	}
-	if int64(data.Cap()) >= config.maxBufferSize {
-		first := records[0 : len(records)/2]
-		second := records[len(records)/2 : len(records)]
-		prepare(first, config)
-		prepare(second, config)
-	} else {
-		// TODO: error handling, retry, exponential backoff
-		go makeRequest(data, config, responseChan)
-		return responseChan
-	}
-	return nil
+	return
 }
 
-func makeRequest(buffer *bytes.Buffer, config *PluginConfig, responseChan chan *http.Response) {
-	req, err := http.NewRequest("POST", config.endpoint, buffer)
-	if err != nil {
-		panic(err)
+func remapRecordString(inputRecord map[string]interface{}) (outputRecord map[string]interface{}) {
+	outputRecord = make(map[string]interface{})
+	for k, v := range inputRecord {
+		switch value := v.(type) {
+		case []byte:
+			outputRecord[k] = string(value)
+			break
+		case string:
+			outputRecord[k] = value
+			break
+		case map[interface{}]interface{}:
+			outputRecord[k] = remapRecord(value)
+		default:
+			outputRecord[k] = value
+		}
 	}
-	req.Header.Add("X-Insert-Key", config.apiKey)
-	req.Header.Add("Content-Encoding", "gzip")
-	req.Header.Add("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
+	return
+}
+
+func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
+	outputRecord = make(map[string]interface{})
+	timestamp := inputTimestamp.(output.FLBTime)
+	outputRecord = remapRecord(inputRecord)
+	outputRecord["timestamp"] = timestamp.UnixNano() / 1000000
+	if val, ok := outputRecord["log"]; ok {
+		var nested map[string]interface{}
+		if err := json.Unmarshal([]byte(val.(string)), &nested); err == nil {
+			remapped := remapRecordString(nested)
+			for k, v := range remapped {
+				if _, ok := outputRecord[k]; !ok {
+					outputRecord[k] = v
+				}
+			}
+		} else {
+			outputRecord["message"] = val
+		}
+		delete(outputRecord, "log")
 	}
-	defer resp.Body.Close()
-	_, err = io.Copy(ioutil.Discard, resp.Body) // WE READ THE BODY
-	if err != nil {
-		panic(err)
-	}
-	responseChan <- resp
+	return
 }
 
 func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
@@ -204,6 +256,9 @@ func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
 
 //export FLBPluginExit
 func FLBPluginExit() int {
+	if !bufferManager.isEmpty() {
+		bufferManager.sendRecords()
+	}
 	return output.FLB_OK
 }
 
