@@ -27,7 +27,7 @@ type PluginConfig struct {
 	apiKey        string
 	maxBufferSize int64
 	maxRecords    int64
-	maxFlushDuration int64
+	maxTimeBetweenFlushes int64
 }
 
 type BufferManager struct {
@@ -50,7 +50,7 @@ func newBufferManager(config PluginConfig) BufferManager {
 		MaxIdleConnsPerHost: 100,
 	}
 	return BufferManager{
-		lastFlushTime: time.Now().UnixNano() / int64(time.Millisecond),
+		lastFlushTime: timeNowInMiliseconds(),
 		config: config,
 		client: &http.Client{
 			Transport: defaultTransport,
@@ -74,14 +74,14 @@ func (bufferManager *BufferManager) isEmpty() bool {
 
 func (bufferManager *BufferManager) shouldSend() bool {
 	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) || 
-		(((time.Now().UnixNano() / int64(time.Millisecond) - bufferManager.lastFlushTime)) > bufferManager.config.maxFlushDuration)
+		(((timeNowInMiliseconds() - bufferManager.lastFlushTime)) > bufferManager.config.maxTimeBetweenFlushes)
 } 
 
 func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
 	newBuffer := make([]map[string]interface{}, len(bufferManager.buffer))
 	copy(newBuffer, bufferManager.buffer)
 	bufferManager.buffer = nil
-	bufferManager.lastFlushTime = time.Now().UnixNano() / int64(time.Millisecond)
+	bufferManager.lastFlushTime = timeNowInMiliseconds()
 	responseChan = make(chan *http.Response, 1)
 	bufferManager.prepare(newBuffer, responseChan)
 	return responseChan
@@ -149,11 +149,11 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	} else {
 		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
 	}
-	possibleMaxFlushDuration := output.FLBPluginConfigKey(ctx, "maxFlushDuration")
-	if len(possibleMaxFlushDuration) == 0 {
-		config.maxFlushDuration = 5000
+	possibleMaxTimeBetweenFlushes := output.FLBPluginConfigKey(ctx, "maxTimeBetweenFlushes")
+	if len(possibleMaxTimeBetweenFlushes) == 0 {
+		config.maxTimeBetweenFlushes = 5000
 	} else {
-		config.maxFlushDuration, _ =  strconv.ParseInt(possibleMaxFlushDuration, 10, 64)
+		config.maxTimeBetweenFlushes, _ =  strconv.ParseInt(possibleMaxTimeBetweenFlushes, 10, 64)
 	}
 	bufferManager = newBufferManager(config)
 	return output.FLB_OK
@@ -299,6 +299,12 @@ func FLBPluginExit() int {
 	}
 	return output.FLB_OK
 }
+
+//utility for time now in  miliseconds 
+func timeNowInMiliseconds() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
 
 func main() {
 }

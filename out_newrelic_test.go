@@ -148,7 +148,7 @@ var _ = Describe("Out New Relic", func() {
 				endpoint:      expectedEndpoint,
 				maxBufferSize: 256000,
 				maxRecords:    2,
-				maxFlushDuration: 5000,
+				maxTimeBetweenFlushes: 5000,
 			}
 		})
 
@@ -156,19 +156,28 @@ var _ = Describe("Out New Relic", func() {
 			server.Close()
 		})
 
-		It("test buffering", func() {
+		It("test buffering by time", func() {
 			testConfig = PluginConfig{
 				apiKey:        expectedInsertKey,
 				endpoint:      expectedEndpoint,
 				maxBufferSize: 256000,
 				maxRecords:    3,
-				maxFlushDuration: 5000,
+				maxTimeBetweenFlushes: 1000,
 			}
 			bufferManager = newBufferManager(testConfig)
-			testRecord := make(map[string]interface{})
-			bufferManager.addRecord(testRecord)
-			time.Sleep(6 * time.Second)
-			Expect(bufferManager.shouldSend()).To(BeTrue())
+
+			responseChan := bufferManager.addRecord(make(map[string]interface{}))
+			Expect(responseChan).To(BeNil())
+
+			// Wait twice as long as the max time between flushes
+			time.Sleep(2 * time.Second)
+
+			// This record doesn't fill the buffer, but we exceed the max time between flushes, so we flush
+			responseChan = bufferManager.addRecord(make(map[string]interface{}))
+			Expect(responseChan).ToNot(BeNil())
+
+			<-responseChan
+			Expect(bufferManager.shouldSend()).To(BeFalse())
 		})
 
 		It("flushes when buffer is full, resets buffer", func() {
