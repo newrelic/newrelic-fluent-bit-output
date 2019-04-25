@@ -27,12 +27,14 @@ type PluginConfig struct {
 	apiKey        string
 	maxBufferSize int64
 	maxRecords    int64
+	maxTimeBetweenFlushes int64
 }
 
 type BufferManager struct {
 	config PluginConfig
 	buffer []map[string]interface{}
 	client *http.Client
+	lastFlushTime int64
 }
 
 var bufferManager BufferManager
@@ -48,6 +50,7 @@ func newBufferManager(config PluginConfig) BufferManager {
 		MaxIdleConnsPerHost: 100,
 	}
 	return BufferManager{
+		lastFlushTime: timeNowInMiliseconds(),
 		config: config,
 		client: &http.Client{
 			Transport: defaultTransport,
@@ -70,14 +73,15 @@ func (bufferManager *BufferManager) isEmpty() bool {
 }
 
 func (bufferManager *BufferManager) shouldSend() bool {
-	return int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords
-}
+	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) || 
+		(((timeNowInMiliseconds() - bufferManager.lastFlushTime)) > bufferManager.config.maxTimeBetweenFlushes)
+} 
 
 func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
 	newBuffer := make([]map[string]interface{}, len(bufferManager.buffer))
 	copy(newBuffer, bufferManager.buffer)
 	bufferManager.buffer = nil
-
+	bufferManager.lastFlushTime = timeNowInMiliseconds()
 	responseChan = make(chan *http.Response, 1)
 	bufferManager.prepare(newBuffer, responseChan)
 	return responseChan
@@ -144,6 +148,12 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		config.maxRecords = 1024
 	} else {
 		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
+	}
+	possibleMaxTimeBetweenFlushes := output.FLBPluginConfigKey(ctx, "maxTimeBetweenFlushes")
+	if len(possibleMaxTimeBetweenFlushes) == 0 {
+		config.maxTimeBetweenFlushes = 5000
+	} else {
+		config.maxTimeBetweenFlushes, _ =  strconv.ParseInt(possibleMaxTimeBetweenFlushes, 10, 64)
 	}
 	bufferManager = newBufferManager(config)
 	return output.FLB_OK
@@ -289,6 +299,12 @@ func FLBPluginExit() int {
 	}
 	return output.FLB_OK
 }
+
+//utility for time now in  miliseconds 
+func timeNowInMiliseconds() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
 
 func main() {
 }
