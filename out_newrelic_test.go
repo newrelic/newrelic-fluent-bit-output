@@ -148,11 +148,27 @@ var _ = Describe("Out New Relic", func() {
 				endpoint:      expectedEndpoint,
 				maxBufferSize: 256000,
 				maxRecords:    2,
+				maxFlushDuration: 5000,
 			}
 		})
 
 		AfterEach(func() {
 			server.Close()
+		})
+
+		It("test buffering", func() {
+			testConfig = PluginConfig{
+				apiKey:        expectedInsertKey,
+				endpoint:      expectedEndpoint,
+				maxBufferSize: 256000,
+				maxRecords:    3,
+				maxFlushDuration: 5000,
+			}
+			bufferManager = newBufferManager(testConfig)
+			testRecord := make(map[string]interface{})
+			bufferManager.addRecord(testRecord)
+			time.Sleep(6 * time.Second)
+			Expect(bufferManager.shouldSend()).To(BeTrue())
 		})
 
 		It("flushes when buffer is full, resets buffer", func() {

@@ -27,12 +27,14 @@ type PluginConfig struct {
 	apiKey        string
 	maxBufferSize int64
 	maxRecords    int64
+	maxFlushDuration int64
 }
 
 type BufferManager struct {
 	config PluginConfig
 	buffer []map[string]interface{}
 	client *http.Client
+	lastFlushTime int64
 }
 
 var bufferManager BufferManager
@@ -48,6 +50,7 @@ func newBufferManager(config PluginConfig) BufferManager {
 		MaxIdleConnsPerHost: 100,
 	}
 	return BufferManager{
+		lastFlushTime: time.Now().UnixNano() / int64(time.Millisecond),
 		config: config,
 		client: &http.Client{
 			Transport: defaultTransport,
@@ -70,14 +73,15 @@ func (bufferManager *BufferManager) isEmpty() bool {
 }
 
 func (bufferManager *BufferManager) shouldSend() bool {
-	return int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords
-}
+	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) || 
+		(((time.Now().UnixNano() / int64(time.Millisecond) - bufferManager.lastFlushTime)) > bufferManager.config.maxFlushDuration)
+} 
 
 func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
 	newBuffer := make([]map[string]interface{}, len(bufferManager.buffer))
 	copy(newBuffer, bufferManager.buffer)
 	bufferManager.buffer = nil
-
+	bufferManager.lastFlushTime = time.Now().UnixNano() / int64(time.Millisecond)
 	responseChan = make(chan *http.Response, 1)
 	bufferManager.prepare(newBuffer, responseChan)
 	return responseChan
@@ -144,6 +148,12 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		config.maxRecords = 1024
 	} else {
 		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
+	}
+	possibleMaxFlushDuration := output.FLBPluginConfigKey(ctx, "maxFlushDuration")
+	if len(possibleMaxFlushDuration) == 0 {
+		config.maxFlushDuration = 5000
+	} else {
+		config.maxFlushDuration, _ =  strconv.ParseInt(possibleMaxFlushDuration, 10, 64)
 	}
 	bufferManager = newBufferManager(config)
 	return output.FLB_OK
