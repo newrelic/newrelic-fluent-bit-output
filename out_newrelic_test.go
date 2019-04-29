@@ -38,7 +38,7 @@ var _ = Describe("Out New Relic", func() {
 				typeVal := pluginMap["type"]
 				version := pluginMap["version"]
 				Expect(typeVal).To(Equal("fluent-bit"))
-				Expect(version).To(Equal("0.0.26"))
+				Expect(version).To(Equal(VERSION))
 			},
 		)
 

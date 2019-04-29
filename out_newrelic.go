@@ -311,7 +311,7 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 	}
 	outputRecord["plugin"] = map[string]string {
 		"type": "fluent-bit",
-		"version": "0.0.26",
+		"version": VERSION,
 	}
 	return
 }
