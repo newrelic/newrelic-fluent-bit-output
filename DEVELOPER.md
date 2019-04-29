@@ -12,9 +12,7 @@
 
 ## Updating Version 
 
-* update in out_newrelic.go
-* update in out_newrelic_test.go
-* update in the VERSION file
+* Update the version in version.go
 
 ## Pushing changes to the public repo
 
