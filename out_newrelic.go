@@ -10,11 +10,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"unsafe"
 
 	"github.com/fluent/fluent-bit-go/output"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 //export FLBPluginRegister
@@ -23,16 +25,21 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 }
 
 type PluginConfig struct {
-	endpoint      string
-	apiKey        string
-	maxBufferSize int64
-	maxRecords    int64
+	endpoint                   string
+	apiKey                     string
+	maxBufferSize              int64
+	maxRecords                 int64
+	initialRetryDelayInSeconds int64
+	maxRetryDelayInSeconds     int64
+	maxRetries                 int64
+	maxTimeBetweenFlushes      int64
 }
 
 type BufferManager struct {
 	config PluginConfig
 	buffer []map[string]interface{}
-	client *http.Client
+	client *retryablehttp.Client
+	lastFlushTime int64
 }
 
 var bufferManager BufferManager
@@ -47,12 +54,20 @@ func newBufferManager(config PluginConfig) BufferManager {
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 100,
 	}
+	client := retryablehttp.NewClient()
+	client.Logger = nil // Don't do logging of HTTP requests or retries, it's too noisy
+	client.RetryMax = int(config.maxRetries)
+	client.RetryWaitMin = time.Duration(config.initialRetryDelayInSeconds) * time.Second
+	client.RetryWaitMax = time.Duration(config.maxRetryDelayInSeconds) * time.Second
+	client.HTTPClient = &http.Client{
+		Transport: defaultTransport,
+		Timeout:   timeout,
+	}
+
 	return BufferManager{
+		lastFlushTime: timeNowInMiliseconds(),
 		config: config,
-		client: &http.Client{
-			Transport: defaultTransport,
-			Timeout:   timeout,
-		},
+		client: client,
 	}
 }
 
@@ -70,14 +85,15 @@ func (bufferManager *BufferManager) isEmpty() bool {
 }
 
 func (bufferManager *BufferManager) shouldSend() bool {
-	return int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords
-}
+	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) || 
+		(((timeNowInMiliseconds() - bufferManager.lastFlushTime)) > bufferManager.config.maxTimeBetweenFlushes)
+} 
 
 func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
 	newBuffer := make([]map[string]interface{}, len(bufferManager.buffer))
 	copy(newBuffer, bufferManager.buffer)
 	bufferManager.buffer = nil
-
+	bufferManager.lastFlushTime = timeNowInMiliseconds()
 	responseChan = make(chan *http.Response, 1)
 	bufferManager.prepare(newBuffer, responseChan)
 	return responseChan
@@ -95,29 +111,36 @@ func (bufferManager *BufferManager) prepare(records []map[string]interface{}, re
 		bufferManager.prepare(first, responseChan)
 		bufferManager.prepare(second, responseChan)
 	} else {
-		// TODO: error handling, retry, exponential backoff
-		go bufferManager.makeRequest(data, responseChan)
+		go func() {
+			err := bufferManager.makeRequest(data, responseChan)
+			if err != nil {
+				// TODO: what's the right thing to do here?
+				log.Printf("[DEBUG] Error making HTTP request: %s", err)
+			}
+		}()
 	}
 }
 
-func (bufferManager *BufferManager) makeRequest(buffer *bytes.Buffer, responseChan chan *http.Response) {
-	req, err := http.NewRequest("POST", bufferManager.config.endpoint, buffer)
+func (bufferManager *BufferManager) makeRequest(buffer *bytes.Buffer, responseChan chan *http.Response) error {
+	req, err := retryablehttp.NewRequest("POST", bufferManager.config.endpoint, buffer)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	req.Header.Add("X-Insert-Key", bufferManager.config.apiKey)
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := bufferManager.client.Do(req)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer resp.Body.Close()
 	_, err = io.Copy(ioutil.Discard, resp.Body) // WE READ THE BODY
 	if err != nil {
-		panic(err)
+		return err
 	}
+
 	responseChan <- resp
+	return nil
 }
 
 //export FLBPluginInit
@@ -139,12 +162,42 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	} else {
 		config.maxBufferSize, _ = strconv.ParseInt(possibleeMaxBufferSize, 10, 64)
 	}
+
 	possibleMaxRecords := output.FLBPluginConfigKey(ctx, "maxRecords")
 	if len(possibleMaxRecords) == 0 {
 		config.maxRecords = 1024
 	} else {
 		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
 	}
+
+	possibleInitialRetryDelayInSeconds := output.FLBPluginConfigKey(ctx, "initialRetryDelayInSeconds")
+	if len(possibleInitialRetryDelayInSeconds) == 0 {
+		config.initialRetryDelayInSeconds = 5
+	} else {
+		config.initialRetryDelayInSeconds, _ = strconv.ParseInt(possibleInitialRetryDelayInSeconds, 10, 64)
+	}
+
+	possibleMaxRetryDelayInSeconds := output.FLBPluginConfigKey(ctx, "maxRetryDelayInSeconds")
+	if len(possibleMaxRetryDelayInSeconds) == 0 {
+		config.maxRetryDelayInSeconds = 30
+	} else {
+		config.maxRetryDelayInSeconds, _ = strconv.ParseInt(possibleMaxRetryDelayInSeconds, 10, 64)
+	}
+
+	possibleMaxRetries := output.FLBPluginConfigKey(ctx, "maxRetries")
+	if len(possibleMaxRetries) == 0 {
+		config.maxRetries = 5
+	} else {
+		config.maxRetries, _ = strconv.ParseInt(possibleMaxRetries, 10, 64)
+	}
+
+	possibleMaxTimeBetweenFlushes := output.FLBPluginConfigKey(ctx, "maxTimeBetweenFlushes")
+	if len(possibleMaxTimeBetweenFlushes) == 0 {
+		config.maxTimeBetweenFlushes = 5000
+	} else {
+		config.maxTimeBetweenFlushes, _ =  strconv.ParseInt(possibleMaxTimeBetweenFlushes, 10, 64)
+	}
+
 	bufferManager = newBufferManager(config)
 	return output.FLB_OK
 }
@@ -256,6 +309,10 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 		}
 		delete(outputRecord, "log")
 	}
+	outputRecord["plugin"] = map[string]string {
+		"type": "fluent-bit",
+		"version": VERSION,
+	}
 	return
 }
 
@@ -285,6 +342,12 @@ func FLBPluginExit() int {
 	}
 	return output.FLB_OK
 }
+
+//utility for time now in  miliseconds 
+func timeNowInMiliseconds() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
 
 func main() {
 }
