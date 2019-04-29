@@ -22,6 +22,11 @@ After updating the New Relic repo with changes, changes will need to be pushed t
 * Create a PR from that branch in https://github.com/newrelic/newrelic-fluent-bit-output
 * Get the PR reviewed, merged, and delete the branch!
 
+
+## Creating a new Docker Image
+* see [BUILD_DOCKER_IMAGE.md](BUILD_DOCKER_IMAGE.md)
+
+
 ## Testing it with a local fluent-bit
 
 ```fluent-bit -c yourconfig.conf -e path/to/the/newrelic_out.so -i dummy```

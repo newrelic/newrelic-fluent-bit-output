@@ -4,6 +4,7 @@ WORKDIR /go/src/github.com/newrelic/fluent-bit/newrelic-fluent-bit-output
 
 COPY .git Makefile go.* *.go *.h /go/src/github.com/newrelic/fluent-bit/newrelic-fluent-bit-output/
 RUN go get github.com/fluent/fluent-bit-go/output
+RUN go get github.com/hashicorp/go-retryablehttp
 RUN make all
 
 FROM fluent/fluent-bit:1.0.3
