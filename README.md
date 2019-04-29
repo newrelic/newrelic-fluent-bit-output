@@ -77,4 +77,4 @@ The plugin supports the following configuration parameters:
 |maxBufferSize |  The maximum size the payloads sent in bytes  | 256000 |  
 |maxRecords    |  The maximum number of records to send at a time  | 1024 |   
 
-For information on how to find your New Relic Insights Insert key, take a look at the documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/send-custom-events-event-api#register).
+For information on how to find your New Relic Insights Insert key, take a look at the documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/send-custom-events-event-api#register) .
