@@ -1,4 +1,4 @@
-VERSION=`cat VERSION`
+VERSION=`cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}'`
 LOCAL_IMAGE=fluent-plugin
 REMOTE_IMAGE=quay.io/newrelic/fluent-bit-output
 docker build -t ${LOCAL_IMAGE}:${VERSION} .
