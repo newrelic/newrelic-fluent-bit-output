@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/fluent/fluent-bit-go/output"
@@ -20,6 +21,9 @@ var _ = Describe("Out New Relic", func() {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
 	Describe("Prepares payload", func() {
+		AfterEach(func() {
+			os.Unsetenv("SOURCE")
+		})
 
 		It("converts the map[interface{}] inteface{} to map[string] interface[], "+
 			"updates the timestamp, and renames the log field to message",
@@ -37,8 +41,25 @@ var _ = Describe("Out New Relic", func() {
 				pluginMap := foundOutput["plugin"].(map[string]string)
 				typeVal := pluginMap["type"]
 				version := pluginMap["version"]
+				source := pluginMap["source"]
 				Expect(typeVal).To(Equal("fluent-bit"))
 				Expect(version).To(Equal(VERSION))
+				Expect(source).To(Equal("BARE-METAL"))
+			},
+		)
+		It("sets the source if it is included as an environment variable",
+			func() {
+				inputMap := make(map[interface{}]interface{})
+				var inputTimestamp interface{}
+				inputTimestamp = output.FLBTime{
+					time.Now(),
+				}
+				expectedSource := "docker"
+				inputMap["log"] = "message"
+				os.Setenv("SOURCE", expectedSource)
+				foundOutput := prepareRecord(inputMap, inputTimestamp)
+				pluginMap := foundOutput["plugin"].(map[string]string)
+				Expect(pluginMap["source"]).To(Equal(expectedSource))
 			},
 		)
 
@@ -152,7 +173,7 @@ var _ = Describe("Out New Relic", func() {
 				// Don't sleep in tests, to keep tests fast
 				initialRetryDelayInSeconds: 0,
 				maxRetryDelayInSeconds:     0,
-				maxTimeBetweenFlushes: 			5000,
+				maxTimeBetweenFlushes:      5000,
 			}
 		})
 
@@ -182,7 +203,7 @@ var _ = Describe("Out New Relic", func() {
 		It("test buffering by time", func() {
 			server.AppendHandlers(ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""))
 
-			testConfig.maxRecords = math.MaxInt64 // Do not flush by count (we are testing flushing by time) 
+			testConfig.maxRecords = math.MaxInt64                                          // Do not flush by count (we are testing flushing by time)
 			testConfig.maxTimeBetweenFlushes = int64((1 * time.Second) / time.Millisecond) // Flush after one second
 			bufferManager = newBufferManager(testConfig)
 
