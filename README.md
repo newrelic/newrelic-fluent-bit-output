@@ -3,8 +3,7 @@
 The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
 It works on all versions of Fluent Bit greater than 0.12 but for the best experience we recommend using versions greater than 1.0.
 
-## Getting started
-
+## Getting started 
 In order to insert records into New Relic, you can run the plugin from the command line or through the configuration file.
 
 You need to initially compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
@@ -92,8 +91,9 @@ This plugin comes with a Dockerfile and sample config that will let you get star
 |MAX_RECORD  |  The number of records to send in a payload|
 
 ### Docker Example
+Within the root of the project run the following.  You can supplement the image name and tag as you see fit.
 
 ```
-docker build -t fluent-plugin:0.0.1 .
+docker build -t fluent-plugin:file_tailer_v1 .
 docker run -e "FILE_PATH=/var/log/*" -e "BUFFER_SIZE=512000" -e "MAX_RECORD=1024"  fluent-plugin:0.0.1
 ```
