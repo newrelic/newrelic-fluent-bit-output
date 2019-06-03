@@ -78,3 +78,22 @@ The plugin supports the following configuration parameters:
 |maxRecords    |  The maximum number of records to send at a time  | 1024 |   
 
 For information on how to find your New Relic Insights Insert key, take a look at the documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/send-custom-events-event-api#register).
+
+
+## Standalone Configuration
+
+This plugin comes with a Dockerfile and sample config that will let you get started with the plugin fairly easily.
+
+### Environment Variables
+| Key | Description |
+|-----|-------------|
+|FILE_PATH   |  A path or glob to the file or files you wish to tail|
+|BUFFER_SIZE |  The max size for json payload in bytes|
+|MAX_RECORD  |  The number of records to send in a payload|
+
+### Docker Example
+
+```
+docker build -t fluent-plugin:0.0.1 .
+docker run -e "FILE_PATH=/var/log/*" -e "BUFFER_SIZE=512000" -e "MAX_RECORD=1024"  fluent-plugin:0.0.1
+```
