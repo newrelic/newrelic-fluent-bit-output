@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"os"
 	"C"
 	"bytes"
 	"compress/gzip"
@@ -309,9 +310,14 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 		}
 		delete(outputRecord, "log")
 	}
+	source, ok := os.LookupEnv("SOURCE")
+	if !ok {
+		source = "BARE-METAL"
+	}
 	outputRecord["plugin"] = map[string]string {
 		"type": "fluent-bit",
 		"version": VERSION,
+		"source": source,
 	}
 	return
 }
