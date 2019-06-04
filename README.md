@@ -94,6 +94,6 @@ This plugin comes with a Dockerfile and sample config that will let you get star
 Within the root of the project run the following.  You can supplement the image name and tag as you see fit.
 
 ```
-docker build -t fluent-plugin:file_tailer_v1 .
+docker build -t <YOUR-IMAGE-NAME>:<YOUR-TAG> .
 docker run -e "FILE_PATH=/var/log/*" -e "BUFFER_SIZE=512000" -e "MAX_RECORD=1024"  fluent-plugin:0.0.1
 ```
