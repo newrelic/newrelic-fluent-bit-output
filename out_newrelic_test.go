@@ -35,10 +35,14 @@ var _ = Describe("Out New Relic", func() {
 				}
 				inputMap["log"] = "message"
 				foundOutput := prepareRecord(inputMap, inputTimestamp)
-				Expect(foundOutput["message"]).To(Equal("message"))
-				Expect(foundOutput["log"]).To(BeNil())
-				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
-				pluginMap := foundOutput["plugin"].(map[string]string)
+				packed := repackJson([]map[string]interface{}{foundOutput})
+				log := packed["logs"].([]map[string]interface{})[0]
+				Expect(log["message"]).To(Equal("message"))
+				Expect(log["log"]).To(BeNil())
+				Expect(log["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
+				common := packed["common"].(map[string]interface{})
+				attributes := common["attributes"].(map[string]interface{})
+				pluginMap := attributes["plugin"].(map[string]interface{})
 				typeVal := pluginMap["type"]
 				version := pluginMap["version"]
 				source := pluginMap["source"]
@@ -58,7 +62,11 @@ var _ = Describe("Out New Relic", func() {
 				inputMap["log"] = "message"
 				os.Setenv("SOURCE", expectedSource)
 				foundOutput := prepareRecord(inputMap, inputTimestamp)
-				pluginMap := foundOutput["plugin"].(map[string]string)
+				packed := repackJson([]map[string]interface{}{foundOutput})
+				common := packed["common"].(map[string]interface{})
+				fmt.Println(common)
+				attributes := common["attributes"].(map[string]interface{})
+				pluginMap := attributes["plugin"].(map[string]interface{})
 				Expect(pluginMap["source"]).To(Equal(expectedSource))
 			},
 		)

@@ -310,21 +310,34 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 		}
 		delete(outputRecord, "log")
 	}
+	return
+}
+
+func repackJson(records[]map[string]interface{}) map[string]interface{} {
+	var packaged = make(map[string]interface{})
 	source, ok := os.LookupEnv("SOURCE")
 	if !ok {
 		source = "BARE-METAL"
 	}
-	outputRecord["plugin"] = map[string]string {
+	packaged["logs"] = records
+
+	plugin :=  map[string]interface{} {
 		"type": "fluent-bit",
 		"version": VERSION,
 		"source": source,
 	}
-	return
+	attributes := map[string]interface{} {
+		"plugin": plugin,
+	}
+	packaged["common"] = map[string]interface{} {
+		"attributes": attributes,
+	}
+	return packaged
 }
 
 func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
 	var buffer bytes.Buffer
-	data, err := json.Marshal(records)
+	data, err := json.Marshal(repackJson(records))
 	if err != nil {
 		panic(err)
 	}
