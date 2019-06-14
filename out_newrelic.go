@@ -150,7 +150,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	// Example to retrieve an optional configuration parameter
 	config.endpoint = output.FLBPluginConfigKey(ctx, "endpoint")
 	if len(config.endpoint) == 0 {
-		config.endpoint = "https://insights-collector.newrelic.com/logs/v1"
+		config.endpoint = "https://log-api.newrelic.com/log/v1"
 	}
 	config.apiKey = output.FLBPluginConfigKey(ctx, "apiKey")
 	if len(config.apiKey) == 0 {
