@@ -11,6 +11,6 @@ RUN make all
 FROM fluent/fluent-bit:1.0.3
 
 COPY --from=builder /go/src/github.com/newrelic/fluent-bit/newrelic-fluent-bit-output/out_newrelic.so /fluent-bit/bin/
-COPY *.conf /fluent-bit/etc/
+COPY *.conf.* /fluent-bit/etc/
 
 CMD ["./run.sh"]
