@@ -1,0 +1,19 @@
+[SERVICE]
+	Flush        1
+	Daemon       Off
+	Log_Level    debug
+	Log_File     /dev/stdout
+
+[INPUT]
+  Name     syslog
+  Parser   ${PARSER}
+  Listen   ${HOST}
+  Port     ${PORT}
+  Mode     ${MODE}
+
+[OUTPUT]
+	Name  newrelic
+	Match *
+	apiKey ${API_KEY}
+	maxBufferSize ${BUFFER_SIZE}
+	maxRecords ${MAX_RECORDS}
