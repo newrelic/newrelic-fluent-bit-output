@@ -35,7 +35,7 @@ var _ = Describe("Out New Relic", func() {
 				}
 				inputMap["log"] = "message"
 				foundOutput := prepareRecord(inputMap, inputTimestamp)
-				packed := repackJson([]map[string]interface{}{foundOutput})
+				packed := repackJson([]map[string]interface{}{foundOutput})[0]
 				log := packed["logs"].([]map[string]interface{})[0]
 				Expect(log["message"]).To(Equal("message"))
 				Expect(log["log"]).To(BeNil())
@@ -62,7 +62,7 @@ var _ = Describe("Out New Relic", func() {
 				inputMap["log"] = "message"
 				os.Setenv("SOURCE", expectedSource)
 				foundOutput := prepareRecord(inputMap, inputTimestamp)
-				packed := repackJson([]map[string]interface{}{foundOutput})
+				packed := repackJson([]map[string]interface{}{foundOutput})[0]
 				common := packed["common"].(map[string]interface{})
 				fmt.Println(common)
 				attributes := common["attributes"].(map[string]interface{})
