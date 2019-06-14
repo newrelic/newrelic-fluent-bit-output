@@ -5,6 +5,8 @@ then
   MODE=${MODE:-UDP}
   PORT=${PORT:-5140}
   PARSER=${PARSER:-syslog-rfc3164}
+  ./fluent-bit/bin/fluent-bit -c /fluent-bit/etc/fluent-bit.conf.syslog -e /fluent-bit/bin/out_newrelic.so
+
 else
   ./fluent-bit/bin/fluent-bit -c /fluent-bit/etc/fluent-bit.conf -e /fluent-bit/bin/out_newrelic.so
 fi
