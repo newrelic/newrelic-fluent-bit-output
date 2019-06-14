@@ -86,9 +86,9 @@ func (bufferManager *BufferManager) isEmpty() bool {
 }
 
 func (bufferManager *BufferManager) shouldSend() bool {
-	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) || 
+	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) ||
 		(((timeNowInMiliseconds() - bufferManager.lastFlushTime)) > bufferManager.config.maxTimeBetweenFlushes)
-} 
+}
 
 func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
 	newBuffer := make([]map[string]interface{}, len(bufferManager.buffer))
@@ -310,21 +310,35 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 		}
 		delete(outputRecord, "log")
 	}
+	return
+}
+
+func repackJson(records[]map[string]interface{}) (output []map[string]interface{}) {
+	var packaged = make(map[string]interface{})
 	source, ok := os.LookupEnv("SOURCE")
 	if !ok {
 		source = "BARE-METAL"
 	}
-	outputRecord["plugin"] = map[string]string {
+	packaged["logs"] = records
+
+	plugin :=  map[string]interface{} {
 		"type": "fluent-bit",
 		"version": VERSION,
 		"source": source,
 	}
+	attributes := map[string]interface{} {
+		"plugin": plugin,
+	}
+	packaged["common"] = map[string]interface{} {
+		"attributes": attributes,
+	}
+	output = append(output, packaged)
 	return
 }
 
 func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
 	var buffer bytes.Buffer
-	data, err := json.Marshal(records)
+	data, err := json.Marshal(repackJson(records))
 	if err != nil {
 		panic(err)
 	}
@@ -349,7 +363,7 @@ func FLBPluginExit() int {
 	return output.FLB_OK
 }
 
-//utility for time now in  miliseconds 
+//utility for time now in  miliseconds
 func timeNowInMiliseconds() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
