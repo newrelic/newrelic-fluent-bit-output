@@ -4,9 +4,10 @@ The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
 It works on all versions of Fluent Bit greater than 0.12 but for the best experience we recommend using versions greater than 1.0.
 
 ## Getting started 
-In order to insert records into New Relic, you can run the plugin from the command line or through the configuration file.
+In order to insert records into New Relic, you can configure the plugin with a config file or configure it via command line flags.
+* [Link to configuration](https://docs.fluentbit.io/manual/configuration)
 
-You need to initially compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
+You need to compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
 
 ## Compiling out_newrelic.so
 
@@ -14,7 +15,7 @@ This project is provided AS-IS WITHOUT WARRANTY OR SUPPORT, although you can rep
 
 Prerequisites:
 * Fluent Bit
-* a Go environment
+* Go environment
 
 To build the plugin:
 1. Clone [https://github.com/newrelic/newrelic-fluent-bit-output](https://github.com/newrelic/newrelic-fluent-bit-output)
