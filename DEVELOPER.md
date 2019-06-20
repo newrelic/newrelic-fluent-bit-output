@@ -1,5 +1,5 @@
 # Developing the plugin
- 
+
 ## Getting started
 
 * Install go: `brew install go`
@@ -10,7 +10,7 @@
 * Write tests and production code!
 * Run tests: `go test`
 
-## Updating Version 
+## Updating Version
 
 * Update the version in version.go
 
@@ -88,8 +88,8 @@ When done, there are three returning values available:
 | Return value  | Description                                    |
 |---------------|------------------------------------------------|
 | FLB\_OK       | The data have been processed normally.         |
-| FLB\_ERROR    | An internal error have ocurred, the plugin will not handle the set of records/data again. |
-| FLB\_RETRY    | A recoverable error have ocurred, the engine can try to flush the records/data later.|
+| FLB\_ERROR    | An internal error have occurred, the plugin will not handle the set of records/data again. |
+| FLB\_RETRY    | A recoverable error have occurred, the engine can try to flush the records/data later.|
 
 ### Plugin Exit
 
