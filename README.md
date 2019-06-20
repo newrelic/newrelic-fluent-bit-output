@@ -10,6 +10,8 @@ You need to initially compile the plugin and store ```out_newrelic.so``` at a lo
 
 ## Compiling out_newrelic.so
 
+This project is provided AS-IS WITHOUT WARRANTY OR SUPPORT, although you can report issues and contribute to the project here on GitHub.
+
 Prerequisites:
 * Fluent Bit
 * a Go environment
