@@ -27,7 +27,7 @@ Fluent Bit needs to know the location of the New Relic plugin, and the license k
 It is vitally important to pay attention to white space in your config files. Please use four spaces to indent, and one space between keys and values.
 
 ### plugins.conf
-Find or create a `plugins.conf` file and add a referencee to out_newrelic.so, adjacent to your `fluent-bit.conf` file.
+Find or create a `plugins.conf` file and add a reference to out_newrelic.so, adjacent to your `fluent-bit.conf` file.
 
 in plugins.conf
 ```
@@ -47,7 +47,7 @@ in fluent-bit.conf
 
 ```
 
-And at the end of `fluent-bit.conf`, add the following to set up input and output filter:
+And at the end of `fluent-bit.conf`, add the following to set up the input and output filter:
 ```
 [INPUT]
     Name tail
@@ -88,9 +88,9 @@ This plugin comes with a Dockerfile and sample config that will let you get star
 ### Environment Variables
 | Key | Description |
 |-----|-------------|
-|FILE_PATH   |  A path or glob to the file or files you wish to tail|
-|BUFFER_SIZE |  The max size for json payload in bytes|
-|MAX_RECORD  |  The number of records to send in a payload|
+|FILE_PATH   |  A path or glob to the file or files you wish to tail |
+|BUFFER_SIZE |  The max size for json payload in bytes |
+|MAX_RECORD  |  The number of records to send in a payload |
 
 ### Docker Example
 Within the root of the project run the following.  You can supplement the image name and tag as you see fit.
