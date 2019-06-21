@@ -35,7 +35,6 @@ type PluginConfig struct {
 	maxRetryDelayInSeconds     int64
 	maxRetries                 int64
 	maxTimeBetweenFlushes      int64
-
 }
 
 type BufferManager struct {
