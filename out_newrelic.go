@@ -26,6 +26,7 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 }
 
 type PluginConfig struct {
+	debugEnabled               bool
 	endpoint                   string
 	apiKey                     string
 	maxBufferSize              int64
@@ -34,6 +35,7 @@ type PluginConfig struct {
 	maxRetryDelayInSeconds     int64
 	maxRetries                 int64
 	maxTimeBetweenFlushes      int64
+
 }
 
 type BufferManager struct {
@@ -56,7 +58,9 @@ func newBufferManager(config PluginConfig) BufferManager {
 		MaxIdleConnsPerHost: 100,
 	}
 	client := retryablehttp.NewClient()
-	client.Logger = nil // Don't do logging of HTTP requests or retries, it's too noisy
+	if !config.debugEnabled {
+		client.Logger = nil // Don't do logging of HTTP requests or retries, it's too noisy
+	}
 	client.RetryMax = int(config.maxRetries)
 	client.RetryWaitMin = time.Duration(config.initialRetryDelayInSeconds) * time.Second
 	client.RetryWaitMax = time.Duration(config.maxRetryDelayInSeconds) * time.Second
@@ -86,9 +90,9 @@ func (bufferManager *BufferManager) isEmpty() bool {
 }
 
 func (bufferManager *BufferManager) shouldSend() bool {
-	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) ||
+	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) || 
 		(((timeNowInMiliseconds() - bufferManager.lastFlushTime)) > bufferManager.config.maxTimeBetweenFlushes)
-}
+} 
 
 func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
 	newBuffer := make([]map[string]interface{}, len(bufferManager.buffer))
@@ -150,7 +154,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	// Example to retrieve an optional configuration parameter
 	config.endpoint = output.FLBPluginConfigKey(ctx, "endpoint")
 	if len(config.endpoint) == 0 {
-		config.endpoint = "https://log-api.newrelic.com/log/v1"
+		config.endpoint = "https://insights-collector.newrelic.com/logs/v1"
 	}
 	config.apiKey = output.FLBPluginConfigKey(ctx, "apiKey")
 	if len(config.apiKey) == 0 {
@@ -198,6 +202,18 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	} else {
 		config.maxTimeBetweenFlushes, _ =  strconv.ParseInt(possibleMaxTimeBetweenFlushes, 10, 64)
 	}
+	possibleDebugEnabled := output.FLBPluginConfigKey(ctx, "debugEnabled")
+	if len(possibleDebugEnabled) == 0 {
+		config.debugEnabled = false
+	} else {
+		b, err := strconv.ParseBool(possibleDebugEnabled)
+		if err != nil {
+			config.debugEnabled = false
+		} else {
+			config.debugEnabled = b
+		}
+	}
+
 
 	bufferManager = newBufferManager(config)
 	return output.FLB_OK
@@ -313,7 +329,7 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 	return
 }
 
-func repackJson(records[]map[string]interface{}) (output []map[string]interface{}) {
+func repackJson(records[]map[string]interface{}) []map[string]interface{} {
 	var packaged = make(map[string]interface{})
 	source, ok := os.LookupEnv("SOURCE")
 	if !ok {
@@ -332,8 +348,7 @@ func repackJson(records[]map[string]interface{}) (output []map[string]interface{
 	packaged["common"] = map[string]interface{} {
 		"attributes": attributes,
 	}
-	output = append(output, packaged)
-	return
+	return []map[string]interface{}{packaged}
 }
 
 func packagePayload(records []map[string]interface{}) (*bytes.Buffer, error) {
@@ -363,7 +378,7 @@ func FLBPluginExit() int {
 	return output.FLB_OK
 }
 
-//utility for time now in  miliseconds
+//utility for time now in  miliseconds 
 func timeNowInMiliseconds() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
