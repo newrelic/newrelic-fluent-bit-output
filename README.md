@@ -3,14 +3,17 @@
 The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
 It works on all versions of Fluent Bit greater than 0.12 but for the best experience we recommend using versions greater than 1.0.
 
-## Getting started
-In order to insert records into New Relic, you can run the plugin from the command line or through the configuration file.
+## Getting started 
+In order to insert records into New Relic, you can configure the plugin with a config file or configure it via command line flags.
+* [Link to configuration](https://docs.fluentbit.io/manual/configuration)
 
-You need to initially compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
+You need to compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
 
 Note that for certain Linux Enterprise users, [including CentOS 7, Debian 8 and 9, Ubuntu, and Raspbian 8](https://fluentbit.io/documentation/0.13/installation/td-agent-bit.html), the name of Fluent Bit is td-agent-bit, instead of fluent-bit. So, anywhere in this doc where it says `fluent-bit`, just replace it with `td-agent-bit` (for example, you will need to edit `td-agent-bit.conf` instead of `fluent-bit.conf`).
 
 ## Compiling out_newrelic.so
+
+This project is provided AS-IS WITHOUT WARRANTY OR SUPPORT, although you can report issues and contribute to the project here on GitHub.
 
 Prerequisites:
 * Fluent Bit
@@ -47,7 +50,7 @@ in fluent-bit.conf
 
 ```
 
-And at the end of `fluent-bit.conf`, add the following to set up input and output filter:
+And at the end of `fluent-bit.conf`, add the following to set up the input and output filter:
 ```
 [INPUT]
     Name tail
@@ -88,9 +91,9 @@ This plugin comes with a Dockerfile and sample config that will let you get star
 ### Environment Variables
 | Key | Description |
 |-----|-------------|
-|FILE_PATH   |  A path or glob to the file or files you wish to tail|
-|BUFFER_SIZE |  The max size for json payload in bytes|
-|MAX_RECORD  |  The number of records to send in a payload|
+|FILE_PATH   |  A path or glob to the file or files you wish to tail |
+|BUFFER_SIZE |  The max size for json payload in bytes |
+|MAX_RECORD  |  The number of records to send in a payload |
 
 ### Docker Example
 Within the root of the project run the following.  You can supplement the image name and tag as you see fit.
@@ -99,3 +102,4 @@ Within the root of the project run the following.  You can supplement the image 
 docker build -t <YOUR-IMAGE-NAME>:<YOUR-TAG> .
 docker run -e "FILE_PATH=/var/log/*" -e "BUFFER_SIZE=512000" -e "MAX_RECORD=1024"  fluent-plugin:0.0.1
 ```
+
