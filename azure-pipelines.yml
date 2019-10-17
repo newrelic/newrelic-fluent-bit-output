@@ -5,13 +5,16 @@ pool:
   vmImage: 'macOS-latest'
 
 variables:
-  GOBIN:  '$(GOPATH)/bin' # Go binaries path
-  GOROOT: '/usr/local/go1.11' # Go installation path
-  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
-  modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
+  # GOBIN:  '$(GOPATH)/bin' # Go binaries path
+  # GOROOT: '/usr/local/go1.11' # Go installation path
+  # GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
+  # modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
 
 steps:
 - script: |
+    echo 'GOBIN=$(GOBIN)'
+    echo 'GOROOT=$(GOROOT)'
+    echo 'GOPATH=$(GOPATH)'
     echo '--------------- which go ----------'
     which go
     echo '-----------------------------------'
@@ -34,12 +37,12 @@ steps:
   displayName: 'Run tests'
   inputs:
     targetType: 'inline'
-    workingDirectory: '$(modulePath)'
+    # workingDirectory: '$(modulePath)'
     script: |
       pwd
-      find '$(modulePath)'
+      # find '$(modulePath)'
       go get -v -u github.com/jstemmer/go-junit-report
-      find '$(modulePath)'
+      # find '$(modulePath)'
       go test -v 2>&1 | go-junit-report > test-results.xml
 
 - task: PublishTestResults@2
