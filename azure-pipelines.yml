@@ -18,6 +18,12 @@ steps:
     echo '--------------- which go ----------'
     which go
     echo '-----------------------------------'
+    echo '--------------- ls -l `which go` ----------'
+    ls -l `which go`
+    echo '-----------------------------------'
+    echo '--------------- $(dirname `which go`) ----------'
+    $(dirname `which go`)
+    echo '-----------------------------------'
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
     mkdir -p '$(modulePath)'
