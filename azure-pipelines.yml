@@ -10,7 +10,7 @@ steps:
   inputs:
     targetType: 'inline'
     script: |
-      go get -u github.com/jstemmer/go-junit-report
+      go get -v -u github.com/jstemmer/go-junit-report
       echo '-------- echo $GOPATH ---------'
       echo $GOPATH
       echo '-------------------------------'
