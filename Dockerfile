@@ -2,7 +2,7 @@ FROM golang:1.11 AS builder
 
 WORKDIR /go/src/github.com/newrelic/fluent-bit/newrelic-fluent-bit-output
 
-COPY .git Makefile go.* *.go *.h /go/src/github.com/newrelic/fluent-bit/newrelic-fluent-bit-output/
+COPY Makefile go.* *.go *.h /go/src/github.com/newrelic/fluent-bit/newrelic-fluent-bit-output/
 ENV SOURCE docker
 RUN go get github.com/fluent/fluent-bit-go/output
 RUN make all
