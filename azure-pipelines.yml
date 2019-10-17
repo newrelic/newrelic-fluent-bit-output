@@ -37,7 +37,7 @@ steps:
   displayName: 'Run tests'
   inputs:
     targetType: 'inline'
-    # workingDirectory: '$(modulePath)'
+    workingDirectory: '$(modulePath)'
     script: |
       pwd
       # find '$(modulePath)'
