@@ -58,6 +58,7 @@ steps:
   inputs:
     testResultsFormat: 'JUnit'
     testResultsFiles: '$(modulePath)/test-results.xml'
+    failTaskOnFailedTests: true
 
 - task: Bash@3
   displayName: 'Build the plugin'
