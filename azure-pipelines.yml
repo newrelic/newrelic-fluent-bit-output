@@ -23,7 +23,6 @@ steps:
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
 
-
 - task: Bash@3
   displayName: 'Run tests'
   inputs:
@@ -45,6 +44,8 @@ steps:
     targetType: 'inline'
     workingDirectory: '$(modulePath)'
     script: |
+      DOCKER_IMAGE_VERSION=`cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}'`
+      echo "##vso[task.setvariable variable=DOCKER_IMAGE_VERSION]$DOCKER_IMAGE_VERSION"
       make all
       
 - task: Docker@2
@@ -52,6 +53,19 @@ steps:
   inputs:
     command: login
     containerRegistry: DockerHub
+
+- task: Docker@2
+  displayName: Build and push Docker image to Docker Hub
+  inputs:
+    command: buildAndPush
+    repository: someUser/contoso
+- task: Docker@2
+  displayName: Build and Push
+  inputs:
+    command: buildAndPush
+    repository: brianmcfeely/test-push
+    tags: $(DOCKER_IMAGE_VERSION)
+    
 # - task: Bash@3
 #   displayName: 'Build the Docker image'
 #   inputs:
