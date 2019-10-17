@@ -2,11 +2,13 @@ trigger:
 - master
 
 pool:
-  vmImage: 'macOS-latest'
+  vmImage: 'ubuntu-16.04' # Has Docker
+  # vmImage: 'macOS-latest'
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
-  GOROOT: '/usr/local/Cellar/go/1.13.1/libexec' # Go installation path
+  GOROOT: '/usr/local/go1.12'
+  # GOROOT: '/usr/local/Cellar/go/1.13.1/libexec' # Go installation path
   GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
   modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
 
