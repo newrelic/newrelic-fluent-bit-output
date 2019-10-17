@@ -1,0 +1,30 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'macOS-latest'
+
+steps:
+- task: Bash@3
+  displayName: 'Run tests'
+  inputs:
+    targetType: 'inline'
+    script: |
+      go test
+
+# - task: PublishTestResults@2
+#   inputs:
+#     testResultsFormat: 'JUnit'
+#     testResultsFiles: 'test-results.xml'
+#     testRunTitle: 'Rspec'
+
+- task: Bash@3
+  displayName: 'Build the plugin'
+  inputs:
+    targetType: 'inline'
+    script: |
+      make all
+
+
+
+
