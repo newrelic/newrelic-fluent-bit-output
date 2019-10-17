@@ -88,7 +88,7 @@ var _ = Describe("Out New Relic", func() {
 
 			// We've seen older of Fluent Bit versions use uint64
 			// (generally being sent in seconds, but we handle other granularities out of paranoia)
-			uint64(0):          1234567890000,
+			uint64(1234567890):          1234567890000,
 			uint64(1234567890123):       1234567890123,
 			uint64(1234567890123456):    1234567890123,
 			uint64(1234567890123456789): 1234567890123,
