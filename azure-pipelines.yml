@@ -57,7 +57,7 @@ steps:
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'test-results.xml'
+    testResultsFiles: '$(modulePath)/test-results.xml'
 
 - task: Bash@3
   displayName: 'Build the plugin'
