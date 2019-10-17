@@ -58,11 +58,6 @@ steps:
   displayName: Build and push Docker image to Docker Hub
   inputs:
     command: buildAndPush
-    repository: someUser/contoso
-- task: Docker@2
-  displayName: Build and Push
-  inputs:
-    command: buildAndPush
     buildContext: '$(modulePath)'
     repository: brianmcfeely/test-push
     tags: $(DOCKER_IMAGE_VERSION)
