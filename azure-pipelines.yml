@@ -12,9 +12,9 @@ pool:
 
 steps:
 - script: |
-    echo 'GOBIN=$(GOBIN)'
-    echo 'GOROOT=$(GOROOT)'
-    echo 'GOPATH=$(GOPATH)'
+    echo GOBIN=$GOBIN
+    echo GOROOT=$GOROOT
+    echo GOPATH=$GOPATH
     echo '--------------- which go ----------'
     which go
     echo '-----------------------------------'
