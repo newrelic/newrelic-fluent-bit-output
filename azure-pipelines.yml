@@ -47,9 +47,12 @@ steps:
     script: |
       pwd
       # find '$(modulePath)'
+      echo '>>> 1'
       go get -v -u github.com/jstemmer/go-junit-report
+      echo '>>> 2'
       # find '$(modulePath)'
       go test -v 2>&1 | go-junit-report > test-results.xml
+      echo '>>> 3'
 
 - task: PublishTestResults@2
   inputs:
