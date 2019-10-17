@@ -11,42 +11,23 @@ variables:
   modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
 
 steps:
-- script: |
-    mkdir -p '$(GOBIN)'
-    mkdir -p '$(GOPATH)/pkg'
-    mkdir -p '$(modulePath)'
-    shopt -s extglob
-    mv !(gopath) '$(modulePath)'
-    echo '##vso[task.prependpath]$(GOBIN)'
-    echo '##vso[task.prependpath]$(GOROOT)/bin'
-  displayName: 'Set up the Go workspace'
+# - script: |
+#     mkdir -p '$(GOBIN)'
+#     mkdir -p '$(GOPATH)/pkg'
+#     mkdir -p '$(modulePath)'
+#     shopt -s extglob
+#     mv !(gopath) '$(modulePath)'
+#     echo '##vso[task.prependpath]$(GOBIN)'
+#     echo '##vso[task.prependpath]$(GOROOT)/bin'
+#   displayName: 'Set up the Go workspace'
 
-- task: Bash@3
-  displayName: 'Install dependencies'
-  inputs:
-    targetType: 'inline'
-    workingDirectory: '$(modulePath)'
-    script: |
-      go get -v -u github.com/jstemmer/go-junit-report
-      echo '-------- echo $GOPATH ---------'
-      echo $GOPATH
-      echo '-------------------------------'
-      echo '-------- ls -l $GOPATH/bin ----'
-      ls -l $GOPATH/bin
-      echo '-------------------------------'
 
 - task: Bash@3
   displayName: 'Run tests'
   inputs:
     targetType: 'inline'
-    workingDirectory: '$(modulePath)'
     script: |
-      echo '-------- echo $GOPATH ---------'
-      echo $GOPATH
-      echo '-------------------------------'
-      echo '-------- ls -l $GOPATH/bin ----'
-      ls -l $GOPATH/bin
-      echo '-------------------------------'
+      go get -v -u github.com/jstemmer/go-junit-report
       go test -v 2>&1 | go-junit-report > test-results.xml
 
 - task: PublishTestResults@2
