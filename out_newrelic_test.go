@@ -42,7 +42,7 @@ var _ = Describe("Out New Relic", func() {
 				typeVal := pluginMap["type"]
 				version := pluginMap["version"]
 				source := pluginMap["source"]
-				Expect(typeVal).To(Equal("fluent-bit"))
+				Expect(typeVal).To(Equal("xxxxxfluent-bit"))
 				Expect(version).To(Equal(VERSION))
 				Expect(source).To(Equal("BARE-METAL"))
 			},
