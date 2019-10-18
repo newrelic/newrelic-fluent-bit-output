@@ -1,3 +1,7 @@
+# Do not trigger on merges...
+trigger: none
+
+# ...just trigger on PRs
 pr:
   branches:
     include:
