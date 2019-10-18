@@ -1,14 +1,16 @@
+# Run any time a commit is merged to the 'master' branch
 trigger:
 - master
 
+# There is a separate pipeline for PRs (it does not do deploys)
+pr: none
+
 pool:
   vmImage: 'ubuntu-16.04' # Has Docker
-  # vmImage: 'macOS-latest'
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
   GOROOT: '/usr/local/go1.12'
-  # GOROOT: '/usr/local/Cellar/go/1.13.1/libexec' # Go installation path
   GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
   modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
 
@@ -61,17 +63,3 @@ steps:
     buildContext: '$(modulePath)'
     repository: brianmcfeely/test-push
     tags: $(DOCKER_IMAGE_VERSION)
-
-# - task: Bash@3
-#   displayName: 'Build the Docker image'
-#   inputs:
-#     targetType: 'inline'
-#     workingDirectory: '$(modulePath)'
-#     script: |
-#       VERSION=`cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}'`
-#       LOCAL_IMAGE=fluent-plugin
-#       REMOTE_IMAGE=newrelic/newrelic-fluentbit-output
-#       docker build -t ${LOCAL_IMAGE}:${VERSION} .
-#       docker tag ${LOCAL_IMAGE}:${VERSION} ${REMOTE_IMAGE}:${VERSION}
-#       # docker push ${REMOTE_IMAGE}:${VERSION}
-#       docker images
