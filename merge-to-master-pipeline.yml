@@ -61,5 +61,5 @@ steps:
   inputs:
     command: buildAndPush
     buildContext: '$(modulePath)'
-    repository: brianmcfeely/test-push
+    repository: newrelic/newrelic-fluentbit-output
     tags: $(DOCKER_IMAGE_VERSION)
