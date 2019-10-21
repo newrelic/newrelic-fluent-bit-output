@@ -1,0 +1,65 @@
+# Run any time a commit is merged to the 'master' branch
+trigger:
+- master
+
+# There is a separate pipeline for PRs (it does not do deploys)
+pr: none
+
+pool:
+  vmImage: 'ubuntu-16.04' # Has Docker
+
+variables:
+  GOBIN:  '$(GOPATH)/bin' # Go binaries path
+  GOROOT: '/usr/local/go1.12'
+  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
+  modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
+
+steps:
+- script: |
+    mkdir -p '$(GOBIN)'
+    mkdir -p '$(GOPATH)/pkg'
+    mkdir -p '$(modulePath)'
+    shopt -s extglob
+    mv !(gopath) '$(modulePath)'
+    echo '##vso[task.prependpath]$(GOBIN)'
+    echo '##vso[task.prependpath]$(GOROOT)/bin'
+  displayName: 'Set up the Go workspace'
+
+- task: Bash@3
+  displayName: 'Run tests'
+  inputs:
+    targetType: 'inline'
+    workingDirectory: '$(modulePath)'
+    script: |
+      go get -v -u github.com/jstemmer/go-junit-report
+      go test -v 2>&1 | go-junit-report > test-results.xml
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '$(modulePath)/test-results.xml'
+    failTaskOnFailedTests: true
+
+- task: Bash@3
+  displayName: 'Build the plugin'
+  inputs:
+    targetType: 'inline'
+    workingDirectory: '$(modulePath)'
+    script: |
+      DOCKER_IMAGE_VERSION=`cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}'`
+      echo "##vso[task.setvariable variable=DOCKER_IMAGE_VERSION]$DOCKER_IMAGE_VERSION"
+      make all
+      
+- task: Docker@2
+  displayName: Login to Docker Hub
+  inputs:
+    command: login
+    containerRegistry: DockerHub
+
+- task: Docker@2
+  displayName: Build and push Docker image to Docker Hub
+  inputs:
+    command: buildAndPush
+    buildContext: '$(modulePath)'
+    repository: newrelic/newrelic-fluentbit-output
+    tags: $(DOCKER_IMAGE_VERSION)
