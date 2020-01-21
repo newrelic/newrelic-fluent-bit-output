@@ -25,7 +25,7 @@ Prerequisites:
 
 To build the plugin:
 1. Clone [https://github.com/newrelic/newrelic-fluent-bit-output](https://github.com/newrelic/newrelic-fluent-bit-output)
-2. Build plugin: `cd newrelic-fluent-bit-output && make all`
+2. Build plugin: `cd newrelic-fluent-bit-output && go get github.com/fluent/fluent-bit-go/output && make all`
 
 ## Configuring Fluent Bit
 
@@ -64,7 +64,13 @@ And at the end of `fluent-bit.conf`, add the following to set up the input and o
 [OUTPUT]
     Name newrelic
     Match *
-    apiKey <NEW_RELIC_INSIGHTS_INSERT_KEY>
+    licenseKey <NEW_RELIC_LICENSE_KEY>
+
+[FILTER]
+    Name modify
+    Match *
+    Add hostname <HOSTNAME>
+    Add service_name <SERVICE_NAME>
 ```
 
 * Restart Fluent Bit: `fluent-bit -c /path/to/fluent-bit.conf`
