@@ -96,17 +96,35 @@ documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sourc
 
 Set `endpoint` to `https://log-api.eu.newrelic.com/log/v1`.
 
+
+## Internal Configuration
+
+| Key | Description | Default |  
+|-----|-------------|---------|  
+| reportingSourceType | What ends up in the `nr.reportingSource.type` field, used to identify what is sending logs | `fluent-bit` |
+| reportingSourceVersion | What ends up in the `nr.reportingSource.version` field, used to identify what is sending logs | The version number in `version.go` |
+
 ## Docker Container Configuration
 
 This plugin comes with a Dockerfile and sample config that will let you get started with the plugin fairly easily.
 
 ### Environment Variables
+
 | Key | Description | Required |
 |-----|-------------| -----|
 |API_KEY| Your New Relic Insights Insert Key | Yes |
 |FILE_PATH   |  A path or glob to the file or files you wish to tail | Yes |
 |BUFFER_SIZE |  The max size for json payload in bytes | No |
 |MAX_RECORDS  |  The number of records to send in a payload | No |
+
+
+### Internal Environment Variables
+
+| Key | Description | Required |
+|-----|-------------| -----|
+| REPORTING_SOURCE_TYPE | What ends up in the `nr.reportingSource.type` field, used to identify what is sending logs | No |
+| REPORTING_SOURCE_VERSION | What ends up in the `nr.reportingSource.version` field, used to identify what is sending logs | No |
+
 
 ### Docker Example
 Within the root of the project run the following. You can supplement the image name and tag as you see fit.

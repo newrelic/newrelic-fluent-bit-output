@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"os"
 	"C"
 	"bytes"
 	"compress/gzip"
@@ -32,6 +31,8 @@ type PluginConfig struct {
 	maxRecords                 int64
 	maxTimeBetweenFlushes      int64
 	useApiKey                  bool
+	reportingSourceType        string
+	reportingSourceVersion     string
 }
 
 type BufferManager struct {
@@ -190,6 +191,20 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		config.maxTimeBetweenFlushes, _ =  strconv.ParseInt(possibleMaxTimeBetweenFlushes, 10, 64)
 	}
 
+	reportingSourceType := output.FLBPluginConfigKey(ctx, "reportingSourceType")
+	if len(reportingSourceType) == 0 {
+		config.reportingSourceType = "fluent-bit"
+	} else {
+		config.reportingSourceType =  reportingSourceType
+	}
+
+	reportingSourceVersion := output.FLBPluginConfigKey(ctx, "reportingSourceVersion")
+	if len(reportingSourceType) == 0 {
+		config.reportingSourceVersion = VERSION
+	} else {
+		config.reportingSourceVersion =  reportingSourceVersion
+	}
+
 	bufferManager = newBufferManager(config)
 	return output.FLB_OK
 }
@@ -209,7 +224,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 		if ret != 0 {
 			break
 		}
-		updatedRecord := prepareRecord(record, ts)
+		updatedRecord := prepareRecord(record, ts, bufferManager.config)
 		bufferManager.addRecord(updatedRecord)
 	}
 	// Return options:
@@ -255,7 +270,7 @@ func timeToMillis(time int64) int64 {
 	}
 }
 
-func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}) (outputRecord map[string]interface{}) {
+func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp interface{}, config PluginConfig) (outputRecord map[string]interface{}) {
 	outputRecord = make(map[string]interface{})
 	outputRecord = remapRecord(inputRecord)
 
@@ -272,14 +287,10 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 		outputRecord["message"] = val
 		delete(outputRecord, "log")
 	}
-	source, ok := os.LookupEnv("SOURCE")
-	if !ok {
-		source = "BARE-METAL"
-	}
-	outputRecord["plugin"] = map[string]string {
-		"type": "fluent-bit",
-		"version": VERSION,
-		"source": source,
+
+	outputRecord["nr.reportingSource"] = map[string]string {
+		"type": config.reportingSourceType,
+		"version": config.reportingSourceVersion,
 	}
 	return
 }

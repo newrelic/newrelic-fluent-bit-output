@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/fluent/fluent-bit-go/output"
@@ -21,45 +20,36 @@ var _ = Describe("Out New Relic", func() {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
 	Describe("Prepares payload", func() {
-		AfterEach(func() {
-			os.Unsetenv("SOURCE")
-		})
 
 		It("converts the map[interface{}] inteface{} to map[string] interface[], "+
 			"updates the timestamp, and renames the log field to message",
 			func() {
-				inputMap := make(map[interface{}]interface{})
-				var inputTimestamp interface{}
-				inputTimestamp = output.FLBTime{
-					time.Now(),
-				}
-				inputMap["log"] = "message"
-				foundOutput := prepareRecord(inputMap, inputTimestamp)
+				inputMap := message("message")
+				inputTimestamp := now()
+				config := PluginConfig{}
+
+				foundOutput := prepareRecord(inputMap, inputTimestamp, config)
+
 				Expect(foundOutput["message"]).To(Equal("message"))
 				Expect(foundOutput["log"]).To(BeNil())
 				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
-				pluginMap := foundOutput["plugin"].(map[string]string)
-				typeVal := pluginMap["type"]
-				version := pluginMap["version"]
-				source := pluginMap["source"]
-				Expect(typeVal).To(Equal("fluent-bit"))
-				Expect(version).To(Equal(VERSION))
-				Expect(source).To(Equal("BARE-METAL"))
 			},
 		)
-		It("sets the source if it is included as an environment variable",
+
+		It("reporting source comes from configuration",
 			func() {
-				inputMap := make(map[interface{}]interface{})
-				var inputTimestamp interface{}
-				inputTimestamp = output.FLBTime{
-					time.Now(),
+				inputMap := message("message")
+				inputTimestamp := now()
+				config := PluginConfig{
+					reportingSourceType: "some-type",
+					reportingSourceVersion: "some-version",
 				}
-				expectedSource := "docker"
-				inputMap["log"] = "message"
-				os.Setenv("SOURCE", expectedSource)
-				foundOutput := prepareRecord(inputMap, inputTimestamp)
-				pluginMap := foundOutput["plugin"].(map[string]string)
-				Expect(pluginMap["source"]).To(Equal(expectedSource))
+
+				foundOutput := prepareRecord(inputMap, inputTimestamp, config)
+
+				reportingSource := foundOutput["nr.reportingSource"].(map[string]string)
+				Expect(reportingSource["type"]).To(Equal("some-type"))
+				Expect(reportingSource["version"]).To(Equal("some-version"))
 			},
 		)
 
@@ -73,7 +63,9 @@ var _ = Describe("Out New Relic", func() {
 				expectedOutput["nested"] = expectedNestedOutput
 				nestedMap["foo"] = "bar"
 				inputMap["nested"] = nestedMap
+
 				foundOutput := remapRecord(inputMap)
+
 				Expect(foundOutput).To(Equal(expectedOutput))
 
 			},
@@ -81,6 +73,15 @@ var _ = Describe("Out New Relic", func() {
 	})
 
 	Describe("Timestamp handling", func() {
+
+		var config PluginConfig
+
+		BeforeEach(func() {
+			config = PluginConfig{
+				reportingSourceType: "some-type",
+				reportingSourceVersion: "some-version",
+			}
+		})
 
 		inputTimestampToExpectedOutput := map[interface{}]int64{
 			// Modern Fluent Bit does uses FLBTime
@@ -103,7 +104,7 @@ var _ = Describe("Out New Relic", func() {
 				func() {
 					inputMap := make(map[interface{}]interface{})
 
-					foundOutput := prepareRecord(inputMap, input)
+					foundOutput := prepareRecord(inputMap, input, config)
 
 					Expect(foundOutput["timestamp"]).To(Equal(int64(expected)))
 				},
@@ -115,7 +116,7 @@ var _ = Describe("Out New Relic", func() {
 				inputMap := make(map[interface{}]interface{})
 
 				// We don't handle string types
-				foundOutput := prepareRecord(inputMap, "1234567890")
+				foundOutput := prepareRecord(inputMap, "1234567890", config)
 
 				Expect(foundOutput["timestamp"]).To(BeNil())
 			},
@@ -246,6 +247,20 @@ var _ = Describe("Out New Relic", func() {
 		})
 	})
 })
+
+func message(message string) map[interface{}]interface{} {
+	inputMap := make(map[interface{}]interface{})
+	inputMap["log"] = message
+	return inputMap
+}
+
+func now() interface{} {
+	var inputTimestamp interface{}
+	inputTimestamp = output.FLBTime{
+		time.Now(),
+	}
+	return inputTimestamp
+}
 
 func emptyMessage() map[string]interface{} {
 	return make(map[string]interface{})
