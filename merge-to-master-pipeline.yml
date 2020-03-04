@@ -72,6 +72,8 @@ steps:
     target: '$(Build.SourceVersion)'
     tagSource: 'userSpecifiedTag'
     tag: '$(VERSION)'
-    assets: '$(modulePath)/out_newrelic.so'
+    assets: |
+      $(modulePath)/out_newrelic.so
+      $(modulePath)/out_newrelic.dll
     changeLogCompareToRelease: 'lastFullRelease'
     changeLogType: 'commitBased'
