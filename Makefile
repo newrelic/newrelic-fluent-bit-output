@@ -1,6 +1,11 @@
 all:
 	go build -buildmode=c-shared -o out_newrelic.so .
-	go build -buildmode=c-shared -o out_newrelic.dll .
+
+win64:
+	go build -buildmode=c-shared -o out_newrelic_win64.dll .
+
+win32:
+	go build -buildmode=c-shared -o out_newrelic_win32.dll .
 
 fast:
 	go build out_newrelic.go

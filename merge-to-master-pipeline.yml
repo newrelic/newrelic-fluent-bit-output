@@ -40,15 +40,33 @@ steps:
     testResultsFiles: '$(modulePath)/test-results.xml'
     failTaskOnFailedTests: true
 
+- script: sudo apt install mingw-w64
+  displayName: 'Get mingw'
+
 - task: Bash@3
-  displayName: 'Build the plugin'
   inputs:
     targetType: 'inline'
     workingDirectory: '$(modulePath)'
     script: |
       VERSION=`cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}'`
       echo "##vso[task.setvariable variable=VERSION]$VERSION"
-      make all
+  displayName: 'Get the current version into a variable'
+
+- script: make all
+  workingDirectory: '$(modulePath)'
+  displayName: 'Build .so file'
+
+- script: |
+    env CGO_ENABLED=1 GOOS=windows GOARCH=386 CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ 
+    make win32
+  workingDirectory: '$(modulePath)'
+  displayName: 'Build Windows 32-bit DLL'
+
+- script: |
+    env CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++
+    make win64
+  workingDirectory: '$(modulePath)'
+  displayName: 'Build Windows 64-bit DLL'
 
 - task: Docker@2
   displayName: Login to Docker Hub
@@ -74,6 +92,7 @@ steps:
     tag: '$(VERSION)'
     assets: |
       $(modulePath)/out_newrelic.so
-      $(modulePath)/out_newrelic.dll
+      $(modulePath)/out_newrelic_win32.dll
+      $(modulePath)/out_newrelic_win64.dll
     changeLogCompareToRelease: 'lastFullRelease'
     changeLogType: 'commitBased'
