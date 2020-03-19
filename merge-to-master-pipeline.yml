@@ -57,14 +57,12 @@ steps:
   displayName: 'Build .so file'
 
 - script: |
-    env CGO_ENABLED=1 GOOS=windows GOARCH=386 CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ 
-    make win32
+    env CGO_ENABLED=1 GOOS=windows GOARCH=386 CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ go build -buildmode=c-shared -o out_newrelic_win32.dll .
   workingDirectory: '$(modulePath)'
   displayName: 'Build Windows 32-bit DLL'
 
 - script: |
-    env CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++
-    make win64
+    env CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -buildmode=c-shared -o out_newrelic_win64.dll .
   workingDirectory: '$(modulePath)'
   displayName: 'Build Windows 64-bit DLL'
 
