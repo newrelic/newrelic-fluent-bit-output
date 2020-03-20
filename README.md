@@ -8,14 +8,15 @@ It works on all versions of Fluent Bit greater than 0.12 but for the best experi
 In order to insert records into New Relic, you can configure the plugin with a config file or configure it via command line flags.
 * [Link to configuration](https://docs.fluentbit.io/manual/configuration)
 
-You need to compile the plugin and store ```out_newrelic.so``` at a location that can be accessed by the fluent-bit daemon.
+You can download the output plugin pre-compiled under our [releases](https://github.com/newrelic/newrelic-fluent-bit-output/releases/latest).
+Alternatively you can compile the plugin yourself and store ```out_newrelic.so``` or ```out_newrelic_winXX.dll``` at a location that can be accessed by the fluent-bit daemon.
 
 Note that for certain Linux Enterprise users, 
 [including CentOS 7, Debian 8 and 9, Ubuntu, and Raspbian 8](https://fluentbit.io/documentation/0.13/installation/td-agent-bit.html), 
 the name of Fluent Bit is td-agent-bit, instead of fluent-bit. So, anywhere in this doc where it says `fluent-bit`, 
 just replace it with `td-agent-bit` (for example, you will need to edit `td-agent-bit.conf` instead of `fluent-bit.conf`).
 
-## Compiling out_newrelic.so
+## Compiling the out_newrelic plugin
 
 This project is provided AS-IS WITHOUT WARRANTY OR SUPPORT, although you can report issues and contribute to the project here on GitHub.
 
@@ -25,7 +26,10 @@ Prerequisites:
 
 To build the plugin:
 1. Clone [https://github.com/newrelic/newrelic-fluent-bit-output](https://github.com/newrelic/newrelic-fluent-bit-output)
-2. Build plugin: `cd newrelic-fluent-bit-output && go get github.com/fluent/fluent-bit-go/output && make all`
+2. Build plugin: `cd newrelic-fluent-bit-output && go get github.com/fluent/fluent-bit-go/output && make {OS}`
+   1. `make all` for linux/unix
+   2. `make win32` for 32-bit windows
+   3. `make win64` for 64-bit windows
 
 ## Configuring Fluent Bit
 
@@ -35,7 +39,7 @@ It is vitally important to pay attention to white space in your config files. Pl
 and one space between keys and values.
 
 ### plugins.conf
-Find or create a `plugins.conf` file in your Fluent Bit directory and add a reference to out_newrelic.so,
+Find or create a `plugins.conf` file in your Fluent Bit directory and add a reference to out_newrelic.so or out_newrelic_winXX.dll,
 adjacent to your `fluent-bit.conf` file.
 
 in plugins.conf
