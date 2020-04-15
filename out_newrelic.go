@@ -245,11 +245,11 @@ func getProxyResolver(ignoreSystemProxy bool, proxy string) (func(*http.Request)
 
 		return http.ProxyURL(prUrl), nil
 	} else if !ignoreSystemProxy {
-		// Proxy defined by the HTTPS_PROXY (takes precedence) or HTTP_PROXY environment variables
+		// Proxy defined via the HTTPS_PROXY (takes precedence) or HTTP_PROXY environment variables
 		return http.ProxyFromEnvironment, nil
 	} else {
 		// No proxy
-		return nil, nil
+		return http.ProxyURL(nil), nil
 	}
 }
 
