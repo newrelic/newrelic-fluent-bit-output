@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"time"
 
 	"C"
@@ -32,6 +33,7 @@ type PluginConfig struct {
 	maxRecords            int64
 	maxTimeBetweenFlushes int64
 	useApiKey             bool
+	proxyResolver         func(*http.Request) (*url.URL, error)
 }
 
 type BufferManager struct {
@@ -52,6 +54,7 @@ func newBufferManager(config PluginConfig) BufferManager {
 		}).Dial,
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 100,
+		Proxy:               config.proxyResolver,
 	}
 	client := &http.Client{
 		Transport: defaultTransport,
@@ -169,29 +172,85 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 
 	config.useApiKey = len(config.apiKey) > 0
 
-	possibleMaxBufferSize := output.FLBPluginConfigKey(ctx, "maxBufferSize")
-	if len(possibleMaxBufferSize) == 0 {
-		config.maxBufferSize = 256000
-	} else {
-		config.maxBufferSize, _ = strconv.ParseInt(possibleMaxBufferSize, 10, 64)
+	maxBufferSize, err := optInt(ctx, "maxBufferSize", 256000)
+	if err != nil {
+		return output.FLB_ERROR
 	}
+	config.maxBufferSize = maxBufferSize
 
-	possibleMaxRecords := output.FLBPluginConfigKey(ctx, "maxRecords")
-	if len(possibleMaxRecords) == 0 {
-		config.maxRecords = 1024
-	} else {
-		config.maxRecords, _ = strconv.ParseInt(possibleMaxRecords, 10, 64)
+	maxRecords, err := optInt(ctx, "maxRecords", 1024)
+	if err != nil {
+		return output.FLB_ERROR
 	}
+	config.maxRecords = maxRecords
 
-	possibleMaxTimeBetweenFlushes := output.FLBPluginConfigKey(ctx, "maxTimeBetweenFlushes")
-	if len(possibleMaxTimeBetweenFlushes) == 0 {
-		config.maxTimeBetweenFlushes = 5000
-	} else {
-		config.maxTimeBetweenFlushes, _ = strconv.ParseInt(possibleMaxTimeBetweenFlushes, 10, 64)
+	maxTimeBetweenFlushes, err := optInt(ctx, "maxTimeBetweenFlushes", 5000)
+	if err != nil {
+		return output.FLB_ERROR
 	}
+	config.maxTimeBetweenFlushes = maxTimeBetweenFlushes
+
+	ignoreSystemProxy, err := optBool(ctx, "ignoreSystemProxy", false)
+	if err != nil {
+		return output.FLB_ERROR
+	}
+	proxy := output.FLBPluginConfigKey(ctx, "proxy")
+
+	proxyResolver, err := getProxyResolver(ignoreSystemProxy, proxy)
+	if err != nil {
+		log.Printf("[ERROR] Invalid proxy configuration: %v", err)
+		return output.FLB_ERROR
+	}
+	config.proxyResolver = proxyResolver
 
 	bufferManager = newBufferManager(config)
 	return output.FLB_OK
+}
+
+func optInt(ctx unsafe.Pointer, keyName string, defaultValue int64) (int64, error) {
+	rawVal := output.FLBPluginConfigKey(ctx, keyName)
+	if len(rawVal) == 0 {
+		return defaultValue, nil
+	} else {
+		value, err := strconv.ParseInt(rawVal, 10, 64)
+		if err != nil {
+			log.Printf("[ERROR] Invalid value for %s: %s. Must be an integer.", keyName, rawVal)
+			return 0, err
+		}
+		return value, nil
+	}
+}
+
+func optBool(ctx unsafe.Pointer, keyName string, defaultValue bool) (bool, error) {
+	rawVal := output.FLBPluginConfigKey(ctx, keyName)
+	if len(rawVal) == 0 {
+		return defaultValue, nil
+	} else {
+		value, err := strconv.ParseBool(rawVal)
+		if err != nil {
+			log.Printf("[ERROR] Invalid value for %s: %s. Valid values: 1, t, T, TRUE, true, True, 0, f, F, FALSE, false, False.", keyName, rawVal)
+			return false, err
+		}
+		return value, nil
+	}
+}
+
+func getProxyResolver(ignoreSystemProxy bool, proxy string) (func(*http.Request) (*url.URL, error), error) {
+	if len(proxy) > 0 {
+		// User-defined proxy
+		prUrl, err := url.Parse(proxy)
+		if err != nil {
+			return nil, err
+		}
+
+		return http.ProxyURL(prUrl), nil
+	} else if !ignoreSystemProxy {
+		// Proxy defined by the HTTPS_PROXY (takes precedence) or HTTP_PROXY environment variables
+		return http.ProxyFromEnvironment, nil
+	} else {
+		// No proxy
+		return nil, nil
+	}
 }
 
 //export FLBPluginFlush
