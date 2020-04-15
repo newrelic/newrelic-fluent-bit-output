@@ -6,13 +6,13 @@ import (
 	"net"
 	"time"
 
-	"os"
 	"C"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"unsafe"
 
@@ -25,19 +25,19 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 }
 
 type PluginConfig struct {
-	endpoint                   string
-	apiKey                     string
-	licenseKey                 string
-	maxBufferSize              int64
-	maxRecords                 int64
-	maxTimeBetweenFlushes      int64
-	useApiKey                  bool
+	endpoint              string
+	apiKey                string
+	licenseKey            string
+	maxBufferSize         int64
+	maxRecords            int64
+	maxTimeBetweenFlushes int64
+	useApiKey             bool
 }
 
 type BufferManager struct {
-	config PluginConfig
-	buffer []map[string]interface{}
-	client *http.Client
+	config        PluginConfig
+	buffer        []map[string]interface{}
+	client        *http.Client
 	lastFlushTime int64
 }
 
@@ -55,13 +55,13 @@ func newBufferManager(config PluginConfig) BufferManager {
 	}
 	client := &http.Client{
 		Transport: defaultTransport,
-		Timeout: timeout,
+		Timeout:   timeout,
 	}
 
 	return BufferManager{
 		lastFlushTime: timeNowInMiliseconds(),
-		config: config,
-		client: client,
+		config:        config,
+		client:        client,
 	}
 }
 
@@ -80,7 +80,7 @@ func (bufferManager *BufferManager) isEmpty() bool {
 
 func (bufferManager *BufferManager) shouldSend() bool {
 	return (int64(len(bufferManager.buffer)) >= bufferManager.config.maxRecords) ||
-		(((timeNowInMiliseconds() - bufferManager.lastFlushTime)) > bufferManager.config.maxTimeBetweenFlushes)
+		((timeNowInMiliseconds() - bufferManager.lastFlushTime) > bufferManager.config.maxTimeBetweenFlushes)
 }
 
 func (bufferManager *BufferManager) sendRecords() (responseChan chan *http.Response) {
@@ -127,10 +127,10 @@ func (bufferManager *BufferManager) makeRequest(buffer *bytes.Buffer, responseCh
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := bufferManager.client.Do(req)
-	if (err != nil) {
+	if err != nil {
 		log.Printf("[DEBUG] Error making HTTP request: %s", err)
 		return err
-	} else if (resp.StatusCode != 202) {
+	} else if resp.StatusCode != 202 {
 		log.Printf("[DEBUG] Error making HTTP request.  Got status code: %v", resp.StatusCode)
 		return nil
 	}
@@ -169,11 +169,11 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 
 	config.useApiKey = len(config.apiKey) > 0
 
-	possibleeMaxBufferSize := output.FLBPluginConfigKey(ctx, "maxBufferSize")
-	if len(possibleeMaxBufferSize) == 0 {
+	possibleMaxBufferSize := output.FLBPluginConfigKey(ctx, "maxBufferSize")
+	if len(possibleMaxBufferSize) == 0 {
 		config.maxBufferSize = 256000
 	} else {
-		config.maxBufferSize, _ = strconv.ParseInt(possibleeMaxBufferSize, 10, 64)
+		config.maxBufferSize, _ = strconv.ParseInt(possibleMaxBufferSize, 10, 64)
 	}
 
 	possibleMaxRecords := output.FLBPluginConfigKey(ctx, "maxRecords")
@@ -187,7 +187,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	if len(possibleMaxTimeBetweenFlushes) == 0 {
 		config.maxTimeBetweenFlushes = 5000
 	} else {
-		config.maxTimeBetweenFlushes, _ =  strconv.ParseInt(possibleMaxTimeBetweenFlushes, 10, 64)
+		config.maxTimeBetweenFlushes, _ = strconv.ParseInt(possibleMaxTimeBetweenFlushes, 10, 64)
 	}
 
 	bufferManager = newBufferManager(config)
@@ -196,16 +196,12 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 
 //export FLBPluginFlush
 func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
-	var ret int
-	var ts interface{}
-	var record map[interface{}]interface{}
-
 	// Create Fluent Bit decoder
 	dec := output.NewDecoder(data, int(length))
 	// Iterate Records
 	for {
 		// Extract Record
-		ret, ts, record = output.GetRecord(dec)
+		ret, ts, record := output.GetRecord(dec)
 		if ret != 0 {
 			break
 		}
@@ -276,10 +272,10 @@ func prepareRecord(inputRecord map[interface{}]interface{}, inputTimestamp inter
 	if !ok {
 		source = "BARE-METAL"
 	}
-	outputRecord["plugin"] = map[string]string {
-		"type": "fluent-bit",
+	outputRecord["plugin"] = map[string]string{
+		"type":    "fluent-bit",
 		"version": VERSION,
-		"source": source,
+		"source":  source,
 	}
 	return
 }
@@ -315,7 +311,6 @@ func FLBPluginExit() int {
 func timeNowInMiliseconds() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
-
 
 func main() {
 }
