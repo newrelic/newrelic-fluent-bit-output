@@ -172,19 +172,19 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 
 	config.useApiKey = len(config.apiKey) > 0
 
-	maxBufferSize, err := optInt(ctx, "maxBufferSize", 256000)
+	maxBufferSize, err := optInt64(ctx, "maxBufferSize", 256000)
 	if err != nil {
 		return output.FLB_ERROR
 	}
 	config.maxBufferSize = maxBufferSize
 
-	maxRecords, err := optInt(ctx, "maxRecords", 1024)
+	maxRecords, err := optInt64(ctx, "maxRecords", 1024)
 	if err != nil {
 		return output.FLB_ERROR
 	}
 	config.maxRecords = maxRecords
 
-	maxTimeBetweenFlushes, err := optInt(ctx, "maxTimeBetweenFlushes", 5000)
+	maxTimeBetweenFlushes, err := optInt64(ctx, "maxTimeBetweenFlushes", 5000)
 	if err != nil {
 		return output.FLB_ERROR
 	}
@@ -207,7 +207,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	return output.FLB_OK
 }
 
-func optInt(ctx unsafe.Pointer, keyName string, defaultValue int64) (int64, error) {
+func optInt64(ctx unsafe.Pointer, keyName string, defaultValue int64) (int64, error) {
 	rawVal := output.FLBPluginConfigKey(ctx, keyName)
 	if len(rawVal) == 0 {
 		return defaultValue, nil
