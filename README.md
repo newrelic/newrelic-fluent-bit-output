@@ -81,6 +81,13 @@ And at the end of `fluent-bit.conf`, add the following to set up the input and o
 * Append a test log message to your log file: `echo "test message" >> /path/to/your/log/file`
 * Search New Relic Logs for `"test message"`
 
+## Proxy support
+The plugin automatically detects the `HTTP_PROXY` and `HTTPS_PROXY` environment variables, and automatically uses them to set up the proxy configuration.
+
+If you want to bypass the system-wide defined proxy for some reason, you can use the `ignoreSystemProxy` configuration parameter.
+
+You can also specify a custom proxy to send the logs to (different from the system-wide defined) by using the `proxy` configuration parameter.
+
 ## Configuration Parameters
 
 The plugin supports the following configuration parameters and include either an Insights or License Key:
