@@ -228,7 +228,7 @@ func optBool(ctx unsafe.Pointer, keyName string, defaultValue bool) (bool, error
 	} else {
 		value, err := strconv.ParseBool(rawVal)
 		if err != nil {
-			log.Printf("[ERROR] Invalid value for %s: %s. Valid values: 1, t, T, TRUE, true, True, 0, f, F, FALSE, false, False.", keyName, rawVal)
+			log.Printf("[ERROR] Invalid value for %s: %s. Valid values: true, false.", keyName, rawVal)
 			return false, err
 		}
 		return value, nil
