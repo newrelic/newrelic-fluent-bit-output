@@ -292,15 +292,26 @@ var _ = Describe("Out New Relic", func() {
 			os.Unsetenv("HTTPS_PROXY")
 		})
 
+		/*It("uses no proxy if none is defined", func() {
+			const ignoreSystemProxy = false
+
+			proxyProvider, err := getProxyResolver(ignoreSystemProxy, "")
+			Expect(err).To(BeNil())
+			proxyURL, err := proxyProvider(&dummyHTTPRequest)
+			Expect(err).To(BeNil())
+
+			Expect(proxyURL).To(BeNil())
+		})*/
+
 		It("uses the environment HTTP proxy for HTTP requests", func() {
 			const ignoreSystemProxy = false
 
 			proxyProvider, err := getProxyResolver(ignoreSystemProxy, "")
 			Expect(err).To(BeNil())
-			proxy, err := proxyProvider(&dummyHTTPRequest)
+			proxyURL, err := proxyProvider(&dummyHTTPRequest)
 			Expect(err).To(BeNil())
 
-			Expect(*proxy).To(Equal(httpEnvironmentProxyURL))
+			Expect(*proxyURL).To(Equal(httpEnvironmentProxyURL))
 		})
 
 		It("uses the environment HTTPS proxy for HTTPS requests (takes precedence)", func() {
@@ -308,10 +319,10 @@ var _ = Describe("Out New Relic", func() {
 
 			proxyProvider, err := getProxyResolver(ignoreSystemProxy, "")
 			Expect(err).To(BeNil())
-			proxy, err := proxyProvider(&dummyHTTPSRequest)
+			proxyURL, err := proxyProvider(&dummyHTTPSRequest)
 			Expect(err).To(BeNil())
 
-			Expect(*proxy).To(Equal(httpsEnvironmentProxyURL))
+			Expect(*proxyURL).To(Equal(httpsEnvironmentProxyURL))
 		})
 
 		It("ignores the environment HTTP and HTTPS proxies when the user uses ignoreSystemProxy (no proxy if none defined by the user)", func() {
@@ -319,10 +330,10 @@ var _ = Describe("Out New Relic", func() {
 
 			proxyProvider, err := getProxyResolver(ignoreSystemProxy, "")
 			Expect(err).To(BeNil())
-			proxy, err := proxyProvider(nil)
+			proxyURL, err := proxyProvider(&dummyHTTPRequest)
 			Expect(err).To(BeNil())
 
-			Expect(proxy).To(BeNil())
+			Expect(proxyURL).To(BeNil())
 		})
 
 		It("uses the user-provided proxy, which takes precedence over the ones defined via environment variables", func() {
@@ -330,10 +341,10 @@ var _ = Describe("Out New Relic", func() {
 
 			proxyProvider, err := getProxyResolver(ignoreSystemProxy, configuredProxy)
 			Expect(err).To(BeNil())
-			proxy, err := proxyProvider(nil)
+			proxyURL, err := proxyProvider(&dummyHTTPRequest)
 			Expect(err).To(BeNil())
 
-			Expect(*proxy).To(Equal(configuredProxyURL))
+			Expect(*proxyURL).To(Equal(configuredProxyURL))
 		})
 	})
 
