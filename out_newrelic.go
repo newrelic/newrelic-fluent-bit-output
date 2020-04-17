@@ -29,8 +29,12 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		return output.FLB_ERROR
 	}
 
-	nrClient := nrclient.NewNRClient(cfg.NRClientConfig)
-	bufferManager = buffer.NewBufferManager(cfg.BufferManagerConfig, nrClient)
+	nrClient, err := nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig)
+	if err != nil {
+		log.Printf("[ERROR] %v", err)
+	}
+
+	bufferManager = buffer.NewBufferManager(cfg.BufferManagerConfig, *nrClient)
 	return output.FLB_OK
 }
 

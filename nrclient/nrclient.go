@@ -2,10 +2,10 @@ package nrclient
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"time"
 
@@ -17,24 +17,21 @@ type NRClient struct {
 	config config.NRClientConfig
 }
 
-func NewNRClient(cfg config.NRClientConfig) NRClient {
-	keepAliveTimeout := 600 * time.Second
-	timeout := 5 * time.Second
-	defaultTransport := &http.Transport{
-		Dial: (&net.Dialer{
-			KeepAlive: keepAliveTimeout,
-		}).Dial,
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 100,
+func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRClient, error) {
+	httpTransport, err := buildHttpTransport(proxyCfg, cfg.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("building HTTP transport: %v", err)
 	}
 
-	return NRClient{
+	nrClient := &NRClient{
 		client: &http.Client{
-			Transport: defaultTransport,
-			Timeout:   timeout,
+			Transport: httpTransport,
+			Timeout:   5 * time.Second,
 		},
 		config: cfg,
 	}
+
+	return nrClient, nil
 }
 
 func (nrClient *NRClient) Send(buffer *bytes.Buffer, responseChan chan *http.Response) error {
@@ -51,10 +48,10 @@ func (nrClient *NRClient) Send(buffer *bytes.Buffer, responseChan chan *http.Res
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := nrClient.client.Do(req)
 	if err != nil {
-		log.Printf("[DEBUG] Error making HTTP request: %s", err)
+		log.Printf("[ERROR] Error making HTTP request: %s", err)
 		return err
 	} else if resp.StatusCode != 202 {
-		log.Printf("[DEBUG] Error making HTTP request.  Got status code: %v", resp.StatusCode)
+		log.Printf("[ERROR] Error making HTTP request.  Got status code: %v", resp.StatusCode)
 		return nil
 	}
 	defer resp.Body.Close()

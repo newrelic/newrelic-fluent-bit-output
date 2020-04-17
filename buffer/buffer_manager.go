@@ -69,7 +69,7 @@ func (bufferManager *BufferManager) prepare(records []map[string]interface{}, re
 		go func() {
 			err := bufferManager.nrClient.Send(data, responseChan)
 			if err != nil {
-				log.Printf("[DEBUG] Error making HTTP request: %s", err)
+				log.Printf("[ERROR] Error making HTTP request: %s", err)
 			}
 		}()
 	}

@@ -23,7 +23,7 @@ var _ = Describe("Buffer Manager", func() {
 	var server *ghttp.Server
 	var endpoint string
 	var bufferManager BufferManager
-	var nrClient nrclient.NRClient
+	var nrClient *nrclient.NRClient
 	vortexSuccessCode := 202
 
 	BeforeEach(func() {
@@ -37,7 +37,13 @@ var _ = Describe("Buffer Manager", func() {
 			// in the Fluent Bit code that we can't unit test
 			UseApiKey: true,
 		}
-		nrClient = nrclient.NewNRClient(nrClientConfig)
+		noProxy := config.ProxyConfig{}
+
+		var err error
+		nrClient, _ = nrclient.NewNRClient(nrClientConfig, noProxy)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
 	})
 
 	AfterEach(func() {
@@ -52,7 +58,7 @@ var _ = Describe("Buffer Manager", func() {
 			MaxRecords:            math.MaxInt64,                               // Do not flush by count (we are testing flushing by time)
 			MaxTimeBetweenFlushes: int64((1 * time.Second) / time.Millisecond), // Flush after one second
 		}
-		bufferManager = NewBufferManager(bufferConfig, nrClient)
+		bufferManager = NewBufferManager(bufferConfig, *nrClient)
 
 		responseChan := bufferManager.AddRecord(make(map[string]interface{}))
 		Expect(responseChan).To(BeNil())
@@ -76,7 +82,7 @@ var _ = Describe("Buffer Manager", func() {
 			MaxRecords:            2, // Don't send message until we've added two messages
 			MaxTimeBetweenFlushes: 5000,
 		}
-		bufferManager = NewBufferManager(bufferConfig, nrClient)
+		bufferManager = NewBufferManager(bufferConfig, *nrClient)
 
 		// Add one message, should not send yet
 		responseChan := bufferManager.AddRecord(emptyMessage())

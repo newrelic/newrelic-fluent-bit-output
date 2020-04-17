@@ -3,16 +3,14 @@ package config
 import (
 	"fmt"
 	"github.com/fluent/fluent-bit-go/output"
-	"net/http"
-	"net/url"
 	"strconv"
 	"unsafe"
 )
 
 type PluginConfig struct {
-	BufferManagerConfig	  BufferConfig
-	NRClientConfig		  NRClientConfig
-	ProxyResolver         func(*http.Request) (*url.URL, error)
+	BufferManagerConfig BufferConfig
+	NRClientConfig      NRClientConfig
+	ProxyConfig         ProxyConfig
 }
 
 type BufferConfig struct {
@@ -22,12 +20,19 @@ type BufferConfig struct {
 }
 
 type NRClientConfig struct {
-	Endpoint              string
-	ApiKey                string
-	LicenseKey            string
-	UseApiKey             bool
+	Endpoint   string
+	ApiKey     string
+	LicenseKey string
+	UseApiKey  bool
 }
 
+type ProxyConfig struct {
+	IgnoreSystemProxy bool
+	Proxy             string
+	CABundleFile      string
+	CABundleDir       string
+	ValidateCerts     bool
+}
 
 func NewPluginConfig(ctx unsafe.Pointer) (cfg PluginConfig, err error) {
 	cfg.BufferManagerConfig, err = parseBufferConfig(ctx)
@@ -40,18 +45,10 @@ func NewPluginConfig(ctx unsafe.Pointer) (cfg PluginConfig, err error) {
 		return
 	}
 
-	ignoreSystemProxy, err := optBool(ctx, "ignoreSystemProxy", false)
+	cfg.ProxyConfig, err = parseProxyConfig(ctx)
 	if err != nil {
 		return
 	}
-	proxy := output.FLBPluginConfigKey(ctx, "nrclient")
-
-	proxyResolver, err := getProxyResolver(ignoreSystemProxy, proxy)
-	if err != nil {
-		err = fmt.Errorf("invalid nrclient configuration: %v", err)
-		return
-	}
-	cfg.ProxyResolver = proxyResolver
 
 	return cfg, nil
 }
@@ -101,6 +98,26 @@ func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
 	return
 }
 
+func parseProxyConfig(ctx unsafe.Pointer) (cfg ProxyConfig, err error) {
+	cfg.IgnoreSystemProxy, err = optBool(ctx, "ignoreSystemProxy", false)
+	if err != nil {
+		return
+	}
+
+	cfg.Proxy = output.FLBPluginConfigKey(ctx, "proxy")
+
+	cfg.CABundleFile = output.FLBPluginConfigKey(ctx, "caBundleFile")
+
+	cfg.CABundleDir = output.FLBPluginConfigKey(ctx, "caBundleDir")
+
+	cfg.ValidateCerts, err = optBool(ctx, "validateProxyCerts", true)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func optInt64(ctx unsafe.Pointer, keyName string, defaultValue int64) (int64, error) {
 	rawVal := output.FLBPluginConfigKey(ctx, keyName)
 	if len(rawVal) == 0 {
@@ -124,23 +141,5 @@ func optBool(ctx unsafe.Pointer, keyName string, defaultValue bool) (bool, error
 			return false, fmt.Errorf("invalid value for %s: %s. Valid values: true, false.", keyName, rawVal)
 		}
 		return value, nil
-	}
-}
-
-func getProxyResolver(ignoreSystemProxy bool, proxy string) (func(*http.Request) (*url.URL, error), error) {
-	if len(proxy) > 0 {
-		// User-defined nrclient
-		prUrl, err := url.Parse(proxy)
-		if err != nil {
-			return nil, err
-		}
-
-		return http.ProxyURL(prUrl), nil
-	} else if !ignoreSystemProxy {
-		// Proxy defined via the HTTPS_PROXY (takes precedence) or HTTP_PROXY environment variables
-		return http.ProxyFromEnvironment, nil
-	} else {
-		// No nrclient
-		return http.ProxyURL(nil), nil
 	}
 }

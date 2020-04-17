@@ -25,7 +25,8 @@ var _ = Describe("NR Client", func() {
 	var endpoint string
 	var insertKeyConfig config.NRClientConfig
 	var licenseKeyConfig config.NRClientConfig
-	var nrClient NRClient
+	var noProxy config.ProxyConfig
+	var nrClient *NRClient
 	vortexSuccessCode := 202
 	var emptyMessage bytes.Buffer
 
@@ -65,7 +66,11 @@ var _ = Describe("NR Client", func() {
 					"Content-Encoding": []string{"gzip"},
 				})))
 
-		nrClient = NewNRClient(insertKeyConfig)
+		var err error
+		nrClient, err = NewNRClient(insertKeyConfig, noProxy)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
 		responseChan := make(chan *http.Response, 1)
 		nrClient.Send(&emptyMessage, responseChan)
 
@@ -85,7 +90,11 @@ var _ = Describe("NR Client", func() {
 					"Content-Encoding": []string{"gzip"},
 				})))
 
-		nrClient = NewNRClient(licenseKeyConfig)
+		var err error
+		nrClient, err = NewNRClient(licenseKeyConfig, noProxy)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
 		responseChan := make(chan *http.Response, 1)
 		nrClient.Send(&emptyMessage, responseChan)
 

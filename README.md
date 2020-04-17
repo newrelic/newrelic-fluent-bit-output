@@ -94,13 +94,16 @@ The plugin supports the following configuration parameters and include either an
 
 | Key | Description | Default |  
 |-----|-------------|---------|  
-|endpoint          |  The endpoint you send data to |  `https://log-api.newrelic.com/log/v1` |
-|apiKey            |  Your New Relic Insights Insert key | (none)   |  
-|licenseKey        |  Your New relic License key         | (none)   |
-|maxBufferSize     |  The maximum size the payloads sent in bytes  | 256000 |  
-|maxRecords        |  The maximum number of records to send at a time  | 1024 |   
-|proxy             |  Optional proxy to communicate with New Relic, overrides any environment-defined one. Must follow the format `https://user:password@hostname:port`. Can be HTTP or HTTPS. | (none) |
-|ignoreSystemProxy |  Ignore any proxy defined via the `HTTP_PROXY` or `HTTPS_PROXY` environment variables. Note that if a proxy has been defined using the `proxy` parameter, this one has no effect. | false |
+|endpoint            |  The endpoint you send data to |  `https://log-api.newrelic.com/log/v1` |
+|apiKey              |  Your New Relic Insights Insert key | (none)   |  
+|licenseKey          |  Your New relic License key         | (none)   |
+|maxBufferSize       |  The maximum size the payloads sent in bytes  | 256000 |  
+|maxRecords          |  The maximum number of records to send at a time  | 1024 |   
+|proxy               |  Optional proxy to communicate with New Relic, overrides any environment-defined one. Must follow the format `https://user:password@hostname:port`. Can be HTTP or HTTPS. | (none) |
+|ignoreSystemProxy   |  Ignore any proxy defined via the `HTTP_PROXY` or `HTTPS_PROXY` environment variables. Note that if a proxy has been defined using the `proxy` parameter, this one has no effect. | false |
+|caBundleFile        |  If your https_proxy option references to a nrclient with self-signed certificates, this option allows you specify your nrclient certificate file. | (none) |
+|caBundleDir         |  If your https_proxy option references to a nrclient with self-signed certificates, this option allows you specify the directory where the nrclient certificate is available. | (none) |
+|validateProxyCerts  |  If set to true, when the nrclient is configured to use an HTTPS connection, it will only work when the HTTPS nrclient has certificates from a valid Certificate Authority, or when the ca_bundle_file or ca_bundle_dir configuration properties contain the HTTPS nrclient certificates | false |
 
 For information on how to find your New Relic Insights Insert key, take a look at the 
 documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/send-custom-events-event-api#register).
