@@ -40,7 +40,7 @@ var _ = Describe("Buffer Manager", func() {
 		noProxy := config.ProxyConfig{}
 
 		var err error
-		nrClient, _ = nrclient.NewNRClient(nrClientConfig, noProxy)
+		nrClient, err = nrclient.NewNRClient(nrClientConfig, noProxy)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}

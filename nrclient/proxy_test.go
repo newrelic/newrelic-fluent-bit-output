@@ -4,6 +4,11 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"net/http"
+	"net/url"
+	"os"
+
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("HTTP Proxy", func() {
@@ -11,17 +16,16 @@ var _ = Describe("HTTP Proxy", func() {
 	// This lets the matching library (gomega) be able to notify the testing framework (ginkgo)
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
-	// TODO Reenable
-	/*const configuredProxy = "nrclient://user:password@hostname:8888"
+	const configuredProxy = "https://user:password@hostname:8888"
 	configuredProxyURL := url.URL{
-		Scheme: "nrclient",
+		Scheme: "https",
 		User:   url.UserPassword("user", "password"),
 		Host:   "hostname:8888",
 	}
 
-	const httpEnvironmentProxy = "nrclient://envuser:envpassword@envhostname:8888"
+	const httpEnvironmentProxy = "http://envuser:envpassword@envhostname:8888"
 	httpEnvironmentProxyURL := url.URL{
-		Scheme: "nrclient",
+		Scheme: "http",
 		User:   url.UserPassword("envuser", "envpassword"),
 		Host:   "envhostname:8888",
 	}
@@ -35,7 +39,7 @@ var _ = Describe("HTTP Proxy", func() {
 
 	dummyHTTPRequest := http.Request{
 		URL: &url.URL{
-			Scheme: "nrclient",
+			Scheme: "http",
 			Host:   "someserver:1234",
 		},
 	}
@@ -46,17 +50,22 @@ var _ = Describe("HTTP Proxy", func() {
 		},
 	}
 
-	BeforeEach(func() {
+	var originalHTTPProxy string
+	var originalHTTPSProxy string
+
+	BeforeSuite(func() {
+		originalHTTPProxy = os.Getenv("HTTP_PROXY")
+		originalHTTPSProxy = os.Getenv("HTTPS_PROXY")
 		os.Setenv("HTTP_PROXY", httpEnvironmentProxy)
 		os.Setenv("HTTPS_PROXY", httpsEnvironmentProxy)
 	})
 
-	AfterEach(func() {
-		os.Unsetenv("HTTP_PROXY")
-		os.Unsetenv("HTTPS_PROXY")
+	AfterSuite(func() {
+		os.Setenv("HTTP_PROXY", originalHTTPProxy)
+		os.Setenv("HTTPS_PROXY", originalHTTPSProxy)
 	})
 
-	It("uses no nrclient if none is defined", func() {
+	It("uses the environment HTTP proxy for HTTP requests", func() {
 		const ignoreSystemProxy = false
 
 		proxyProvider, err := getProxyResolver(ignoreSystemProxy, "")
@@ -64,21 +73,11 @@ var _ = Describe("HTTP Proxy", func() {
 		proxyURL, err := proxyProvider(&dummyHTTPRequest)
 		Expect(err).To(BeNil())
 
-		Expect(proxyURL).To(BeNil())
-	})
-
-	It("uses the environment HTTP nrclient for HTTP requests", func() {
-		const ignoreSystemProxy = false
-
-		proxyProvider, err := getProxyResolver(ignoreSystemProxy, "")
-		Expect(err).To(BeNil())
-		proxyURL, err := proxyProvider(&dummyHTTPRequest)
-		Expect(err).To(BeNil())
-
+		Expect(proxyURL).To(Not(BeNil()))
 		Expect(*proxyURL).To(Equal(httpEnvironmentProxyURL))
 	})
 
-	It("uses the environment HTTPS nrclient for HTTPS requests (takes precedence)", func() {
+	It("uses the environment HTTPS proxy for HTTPS requests (takes precedence)", func() {
 		const ignoreSystemProxy = false
 
 		proxyProvider, err := getProxyResolver(ignoreSystemProxy, "")
@@ -86,10 +85,11 @@ var _ = Describe("HTTP Proxy", func() {
 		proxyURL, err := proxyProvider(&dummyHTTPSRequest)
 		Expect(err).To(BeNil())
 
+		Expect(proxyURL).To(Not(BeNil()))
 		Expect(*proxyURL).To(Equal(httpsEnvironmentProxyURL))
 	})
 
-	It("ignores the environment HTTP and HTTPS proxies when the user uses ignoreSystemProxy (no nrclient if none defined by the user)", func() {
+	It("ignores the environment HTTP and HTTPS proxies when the user uses ignoreSystemProxy (no proxy if none defined by the user)", func() {
 		const ignoreSystemProxy = true
 
 		proxyProvider, err := getProxyResolver(ignoreSystemProxy, "")
@@ -100,7 +100,7 @@ var _ = Describe("HTTP Proxy", func() {
 		Expect(proxyURL).To(BeNil())
 	})
 
-	It("uses the user-provided nrclient, which takes precedence over the ones defined via environment variables", func() {
+	It("uses the user-provided proxy, which takes precedence over the ones defined via environment variables", func() {
 		const ignoreSystemProxy = false
 
 		proxyProvider, err := getProxyResolver(ignoreSystemProxy, configuredProxy)
@@ -108,6 +108,7 @@ var _ = Describe("HTTP Proxy", func() {
 		proxyURL, err := proxyProvider(&dummyHTTPRequest)
 		Expect(err).To(BeNil())
 
+		Expect(proxyURL).To(Not(BeNil()))
 		Expect(*proxyURL).To(Equal(configuredProxyURL))
-	})*/
+	})
 })

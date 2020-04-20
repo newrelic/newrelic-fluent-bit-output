@@ -92,8 +92,8 @@ func getCertPool(certFile string, certDirectory string) (*x509.CertPool, error) 
 }
 
 func getProxyResolver(ignoreSystemProxy bool, proxy string) (func(*http.Request) (*url.URL, error), error) {
-	if len(proxy) > 0 {
-		// User-defined nrclient
+	if proxy != "" {
+		// User-defined proxy
 		prUrl, err := url.Parse(proxy)
 		if err != nil {
 			return nil, err
@@ -104,7 +104,7 @@ func getProxyResolver(ignoreSystemProxy bool, proxy string) (func(*http.Request)
 		// Proxy defined via the HTTPS_PROXY (takes precedence) or HTTP_PROXY environment variables
 		return http.ProxyFromEnvironment, nil
 	} else {
-		// No nrclient
+		// No proxy
 		return http.ProxyURL(nil), nil
 	}
 }
@@ -121,21 +121,24 @@ func resolveProxyURL (proxyResolver func(*http.Request) (*url.URL, error), nrEnd
 	return proxyResolver(&nrUrlRequest)
 }
 
-// Dial verifier implements the transport.Dialer interface to provide backwards compatibility with Go 1.9 nrclient
+// fallbackDialer implements the transport.Dialer interface to provide backwards compatibility with Go 1.9 proxy
 // implementation.
 //
-// It does the following process:
+// In versions of go up to Go 1.9, the TLS handshake was not performed, by default, when establishing a secure
+// connection. This allowed establishing the HTTPS connection even if the proxy certificates were signed by an unknown
+// CA. However, starting from Go 1.10, this verification is performed by default. In order to provide backwards-
+// compatibility in the "infra-agent" to those customers that were not performing the TLS handshake and that were using
+// self-signed certificates, the fallbackDialer() method was introduced. This method basically uses the "legacy proxy
+// implementation" if the 'validateProxyCerts' configuration option is set to false.
 //
-// 1. Tries to normally connect to an HTTPS nrclient
-// 2. If succeeds, uses the normal `tls.Dial` function in further connections
+// fallbackDialer attempts to select the most secure TLS dialer with the following process:
+//
+// 1. Tries to normally connect to an HTTPS proxy
+// 2. If succeeds, uses the normal `tls.Dial` function in further connections (secure option)
 // 3. If an Unknown Authority Error is returned, InsecureSkipVerify is set to true and we continue using
 //    `tls.Dial` for the following connections.
 // 4. If the secure connection is not accepted, we use an unsecured "Go1.9-like" dialer that does not
 //    performs the TLS handshake.
-//
-// IMPORTANT: This verification mode should be only done with legacy nrclient implementation, where the
-// proxy_validate_certificates configuration option is set to false, to avoid breaking changes with legacy users since the
-// update from Go 1.9 to Go 1.10.
 func fallbackDialer(transport *http.Transport) func(network string, addr string) (net.Conn, error) {
 	return func(network string, addr string) (conn net.Conn, e error) {
 		// test the tlsDialer with normal configuration

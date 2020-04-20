@@ -50,7 +50,7 @@ func NewPluginConfig(ctx unsafe.Pointer) (cfg PluginConfig, err error) {
 		return
 	}
 
-	return cfg, nil
+	return
 }
 
 func parseBufferConfig(ctx unsafe.Pointer) (cfg BufferConfig, err error) {
@@ -72,7 +72,7 @@ func parseBufferConfig(ctx unsafe.Pointer) (cfg BufferConfig, err error) {
 	}
 	cfg.MaxTimeBetweenFlushes = maxTimeBetweenFlushes
 
-	return cfg, err
+	return
 }
 
 func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
