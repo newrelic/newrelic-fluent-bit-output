@@ -113,7 +113,6 @@ var _ = Describe("HTTP Proxy", func() {
 	})
 })
 
-
 // Test copied and adapted from the infra-agent
 var _ = Describe("Certificate pool", func() {
 	It("should correctly build the list of certificates", func() {
