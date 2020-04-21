@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/newrelic-fluent-bit-output/config"
-	"github.com/newrelic-fluent-bit-output/nrclient"
-	"github.com/newrelic-fluent-bit-output/utils"
+	"github.com/newrelic/newrelic-fluent-bit-output/config"
+	"github.com/newrelic/newrelic-fluent-bit-output/nrclient"
+	"github.com/newrelic/newrelic-fluent-bit-output/utils"
 	"log"
 	"net/http"
 )
