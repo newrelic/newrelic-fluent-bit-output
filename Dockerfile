@@ -2,7 +2,12 @@ FROM golang:1.11 AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
-COPY Makefile go.* *.go *.h /go/src/github.com/newrelic/newrelic-fluent-bit-output/
+COPY Makefile go.* *.go /go/src/github.com/newrelic/newrelic-fluent-bit-output/
+COPY buffer/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/buffer
+COPY config/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/config
+COPY nrclient/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/nrclient
+COPY utils/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/utils
+
 ENV SOURCE docker
 RUN go get github.com/fluent/fluent-bit-go/output
 RUN make all
