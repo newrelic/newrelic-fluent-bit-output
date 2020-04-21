@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"os"
 	"time"
@@ -12,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/ghttp"
 )
 
 var _ = Describe("Out New Relic", func() {
@@ -120,130 +118,6 @@ var _ = Describe("Out New Relic", func() {
 				Expect(foundOutput["timestamp"]).To(BeNil())
 			},
 		)
-	})
-
-	Describe("HTTP Request", func() {
-
-		var server *ghttp.Server
-		const insertKey = "some-insert-key"
-		const licenseKey = "some-license-key"
-		var endpoint string
-		var insertKeyConfig PluginConfig
-		var licenseKeyConfig PluginConfig
-		var bufferManager BufferManager
-		vortexSuccessCode := 202
-
-		BeforeEach(func() {
-			server = ghttp.NewServer()
-			endpoint = server.URL() + "/v1/logs"
-
-			insertKeyConfig = PluginConfig{
-				apiKey:        insertKey,
-				// Ideally we shouldn't have to set this separately from insertKey, but where this is set is
-				// in the Fluent Bit code that we can't unit test
-				useApiKey:     true,
-				endpoint:      endpoint,
-				maxBufferSize: 256000,
-				maxRecords:    1,
-				// Don't sleep in tests, to keep tests fast
-				maxTimeBetweenFlushes: 5000,
-			}
-
-			licenseKeyConfig = PluginConfig{
-				licenseKey:    licenseKey,
-				// Ideally we shouldn't have to set this separately from licenseKey, but where this is set is
-				// in the Fluent Bit code that we can't unit test
-				useApiKey:     false,
-				endpoint:      endpoint,
-				maxBufferSize: 256000,
-				maxRecords:    1,
-				// Don't sleep in tests, to keep tests fast
-				maxTimeBetweenFlushes: 5000,
-			}
-		})
-
-		AfterEach(func() {
-			server.Close()
-		})
-
-		It("Makes the expected HTTP call with api key", func() {
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""),
-					ghttp.VerifyRequest("POST", "/v1/logs"),
-					ghttp.VerifyHeader(http.Header{
-						"X-Insert-Key":     []string{insertKey},
-						"Content-Type":     []string{"application/json"},
-						"Content-Encoding": []string{"gzip"},
-					})))
-			bufferManager = newBufferManager(insertKeyConfig)
-
-			responseChan := bufferManager.addRecord(emptyMessage())
-
-			// Wait for message to be sent
-			Expect(responseChan).ToNot(BeNil())
-			waitForChannel(responseChan)
-		})
-
-		It("Makes the expected HTTP call with License Key", func() {
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""),
-					ghttp.VerifyRequest("POST", "/v1/logs"),
-					ghttp.VerifyHeader(http.Header{
-						"X-License-Key":    []string{licenseKey},
-						"Content-Type":     []string{"application/json"},
-						"Content-Encoding": []string{"gzip"},
-					})))
-			bufferManager = newBufferManager(licenseKeyConfig)
-
-			responseChan := bufferManager.addRecord(emptyMessage())
-
-			// Wait for message to be sent
-			Expect(responseChan).ToNot(BeNil())
-			waitForChannel(responseChan)
-		})
-
-		It("test buffering by time", func() {
-			server.AppendHandlers(ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""))
-
-			insertKeyConfig.maxRecords = math.MaxInt64                                          // Do not flush by count (we are testing flushing by time)
-			insertKeyConfig.maxTimeBetweenFlushes = int64((1 * time.Second) / time.Millisecond) // Flush after one second
-			bufferManager = newBufferManager(insertKeyConfig)
-
-			responseChan := bufferManager.addRecord(make(map[string]interface{}))
-			Expect(responseChan).To(BeNil())
-
-			// Wait twice as long as the max time between flushes
-			time.Sleep(2 * time.Second)
-
-			// This record doesn't fill the buffer, but we exceed the max time between flushes, so we flush
-			responseChan = bufferManager.addRecord(make(map[string]interface{}))
-			Expect(responseChan).ToNot(BeNil())
-
-			<-responseChan
-			Expect(bufferManager.shouldSend()).To(BeFalse())
-		})
-
-		It("only flushes when buffer is full, then resets buffer", func() {
-			server.AppendHandlers(ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""))
-
-			// Don't send message until we've added two messages
-			insertKeyConfig.maxRecords = 2
-			bufferManager = newBufferManager(insertKeyConfig)
-
-			// Add one message, should not send yet
-			responseChan := bufferManager.addRecord(emptyMessage())
-			Expect(responseChan).To(BeNil())
-
-			// Add another message, should send
-			responseChan = bufferManager.addRecord(emptyMessage())
-			Expect(responseChan).ToNot(BeNil())
-
-			// Check that buffer is cleared after sending
-			waitForChannel(responseChan)
-			Expect(bufferManager.shouldSend()).To(BeFalse())
-		})
 	})
 })
 

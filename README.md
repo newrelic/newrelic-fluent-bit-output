@@ -81,17 +81,29 @@ And at the end of `fluent-bit.conf`, add the following to set up the input and o
 * Append a test log message to your log file: `echo "test message" >> /path/to/your/log/file`
 * Search New Relic Logs for `"test message"`
 
+## Proxy support
+The plugin automatically detects the `HTTP_PROXY` and `HTTPS_PROXY` environment variables, and automatically uses them to set up the proxy configuration.
+
+If you want to bypass the system-wide defined proxy for some reason, you can use the `ignoreSystemProxy` configuration parameter.
+
+You can also specify a custom proxy to send the logs to (different from the system-wide defined) by using the `proxy` configuration parameter.
+
 ## Configuration Parameters
 
 The plugin supports the following configuration parameters and include either an Insights or License Key:
 
 | Key | Description | Default |  
 |-----|-------------|---------|  
-|endpoint      |  The endpoint you send data to |  `https://log-api.newrelic.com/log/v1` |
-|apiKey        |  Your New Relic Insights Insert key | (none)   |  
-|licenseKey    |  Your New relic License key         | (none)   |
-|maxBufferSize |  The maximum size the payloads sent in bytes  | 256000 |  
-|maxRecords    |  The maximum number of records to send at a time  | 1024 |   
+|endpoint            |  The endpoint you send data to |  `https://log-api.newrelic.com/log/v1` |
+|apiKey              |  Your New Relic Insights Insert key | (none)   |  
+|licenseKey          |  Your New relic License key         | (none)   |
+|maxBufferSize       |  The maximum size the payloads sent in bytes  | 256000 |  
+|maxRecords          |  The maximum number of records to send at a time  | 1024 |   
+|proxy               |  Optional proxy to communicate with New Relic, overrides any environment-defined one. Must follow the format `https://user:password@hostname:port`. Can be HTTP or HTTPS. | (none) |
+|ignoreSystemProxy   |  Ignore any proxy defined via the `HTTP_PROXY` or `HTTPS_PROXY` environment variables. Note that if a proxy has been defined using the `proxy` parameter, this one has no effect. | false |
+|caBundleFile        |  Specifies the Certificate Authority certificate to use for validating HTTPS connections against the proxy. Useful when the proxy uses a self-signed certificate. **The certificate file must be in the PEM format**. If not specified, then the operating system's CA list is used. Only used when `validateProxyCerts` is `true`. | (none) |
+|caBundleDir         |  Specifies a folder containing one or more Certificate Authority certificates ot use for validating HTTPS connections against the proxy. Useful when the proxy uses a self-signed certificate. **Only certificate files in the PEM format and \*.pem extension will be considered**. If not specified, then the operating system's CA list is used. Only used when `validateProxyCerts` is `true`.  | (none) |
+|validateProxyCerts  |  When using a HTTPS proxy, the proxy certificates are validated by default when establishing a HTTPS connection. To disable the proxy certificate validation, set `validateProxyCerts` to `false` (insecure) | true |
 
 For information on how to find your New Relic Insights Insert key, take a look at the 
 documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/send-custom-events-event-api#register).
