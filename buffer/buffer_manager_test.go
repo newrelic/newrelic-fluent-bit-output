@@ -2,8 +2,8 @@ package buffer
 
 import (
 	"fmt"
-	"github.com/newrelic-fluent-bit-output/config"
-	"github.com/newrelic-fluent-bit-output/nrclient"
+	"github.com/newrelic/newrelic-fluent-bit-output/config"
+	"github.com/newrelic/newrelic-fluent-bit-output/nrclient"
 	"math"
 	"net/http"
 	"time"

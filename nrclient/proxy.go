@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/newrelic-fluent-bit-output/config"
+	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	"io/ioutil"
 	"log"
 	"net"

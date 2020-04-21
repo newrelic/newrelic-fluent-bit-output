@@ -3,7 +3,7 @@ package nrclient
 import (
 	"bytes"
 	"fmt"
-	"github.com/newrelic-fluent-bit-output/config"
+	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	"net/http"
 	"time"
 

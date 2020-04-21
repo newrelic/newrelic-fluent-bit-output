@@ -1,4 +1,4 @@
-module github.com/newrelic-fluent-bit-output
+module github.com/newrelic/newrelic-fluent-bit-output
 
 go 1.12
 

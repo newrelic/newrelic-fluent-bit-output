@@ -8,10 +8,10 @@ import (
 
 	"github.com/fluent/fluent-bit-go/output"
 
-	"github.com/newrelic-fluent-bit-output/buffer"
-	"github.com/newrelic-fluent-bit-output/config"
-	"github.com/newrelic-fluent-bit-output/nrclient"
-	"github.com/newrelic-fluent-bit-output/utils"
+	"github.com/newrelic/newrelic-fluent-bit-output/buffer"
+	"github.com/newrelic/newrelic-fluent-bit-output/config"
+	"github.com/newrelic/newrelic-fluent-bit-output/nrclient"
+	"github.com/newrelic/newrelic-fluent-bit-output/utils"
 )
 
 var bufferManager buffer.BufferManager

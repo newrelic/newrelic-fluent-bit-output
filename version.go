@@ -1,3 +1,3 @@
 package main
 
-const VERSION = "1.1.6"
+const VERSION = "1.2.0"
