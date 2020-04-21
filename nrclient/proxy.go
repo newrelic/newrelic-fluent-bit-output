@@ -124,6 +124,10 @@ func resolveProxyURL (proxyResolver func(*http.Request) (*url.URL, error), nrEnd
 // fallbackDialer implements the transport.Dialer interface to provide backwards compatibility with Go 1.9 proxy
 // implementation.
 //
+// **WARNING** : Don't use this method unless you really have to, as it might lead to an insecure communication between
+//               the NewRelic FuentBit output plugin and your HTTPS proxy. Use it at your own risk. In this plugin, it is
+//               only used if the user explicitly sets `validateProxyCerts` to `false`.
+//
 // In versions of go up to Go 1.9, the TLS handshake was not performed, by default, when establishing a secure
 // connection. This allowed establishing the HTTPS connection even if the proxy certificates were signed by an unknown
 // CA. However, starting from Go 1.10, this verification is performed by default. In order to provide backwards-
