@@ -88,6 +88,24 @@ If you want to bypass the system-wide defined proxy for some reason, you can use
 
 You can also specify a custom proxy to send the logs to (different from the system-wide defined) by using the `proxy` configuration parameter.
 
+HTTPS proxies (having an `https://...` URL) use a certificate to encrypt the connection between the plugin and the proxy. If you are using a self-signed certificate (not trusted by the Certification Authorities defined at your system level), you can:
+* Windows: import the self-signed certificate (PEM file) using the MMC tool. You can refer to [this link](https://www.ssls.com/knowledgebase/how-to-import-intermediate-and-root-certificates-via-mmc/), but in Step 2 ensure to import it in your "Trusted Root Certification Authorities" instead of importing it in the "Intermediate Certification Authorities".
+* Linux: you can specify the self-signed certificate (PEM file) using either the `caBundleFile` or `caBundleDir` parameters (see next section).
+
+Optionally, you can skip the self-signed certificate verification by setting `validateProxyCerts` to `false`, but please note that this option is not considered safe due to potential Man In The Middle Attacks.
+
+A example setup, which defines an HTTPS proxy and its self-signed certificate, would result in the following configuration:
+
+```
+[OUTPUT]
+    Name newrelic
+    Match *
+    licenseKey <NEW_RELIC_LICENSE_KEY>
+    proxy: https://https-proxy-hostname:3129
+    # REMOVE following option when using it on Windows (see above)
+    caBundleFile: /path/to/proxy-certificate-bundle.pem
+```
+
 ## Configuration Parameters
 
 The plugin supports the following configuration parameters and include either an Insights or License Key:
@@ -101,9 +119,9 @@ The plugin supports the following configuration parameters and include either an
 |maxRecords          |  The maximum number of records to send at a time  | 1024 |   
 |proxy               |  Optional proxy to communicate with New Relic, overrides any environment-defined one. Must follow the format `https://user:password@hostname:port`. Can be HTTP or HTTPS. | (none) |
 |ignoreSystemProxy   |  Ignore any proxy defined via the `HTTP_PROXY` or `HTTPS_PROXY` environment variables. Note that if a proxy has been defined using the `proxy` parameter, this one has no effect. | false |
-|caBundleFile        |  Specifies the Certificate Authority certificate to use for validating HTTPS connections against the proxy. Useful when the proxy uses a self-signed certificate. **The certificate file must be in the PEM format**. If not specified, then the operating system's CA list is used. Only used when `validateProxyCerts` is `true`. | (none) |
-|caBundleDir         |  Specifies a folder containing one or more Certificate Authority certificates ot use for validating HTTPS connections against the proxy. Useful when the proxy uses a self-signed certificate. **Only certificate files in the PEM format and \*.pem extension will be considered**. If not specified, then the operating system's CA list is used. Only used when `validateProxyCerts` is `true`.  | (none) |
-|validateProxyCerts  |  When using a HTTPS proxy, the proxy certificates are validated by default when establishing a HTTPS connection. To disable the proxy certificate validation, set `validateProxyCerts` to `false` (insecure) | true |
+|caBundleFile        |  **[LINUX HTTPS ONLY]** Specifies the Certificate Authority certificate to use for validating HTTPS connections against the proxy. Useful when the proxy uses a self-signed certificate. **The certificate file must be in the PEM format**. If not specified, then the operating system's CA list is used. Only used when `validateProxyCerts` is `true`. | (none) |
+|caBundleDir         |  **[LINUX HTTPS ONLY]** Specifies a folder containing one or more Certificate Authority certificates ot use for validating HTTPS connections against the proxy. Useful when the proxy uses a self-signed certificate. **Only certificate files in the PEM format and \*.pem extension will be considered**. If not specified, then the operating system's CA list is used. Only used when `validateProxyCerts` is `true`.  | (none) |
+|validateProxyCerts  |  **[HTTPS ONLY]** When using a HTTPS proxy, the proxy certificates are validated by default when establishing a HTTPS connection. To disable the proxy certificate validation, set `validateProxyCerts` to `false` (insecure) | true |
 
 For information on how to find your New Relic Insights Insert key, take a look at the 
 documentation [here](https://docs.newrelic.com/docs/insights/insights-data-sources/custom-data/send-custom-events-event-api#register).
