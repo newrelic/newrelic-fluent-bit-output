@@ -47,8 +47,13 @@ func buildHttpTransport(cfg config.ProxyConfig, nrUrl string) (*http.Transport, 
 		return nil, fmt.Errorf("can't determine the proxy URL to be used to contact NR: %v", err)
 	}
 
-	if proxyURL != nil && proxyURL.Scheme == "https" && !cfg.ValidateCerts {
-		transport.DialTLS = fallbackDialer(transport)
+	if proxyURL != nil && proxyURL.Scheme == "https" {
+		if cfg.ValidateCerts {
+			transport.DialTLS = fullTLSToHTTPConnectFallbackDialer(transport)
+		} else {
+			log.Print("[INFO] You are using an HTTPS proxy without certificate verification. It is recommended to enable it for enhanced security")
+			transport.DialTLS = fallbackDialer(transport)
+		}
 	}
 
 	return transport, nil
@@ -109,7 +114,7 @@ func getProxyResolver(ignoreSystemProxy bool, proxy string) (func(*http.Request)
 	}
 }
 
-func resolveProxyURL (proxyResolver func(*http.Request) (*url.URL, error), nrEndpoint string) (*url.URL, error){
+func resolveProxyURL(proxyResolver func(*http.Request) (*url.URL, error), nrEndpoint string) (*url.URL, error) {
 	nrEndpointURL, err := url.Parse(nrEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("can't parse the NR logging endpoint, please contact New Relic: %v", err)
@@ -119,6 +124,32 @@ func resolveProxyURL (proxyResolver func(*http.Request) (*url.URL, error), nrEnd
 	}
 
 	return proxyResolver(&nrUrlRequest)
+}
+
+// It tries to initiate TLS handshake with proxy out of any HTTP context, some proxies allow this,
+// some others don't, also HTTP/S firewalls may block this plain TCP TLS handshake.
+// In case this fails, proxy/firewall is configured to only handle HTTP/S traffic,
+// therefore an HTTP CONNECT initiator request is required prior to trigger the proxy TLS handshake.
+func fullTLSToHTTPConnectFallbackDialer(t *http.Transport) func(network string, addr string) (net.Conn, error) {
+	return func(network string, addr string) (conn net.Conn, e error) {
+		log.Printf("[DEBUG] dialing to proxy via TLS")
+		dialer := tlsDialer(t)
+		conn, err := dialer(network, addr)
+		if err == nil {
+			log.Printf("[DEBUG] usual, secured configuration worked as expected. Defaulting to it")
+			t.DialTLS = dialer
+			return conn, nil
+		}
+
+		switch err.(type) {
+		case tls.RecordHeaderError:
+			log.Printf("[DEBUG] TLS handshake cannot be established. Retrying with HTTP CONNECT")
+			t.DialTLS = nonTLSDialer
+			return t.DialTLS(network, addr)
+		default:
+			return conn, err
+		}
+	}
 }
 
 // fallbackDialer implements the transport.Dialer interface to provide backwards compatibility with Go 1.9 proxy
