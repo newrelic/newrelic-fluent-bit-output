@@ -1,4 +1,4 @@
-package buffer
+package record
 
 import (
     . "github.com/onsi/ginkgo"
@@ -6,7 +6,7 @@ import (
     "testing"
 )
 
-func TestBuffer(t *testing.T) {
+func TestRecord(t *testing.T) {
     RegisterFailHandler(Fail)
-    RunSpecs(t, "New Relic Out Suite")
+    RunSpecs(t, "New Relic Record Suite")
 }

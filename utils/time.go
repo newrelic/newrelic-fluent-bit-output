@@ -1,7 +1,5 @@
 package utils
 
-import "time"
-
 func TimeToMillis(time int64) int64 {
 	// 18 Apr 2019 == 1555612951401 msecs
 	const maxSeconds = 2000000000
@@ -16,8 +14,4 @@ func TimeToMillis(time int64) int64 {
 	} else { // Assume nanoseconds
 		return time / 1000000
 	}
-}
-
-func TimeNowInMiliseconds() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
 }
