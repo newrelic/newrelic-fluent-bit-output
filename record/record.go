@@ -73,6 +73,13 @@ func parseRecord(inputRecord FluentBitRecord) (outputRecord LogRecord) {
 
 // PackageRecords gets an array of LogRecords and returns them as an array of PackagedRecords
 // (byte buffers), ready to be sent to NewRelic.
+//
+// If any record exceeds 1MB after being compressed, then it does not get included in the final result
+// and the resulting compressed array is split at the  point where that long record was present.
+//
+// For example:
+//     INPUT: [shortRecord, longRecord, shortRecord2, shortRecord3]
+//     OUTPUT: [GZIP(JSON(shortRecord)), GZIP(JSON(shortRecord2, shortRecord3))]
 func PackageRecords(records []LogRecord) ([]PackagedRecords, error) {
 	if len(records) == 0 {
 		return []PackagedRecords{}, nil

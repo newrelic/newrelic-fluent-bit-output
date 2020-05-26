@@ -1,7 +1,10 @@
 package record
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -24,58 +27,51 @@ var _ = Describe("Out New Relic", func() {
 		})
 
 		It("converts the map[interface{}] inteface{} to map[string] interface[], "+
-			"updates the timestamp, and renames the log field to message",
-			func() {
-				inputMap := make(FluentBitRecord)
-				var inputTimestamp interface{}
-				inputTimestamp = output.FLBTime{
-					time.Now(),
-				}
-				inputMap["log"] = "message"
-				foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
-				Expect(foundOutput["message"]).To(Equal("message"))
-				Expect(foundOutput["log"]).To(BeNil())
-				Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
-				pluginMap := foundOutput["plugin"].(map[string]string)
-				typeVal := pluginMap["type"]
-				version := pluginMap["version"]
-				source := pluginMap["source"]
-				Expect(typeVal).To(Equal("fluent-bit"))
-				Expect(version).To(Equal(pluginVersion))
-				Expect(source).To(Equal("BARE-METAL"))
-			},
-		)
-		It("sets the source if it is included as an environment variable",
-			func() {
-				inputMap := make(FluentBitRecord)
-				var inputTimestamp interface{}
-				inputTimestamp = output.FLBTime{
-					time.Now(),
-				}
-				expectedSource := "docker"
-				inputMap["log"] = "message"
-				os.Setenv("SOURCE", expectedSource)
-				foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
-				pluginMap := foundOutput["plugin"].(map[string]string)
-				Expect(pluginMap["source"]).To(Equal(expectedSource))
-			},
-		)
+			"updates the timestamp, and renames the log field to message", func() {
+			inputMap := make(FluentBitRecord)
+			var inputTimestamp interface{}
+			inputTimestamp = output.FLBTime{
+				time.Now(),
+			}
+			inputMap["log"] = "message"
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
+			Expect(foundOutput["message"]).To(Equal("message"))
+			Expect(foundOutput["log"]).To(BeNil())
+			Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
+			pluginMap := foundOutput["plugin"].(map[string]string)
+			typeVal := pluginMap["type"]
+			version := pluginMap["version"]
+			source := pluginMap["source"]
+			Expect(typeVal).To(Equal("fluent-bit"))
+			Expect(version).To(Equal(pluginVersion))
+			Expect(source).To(Equal("BARE-METAL"))
+		})
+		It("sets the source if it is included as an environment variable", func() {
+			inputMap := make(FluentBitRecord)
+			var inputTimestamp interface{}
+			inputTimestamp = output.FLBTime{
+				time.Now(),
+			}
+			expectedSource := "docker"
+			inputMap["log"] = "message"
+			os.Setenv("SOURCE", expectedSource)
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
+			pluginMap := foundOutput["plugin"].(map[string]string)
+			Expect(pluginMap["source"]).To(Equal(expectedSource))
+		})
 
-		It("Correctly massage nested map[interface]interface{} to map[string]interface{}",
-			func() {
-				inputMap := make(FluentBitRecord)
-				nestedMap := make(map[interface{}]interface{})
-				expectedOutput := make(LogRecord)
-				expectedNestedOutput := make(LogRecord)
-				expectedNestedOutput["foo"] = "bar"
-				expectedOutput["nested"] = expectedNestedOutput
-				nestedMap["foo"] = "bar"
-				inputMap["nested"] = nestedMap
-				foundOutput := parseRecord(inputMap)
-				Expect(foundOutput).To(Equal(expectedOutput))
-
-			},
-		)
+		It("Correctly massage nested map[interface]interface{} to map[string]interface{}", func() {
+			inputMap := make(FluentBitRecord)
+			nestedMap := make(map[interface{}]interface{})
+			expectedOutput := make(LogRecord)
+			expectedNestedOutput := make(LogRecord)
+			expectedNestedOutput["foo"] = "bar"
+			expectedOutput["nested"] = expectedNestedOutput
+			nestedMap["foo"] = "bar"
+			inputMap["nested"] = nestedMap
+			foundOutput := parseRecord(inputMap)
+			Expect(foundOutput).To(Equal(expectedOutput))
+		})
 	})
 
 	Describe("Timestamp handling", func() {
@@ -108,15 +104,137 @@ var _ = Describe("Out New Relic", func() {
 			)
 		}
 
-		It("ignores timestamps of unhandled types",
-			func() {
-				inputMap := make(FluentBitRecord)
+		It("ignores timestamps of unhandled types", func() {
+			inputMap := make(FluentBitRecord)
 
-				// We don't handle string types
-				foundOutput := RemapRecord(inputMap, "1234567890", pluginVersion)
+			// We don't handle string types
+			foundOutput := RemapRecord(inputMap, "1234567890", pluginVersion)
 
-				Expect(foundOutput["timestamp"]).To(BeNil())
-			},
-		)
+			Expect(foundOutput["timestamp"]).To(BeNil())
+		})
+	})
+
+	Describe("Record packaging", func() {
+
+		It("returns an empty array of packages if the provided slice is nil", func() {
+			// When
+			packagedRecords, err := PackageRecords(nil)
+
+			// Then
+			Expect(err).To(BeNil())
+			Expect(packagedRecords).To(Not(BeNil()))
+			Expect(packagedRecords).To(HaveLen(0))
+		})
+
+		It("returns an empty array of packages if the provided slice is empty", func() {
+			// When
+			packagedRecords, err := PackageRecords([]LogRecord{})
+
+			// Then
+			Expect(err).To(BeNil())
+			Expect(packagedRecords).To(Not(BeNil()))
+			Expect(packagedRecords).To(HaveLen(0))
+		})
+
+		It("returns a compressed JSON array when an array of records is provided", func() {
+			// Given
+			logRecords := []LogRecord{
+				{
+					"timestamp": 1,
+					"message":   "Some message 1",
+				},
+				{
+					"timestamp": 2,
+					"message":   "Some message 2",
+				},
+			}
+			expectedJson := `[{"message":"Some message 1","timestamp":1},{"message":"Some message 2","timestamp":2}]`
+
+			// When
+			packagedRecords, err := PackageRecords(logRecords)
+
+			// Then
+			Expect(err).To(BeNil())
+			Expect(packagedRecords).To(Not(BeNil()))
+			// The two records are compressed into a single byte buffer, as they don't exceed 1MB
+			Expect(packagedRecords).To(HaveLen(1))
+
+			// Decompress and validate record
+			uncompressedJson, err := uncompressRecord(packagedRecords[0])
+			if err != nil {
+				Fail("Could not uncompress record 0")
+			}
+			Expect(uncompressedJson).To(Equal(expectedJson))
+		})
+
+		It("discards a log record if its compressed size exceeds 1MB in size", func() {
+			// Given
+			logRecords := []LogRecord{
+				{
+					"timestamp": 1,
+					"message":   "Short message",
+				},
+				{
+					"timestamp": 2,
+					"message":   longRandomMessage(5),
+				},
+				{
+					"timestamp": 3,
+					"message":   "Short message 3",
+				},
+				{
+					"timestamp": 4,
+					"message":   "Short message 4",
+				},
+			}
+			expectedJson0 := `[{"message":"Short message","timestamp":1}]`
+			expectedJson1 := `[{"message":"Short message 3","timestamp":3},{"message":"Short message 4","timestamp":4}]`
+
+			// When
+			packagedRecords, err := PackageRecords(logRecords)
+
+			// Then
+			Expect(err).To(BeNil())
+			Expect(packagedRecords).To(Not(BeNil()))
+			// The two records are compressed into a single byte buffer, as they don't exceed 1MB
+			Expect(packagedRecords).To(HaveLen(2))
+
+			// Decompress and validate records
+			uncompressedJson0, err := uncompressRecord(packagedRecords[0])
+			if err != nil {
+				Fail("Could not uncompress record 0")
+			}
+			Expect(uncompressedJson0).To(Equal(expectedJson0))
+
+			uncompressedJson1, err := uncompressRecord(packagedRecords[1])
+			if err != nil {
+				Fail("Could not uncompress record 1")
+			}
+			Expect(uncompressedJson1).To(Equal(expectedJson1))
+		})
 	})
 })
+
+func uncompressRecord(packagedRecords PackagedRecords) (string, error) {
+	gzipRecord := bytes.Buffer(*packagedRecords)
+	reader, err := gzip.NewReader(&gzipRecord)
+	if err != nil {
+		return "", err
+	}
+	buff := make([]byte, 256)
+	n, err := reader.Read(buff)
+	if err != nil {
+		return "", err
+	}
+	return string(buff[:n]), nil
+}
+
+func longRandomMessage(sizeInMb int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	// Create a 5 MegaByte random message
+	msgBytes := make([]byte, sizeInMb << 20)
+	for i := range msgBytes {
+		msgBytes[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(msgBytes)
+}
