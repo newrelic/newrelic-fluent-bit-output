@@ -8,7 +8,7 @@ pool:
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
-  GOROOT: '/usr/local/go1.12'
+  GOROOT: '/usr/local/go1.12.17'
   GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
   modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
 
@@ -19,7 +19,6 @@ steps:
     mkdir -p '$(modulePath)'
     shopt -s extglob
     mv !(gopath) '$(modulePath)'
-    ls /usr/local/
     echo '##vso[task.prependpath]$(GOBIN)'
     echo '##vso[task.prependpath]$(GOROOT)/bin'
   displayName: 'Set up the Go workspace'
