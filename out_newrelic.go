@@ -51,7 +51,6 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 		}
 
 		buffer = append(buffer, record.RemapRecord(fbRecord, ts, VERSION))
-		log.Printf("[DEBUG NR] Added record: %v\n", fbRecord)
 	}
 
 	// Return options:
@@ -62,7 +61,6 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	if err := nrClient.Send(buffer); err != nil {
 		return output.FLB_ERROR
 	} else {
-		log.Printf("[DEBUG NR] Sent records!")
 		return output.FLB_OK
 	}
 }
