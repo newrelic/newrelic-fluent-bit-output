@@ -3,7 +3,9 @@ package record
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"time"
@@ -162,13 +164,15 @@ var _ = Describe("Out New Relic", func() {
 			// Decompress and validate record
 			uncompressedJson, err := uncompressRecord(packagedRecords[0])
 			if err != nil {
-				Fail("Could not uncompress record 0")
+				Fail(fmt.Sprintf("Could not uncompress record 0: %v", err))
 			}
 			Expect(uncompressedJson).To(Equal(expectedJson))
 		})
 
 		It("discards a log record if its compressed size exceeds 1MB in size", func() {
 			// Given
+			// Always use the same seed to get deterministic results
+			rand.Seed(1)
 			logRecords := []LogRecord{
 				{
 					"timestamp": 1,
@@ -202,37 +206,106 @@ var _ = Describe("Out New Relic", func() {
 			// Decompress and validate records
 			uncompressedJson0, err := uncompressRecord(packagedRecords[0])
 			if err != nil {
-				Fail("Could not uncompress record 0")
+				Fail(fmt.Sprintf("Could not uncompress record 0: %v", err))
 			}
 			Expect(uncompressedJson0).To(Equal(expectedJson0))
 
 			uncompressedJson1, err := uncompressRecord(packagedRecords[1])
 			if err != nil {
-				Fail("Could not uncompress record 1")
+				Fail(fmt.Sprintf("Could not uncompress record 1: %v", err))
 			}
 			Expect(uncompressedJson1).To(Equal(expectedJson1))
+		})
+
+		It("compacts multiple messages exceeding 1MB overall in multiple PackagedRecords", func() {
+			// Given
+			// Always use the same seed to get deterministic results
+			rand.Seed(1)
+			const numRecords = 20
+			// 20 log records of about 256KB (given that they are random, we can assume that once
+			// compressed their size won't be reduced much by gzipping them)
+			var logRecords []LogRecord
+			for i := 0; i < numRecords; i++ {
+				randomMessage := longRandomMessage(1)
+				logRecord := LogRecord{
+					"recordId": i,
+					"message":  randomMessage[:len(randomMessage)/4], // ~256KB approx
+				}
+				logRecords = append(logRecords, logRecord)
+			}
+
+			// When
+			packagedRecords, err := PackageRecords(logRecords)
+
+			// Then
+			Expect(err).To(BeNil())
+			Expect(packagedRecords).To(Not(BeNil()))
+			// The 20 records are compressed into 8 byte buffers, as overall they exceed 1MB. Note that this is
+			// a deterministic result (unless the gzip implementation changes), since we're always using the same
+			// seed when generating the random messages, which will lead to the same messages always being sent.
+			Expect(packagedRecords).To(HaveLen(8))
+
+			// Count that we end up having 20 uncompressed records, with all the recordIds
+			type Record struct {
+				RecordId int    `json:"recordId"`
+				Message  string `json:"message"`
+			}
+			receivedRecords := make(map[int]struct{}) // set of ints in Go
+			for i, packagedRecord := range packagedRecords {
+				uncompressedJson, err := uncompressRecord(packagedRecord)
+				if err != nil {
+					Fail(fmt.Sprintf("Could not uncompress record %d: %v. Record: %v", i, err, uncompressedJson))
+				}
+
+				var records []Record
+				if err := json.Unmarshal([]byte(uncompressedJson), &records); err != nil {
+					Fail(fmt.Sprintf("Could not unmarshall record %d: %v. Record: %s...%s", i, err, uncompressedJson[:50], uncompressedJson[len(uncompressedJson)-50:]))
+				}
+
+				// Record which recordIds we have received
+				for _, record := range records {
+					receivedRecords[record.RecordId] = struct{}{}
+				}
+			}
+
+			Expect(receivedRecords).To(HaveLen(numRecords))
+			for i := 0; i < numRecords; i++ {
+				if _, ok := receivedRecords[i]; !ok {
+					Fail(fmt.Sprintf("Record %d was not found in the uncompressed JSONs", i))
+				}
+			}
 		})
 	})
 })
 
-func uncompressRecord(packagedRecords PackagedRecords) (string, error) {
+func uncompressRecord(packagedRecords PackagedRecords) (res string, err error) {
 	gzipRecord := bytes.Buffer(*packagedRecords)
 	reader, err := gzip.NewReader(&gzipRecord)
 	if err != nil {
 		return "", err
 	}
-	buff := make([]byte, 256)
-	n, err := reader.Read(buff)
+	buff := make([]byte, 1024)
+	for {
+		n, err := reader.Read(buff)
+		if err == io.EOF {
+			// Finished reading
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+		res += string(buff[:n])
+	}
 	if err != nil {
 		return "", err
 	}
-	return string(buff[:n]), nil
+	return res, nil
 }
 
 func longRandomMessage(sizeInMb int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	// Create a 5 MegaByte random message
-	msgBytes := make([]byte, sizeInMb << 20)
+	msgBytes := make([]byte, sizeInMb<<20)
 	for i := range msgBytes {
 		msgBytes[i] = charset[rand.Intn(len(charset))]
 	}
