@@ -1,17 +1,14 @@
 package nrclient
 
 import (
-	"bytes"
-	"fmt"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
-	"net/http"
-	"time"
-
+	"github.com/newrelic/newrelic-fluent-bit-output/record"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
+	"net/http"
 )
 
 var _ = Describe("NR Client", func() {
@@ -26,9 +23,17 @@ var _ = Describe("NR Client", func() {
 	var insertKeyConfig config.NRClientConfig
 	var licenseKeyConfig config.NRClientConfig
 	var noProxy config.ProxyConfig
-	var nrClient *NRClient
 	vortexSuccessCode := 202
-	var emptyMessage bytes.Buffer
+	logRecords := []record.LogRecord{
+		{
+			"timestamp": 1,
+			"message": "Some message 1",
+		},
+		{
+			"timestamp": 2,
+			"message": "Some message 2",
+		},
+	}
 
 	BeforeEach(func() {
 		server = ghttp.NewServer()
@@ -55,7 +60,38 @@ var _ = Describe("NR Client", func() {
 		server.Close()
 	})
 
+	It("Makes no HTTP call when a nil slice is provided", func() {
+		// Given
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
+
+		// When
+		err = nrClient.Send(nil)
+
+		// Then
+		Expect(err).To(BeNil())
+		Expect(server.ReceivedRequests()).To(HaveLen(0))
+	})
+
+	It("Makes no HTTP call when no records are provided", func() {
+		// Given
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
+
+		// When
+		err = nrClient.Send([]record.LogRecord{})
+
+		// Then
+		Expect(err).To(BeNil())
+		Expect(server.ReceivedRequests()).To(HaveLen(0))
+	})
+
 	It("Makes the expected HTTP call with api key", func() {
+		// Given
 		server.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""),
@@ -66,20 +102,21 @@ var _ = Describe("NR Client", func() {
 					"Content-Encoding": []string{"gzip"},
 				})))
 
-		var err error
-		nrClient, err = NewNRClient(insertKeyConfig, noProxy)
+		nrClient, err := NewNRClient(insertKeyConfig, noProxy)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
-		responseChan := make(chan *http.Response, 1)
-		nrClient.Send(&emptyMessage, responseChan)
 
-		// Wait for message to be sent
-		Expect(responseChan).ToNot(BeNil())
-		waitForChannel(responseChan)
+		// When
+		err = nrClient.Send(logRecords)
+
+		// Then
+		Expect(err).To(BeNil())
+		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
 
 	It("Makes the expected HTTP call with License Key", func() {
+		// Given
 		server.AppendHandlers(
 			ghttp.CombineHandlers(
 				ghttp.RespondWithJSONEncodedPtr(&vortexSuccessCode, ""),
@@ -90,26 +127,16 @@ var _ = Describe("NR Client", func() {
 					"Content-Encoding": []string{"gzip"},
 				})))
 
-		var err error
-		nrClient, err = NewNRClient(licenseKeyConfig, noProxy)
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
-		responseChan := make(chan *http.Response, 1)
-		nrClient.Send(&emptyMessage, responseChan)
 
-		// Wait for message to be sent
-		Expect(responseChan).ToNot(BeNil())
-		waitForChannel(responseChan)
+		// When
+		err = nrClient.Send(logRecords)
+
+		// Then
+		Expect(err).To(BeNil())
+		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
 })
-
-func waitForChannel(responseChan chan *http.Response) {
-	maximumWaitInSeconds := 10
-	maximumWait := time.Duration(maximumWaitInSeconds) * time.Second
-	select {
-	case <-responseChan:
-	case <-time.After(maximumWait):
-		Fail(fmt.Sprintf("Channel was not written to within %d seconds", maximumWaitInSeconds))
-	}
-}

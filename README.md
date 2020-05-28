@@ -114,9 +114,9 @@ The plugin supports the following configuration parameters and include either an
 |-----|-------------|---------|  
 |endpoint            |  The endpoint you send data to |  `https://log-api.newrelic.com/log/v1` |
 |apiKey              |  Your New Relic Insights Insert key | (none)   |  
-|licenseKey          |  Your New relic License key         | (none)   |
-|maxBufferSize       |  The maximum size the payloads sent in bytes  | 256000 |  
-|maxRecords          |  The maximum number of records to send at a time  | 1024 |   
+|licenseKey          |  Your New Relic License key         | (none)   |
+|maxBufferSize       |  **[Deprecated since 1.3.0]** The maximum size the payloads sent in bytes  | 256000 |  
+|maxRecords          |  **[Deprecated since 1.3.0]** The maximum number of records to send at a time  | 1024 |   
 |proxy               |  Optional proxy to communicate with New Relic, overrides any environment-defined one. Must follow the format `https://user:password@hostname:port`. Can be HTTP or HTTPS. | (none) |
 |ignoreSystemProxy   |  Ignore any proxy defined via the `HTTP_PROXY` or `HTTPS_PROXY` environment variables. Note that if a proxy has been defined using the `proxy` parameter, this one has no effect. | false |
 |caBundleFile        |  **[LINUX HTTPS ONLY]** Specifies the Certificate Authority certificate to use for validating HTTPS connections against the proxy. Useful when the proxy uses a self-signed certificate. **The certificate file must be in the PEM format**. If not specified, then the operating system's CA list is used. Only used when `validateProxyCerts` is `true`. | (none) |
@@ -137,10 +137,9 @@ This plugin comes with a Dockerfile and sample config that will let you get star
 ### Environment Variables
 | Key | Description | Required |
 |-----|-------------| -----|
-|API_KEY| Your New Relic Insights Insert Key | Yes |
-|FILE_PATH   |  A path or glob to the file or files you wish to tail | Yes |
-|BUFFER_SIZE |  The max size for json payload in bytes | No |
-|MAX_RECORDS  |  The number of records to send in a payload | No |
+|API_KEY     | Your New Relic Insights Insert Key | Yes (either License Key or API Key is required) |
+|FILE_PATH   | A path or glob to the file or files you wish to tail | Yes |
+|LICENSE_KEY | Your New Relic License key | Yes (either License Key or API Key is required) |
 
 ### Docker Example
 Within the root of the project run the following. You can supplement the image name and tag as you see fit.

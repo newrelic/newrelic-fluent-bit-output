@@ -3,20 +3,14 @@ package config
 import (
 	"fmt"
 	"github.com/fluent/fluent-bit-go/output"
+	"log"
 	"strconv"
 	"unsafe"
 )
 
 type PluginConfig struct {
-	BufferManagerConfig BufferConfig
 	NRClientConfig      NRClientConfig
 	ProxyConfig         ProxyConfig
-}
-
-type BufferConfig struct {
-	MaxBufferSize         int64
-	MaxRecords            int64
-	MaxTimeBetweenFlushes int64
 }
 
 type NRClientConfig struct {
@@ -35,11 +29,6 @@ type ProxyConfig struct {
 }
 
 func NewPluginConfig(ctx unsafe.Pointer) (cfg PluginConfig, err error) {
-	cfg.BufferManagerConfig, err = parseBufferConfig(ctx)
-	if err != nil {
-		return
-	}
-
 	cfg.NRClientConfig, err = parseNRClientConfig(ctx)
 	if err != nil {
 		return
@@ -50,27 +39,7 @@ func NewPluginConfig(ctx unsafe.Pointer) (cfg PluginConfig, err error) {
 		return
 	}
 
-	return
-}
-
-func parseBufferConfig(ctx unsafe.Pointer) (cfg BufferConfig, err error) {
-	maxBufferSize, err := optInt64(ctx, "maxBufferSize", 256000)
-	if err != nil {
-		return
-	}
-	cfg.MaxBufferSize = maxBufferSize
-
-	maxRecords, err := optInt64(ctx, "maxRecords", 1024)
-	if err != nil {
-		return
-	}
-	cfg.MaxRecords = maxRecords
-
-	maxTimeBetweenFlushes, err := optInt64(ctx, "maxTimeBetweenFlushes", 5000)
-	if err != nil {
-		return
-	}
-	cfg.MaxTimeBetweenFlushes = maxTimeBetweenFlushes
+	checkDeprecatedConfigFields(ctx)
 
 	return
 }
@@ -118,17 +87,10 @@ func parseProxyConfig(ctx unsafe.Pointer) (cfg ProxyConfig, err error) {
 	return
 }
 
-func optInt64(ctx unsafe.Pointer, keyName string, defaultValue int64) (int64, error) {
-	rawVal := output.FLBPluginConfigKey(ctx, keyName)
-	if len(rawVal) == 0 {
-		return defaultValue, nil
-	} else {
-		value, err := strconv.ParseInt(rawVal, 10, 64)
-		if err != nil {
-			return 0, fmt.Errorf("invalid value for %s: %s. Must be an integer.", keyName, rawVal)
-		}
-		return value, nil
-	}
+func checkDeprecatedConfigFields(ctx unsafe.Pointer) {
+	checkDeprecatedConfigField(ctx, "maxBufferSize")
+	checkDeprecatedConfigField(ctx, "maxRecords")
+	checkDeprecatedConfigField(ctx, "maxTimeBetweenFlushes")
 }
 
 func optBool(ctx unsafe.Pointer, keyName string, defaultValue bool) (bool, error) {
@@ -141,5 +103,11 @@ func optBool(ctx unsafe.Pointer, keyName string, defaultValue bool) (bool, error
 			return false, fmt.Errorf("invalid value for %s: %s. Valid values: true, false.", keyName, rawVal)
 		}
 		return value, nil
+	}
+}
+
+func checkDeprecatedConfigField(ctx unsafe.Pointer, keyName string) {
+	if rawVal := output.FLBPluginConfigKey(ctx, keyName); len(rawVal) > 0 {
+		log.Printf("Configuration field %s is deprecated and will be ignored\n", keyName)
 	}
 }

@@ -3,6 +3,7 @@ package nrclient
 import (
 	"bytes"
 	"fmt"
+	"github.com/newrelic/newrelic-fluent-bit-output/record"
 	"io"
 	"io/ioutil"
 	"log"
@@ -34,7 +35,22 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRCli
 	return nrClient, nil
 }
 
-func (nrClient *NRClient) Send(buffer *bytes.Buffer, responseChan chan *http.Response) error {
+func (nrClient *NRClient) Send(logRecords []record.LogRecord) error {
+	payloads, err := record.PackageRecords(logRecords)
+	if err != nil {
+		return err
+	}
+
+	for _, payload := range payloads {
+		if err := nrClient.sendPacket(payload); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (err error) {
 	req, err := http.NewRequest("POST", nrClient.config.Endpoint, buffer)
 	if err != nil {
 		return err
@@ -46,6 +62,7 @@ func (nrClient *NRClient) Send(buffer *bytes.Buffer, responseChan chan *http.Res
 	}
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
+
 	resp, err := nrClient.client.Do(req)
 	if err != nil {
 		log.Printf("[ERROR] Error making HTTP request: %s", err)
@@ -56,12 +73,9 @@ func (nrClient *NRClient) Send(buffer *bytes.Buffer, responseChan chan *http.Res
 	}
 	defer resp.Body.Close()
 	defer func() {
-		_, err = io.Copy(ioutil.Discard, resp.Body) // WE READ THE BODY
+		// WE READ THE BODY, err will be returned if there's a problem reading it
+		_, err = io.Copy(ioutil.Discard, resp.Body)
 	}()
-	if err != nil {
-		return err
-	}
 
-	responseChan <- resp
 	return nil
 }
