@@ -9,8 +9,8 @@ import (
 )
 
 type PluginConfig struct {
-	NRClientConfig      NRClientConfig
-	ProxyConfig         ProxyConfig
+	NRClientConfig NRClientConfig
+	ProxyConfig    ProxyConfig
 }
 
 type NRClientConfig struct {
@@ -26,6 +26,16 @@ type ProxyConfig struct {
 	CABundleFile      string
 	CABundleDir       string
 	ValidateCerts     bool
+}
+
+func (cfg NRClientConfig) GetNewRelicKey() string {
+	var id string
+	if cfg.UseApiKey {
+		id = cfg.ApiKey
+	} else {
+		id = cfg.LicenseKey
+	}
+	return id
 }
 
 func NewPluginConfig(ctx unsafe.Pointer) (cfg PluginConfig, err error) {

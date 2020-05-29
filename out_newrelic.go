@@ -32,7 +32,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		log.Printf("[ERROR] %v", err)
 	}
 
-	id := output.FLBPluginConfigKey(ctx, cfg.NRClientConfig.LicenseKey)
+	id := cfg.NRClientConfig.GetNewRelicKey()
 	nrClientRepo[id] = nrClient
 	output.FLBPluginSetContext(ctx, id)
 
