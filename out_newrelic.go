@@ -12,8 +12,7 @@ import (
 	"github.com/newrelic/newrelic-fluent-bit-output/nrclient"
 )
 
-// TODO: single NRClient shared instance. Must be converted to a map when converting this plugin to multi-instance
-var nrClient *nrclient.NRClient
+var nrClientRepo = make(map[string]*nrclient.NRClient)
 
 //export FLBPluginRegister
 func FLBPluginRegister(ctx unsafe.Pointer) int {
@@ -27,17 +26,21 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		log.Printf("[ERROR] %v", err)
 		return output.FLB_ERROR
 	}
-
+	var nrClient *nrclient.NRClient
 	nrClient, err = nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig)
 	if err != nil {
 		log.Printf("[ERROR] %v", err)
 	}
 
+	id := cfg.NRClientConfig.GetNewRelicKey()
+	nrClientRepo[id] = nrClient
+	output.FLBPluginSetContext(ctx, id)
+
 	return output.FLB_OK
 }
 
-//export FLBPluginFlush
-func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
+//export FLBPluginFlushCtx
+func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int {
 	// Create Fluent Bit decoder
 	dec := output.NewDecoder(data, int(length))
 
@@ -53,6 +56,8 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 		buffer = append(buffer, record.RemapRecord(fbRecord, ts, VERSION))
 	}
 
+	id := output.FLBPluginGetContext(ctx).(string)
+	nrClient := nrClientRepo[id]
 	// Return options:
 	//
 	// output.FLB_OK    = data have been processed.
