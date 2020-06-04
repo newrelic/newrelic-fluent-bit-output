@@ -52,23 +52,29 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 // parseRecord transforms a log record emitted by FluentBit into a LogRecord
 // domain type: a map of string keys and arbitrary (int, string, etc.) values.
 // No value modification is performed by this method (except casting).
-func parseRecord(inputRecord FluentBitRecord) (outputRecord LogRecord) {
-	outputRecord = make(map[string]interface{})
-	for k, v := range inputRecord {
-		switch value := v.(type) {
-		case []byte:
-			outputRecord[k.(string)] = string(value)
-			break
-		case string:
-			outputRecord[k.(string)] = value
-			break
-		case map[interface{}]interface{}:
-			outputRecord[k.(string)] = parseRecord(value)
-		default:
-			outputRecord[k.(string)] = value
+func parseRecord(inputRecord map[interface{}]interface{}) map[string]interface{} {
+	return parseValue(inputRecord).(map[string]interface{})
+}
+
+func parseValue(value interface{}) interface{} {
+	switch value := value.(type) {
+	case []byte:
+		return string(value)
+	case map[interface{}]interface{}:
+		remapped := make(map[string]interface{})
+		for k, v := range value {
+			remapped[k.(string)] = parseValue(v)
 		}
+		return remapped
+	case []interface{}:
+		remapped := make([]interface{}, len(value))
+		for i, v := range value {
+			remapped[i] = parseValue(v)
+		}
+		return remapped
+	default:
+		return value
 	}
-	return
 }
 
 // PackageRecords gets an array of LogRecords and returns them as an array of PackagedRecords

@@ -63,15 +63,58 @@ var _ = Describe("Out New Relic", func() {
 		})
 
 		It("Correctly massage nested map[interface]interface{} to map[string]interface{}", func() {
-			inputMap := make(FluentBitRecord)
-			nestedMap := make(map[interface{}]interface{})
-			expectedOutput := make(LogRecord)
-			expectedNestedOutput := make(LogRecord)
-			expectedNestedOutput["foo"] = "bar"
-			expectedOutput["nested"] = expectedNestedOutput
-			nestedMap["foo"] = "bar"
-			inputMap["nested"] = nestedMap
+			// Given
+			inputMap := map[interface{}]interface{}{
+				"nestedMap": map[interface{}]interface{}{
+					"foo":     "bar",
+					"numeric": 2,
+				},
+			}
+
+			// When
 			foundOutput := parseRecord(inputMap)
+
+			// Then
+			expectedOutput := map[string]interface{}{
+				"nestedMap": map[string]interface{}{
+					"foo":     "bar",
+					"numeric": 2,
+				},
+			}
+			Expect(foundOutput).To(Equal(expectedOutput))
+		})
+
+		It("Correctly handles a JSON array in a []interface{}", func() {
+			// Given
+			inputRecord := map[interface{}]interface{}{
+				"nestedArray": []interface{}{
+					map[interface{}]interface{}{
+						"stringField":  "value1",
+						"numericField": 1,
+					},
+					map[interface{}]interface{}{
+						"stringField":  "value2",
+						"numericField": 2,
+					},
+				},
+			}
+
+			// When
+			foundOutput := parseRecord(inputRecord)
+
+			// Then
+			expectedOutput := map[string]interface{}{
+				"nestedArray": []interface{}{
+					map[string]interface{}{
+						"stringField":  "value1",
+						"numericField": 1,
+					},
+					map[string]interface{}{
+						"stringField":  "value2",
+						"numericField": 2,
+					},
+				},
+			}
 			Expect(foundOutput).To(Equal(expectedOutput))
 		})
 	})
