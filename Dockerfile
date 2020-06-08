@@ -12,7 +12,7 @@ ENV SOURCE docker
 RUN go get github.com/fluent/fluent-bit-go/output
 RUN make all
 
-FROM fluent/fluent-bit:1.0.3
+FROM fluent/fluent-bit:1.4.5
 
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic.so /fluent-bit/bin/
 COPY *.conf /fluent-bit/etc/
