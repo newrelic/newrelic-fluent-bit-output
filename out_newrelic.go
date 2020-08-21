@@ -64,7 +64,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	// output.FLB_ERROR = unrecoverable error, do not try this again.
 	// output.FLB_RETRY = retry to flush later.
 	if err := nrClient.Send(buffer); err != nil {
-		return output.FLB_ERROR
+		return output.FLB_RETRY
 	} else {
 		return output.FLB_OK
 	}
