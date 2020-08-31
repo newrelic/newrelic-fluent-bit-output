@@ -16,7 +16,6 @@ variables:
 
 steps:
 - script: |
-    find . -name go -print
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
     mkdir -p '$(modulePath)'
