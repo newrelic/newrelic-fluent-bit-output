@@ -16,10 +16,10 @@ variables:
 
 steps:
 - script: |
+    ls -l /usr/local
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
     mkdir -p '$(modulePath)'
-    ls /usr/local
     shopt -s extglob
     mv !(gopath) '$(modulePath)'
     echo '##vso[task.prependpath]$(GOBIN)'

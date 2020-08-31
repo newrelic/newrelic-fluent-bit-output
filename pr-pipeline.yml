@@ -1,7 +1,7 @@
 pr:
   branches:
     include:
-    - '*' 
+    - '*'
 
 pool:
   vmImage: 'ubuntu-16.04' # Has Docker
@@ -14,6 +14,7 @@ variables:
 
 steps:
 - script: |
+    ls /usr/local
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
     mkdir -p '$(modulePath)'
