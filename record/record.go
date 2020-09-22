@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-const maxPacketSize = 1 << 20 // 1 MegaByte
+const maxPacketSize = 1000000 // bytes
 
 type FluentBitRecord map[interface{}]interface{}
 
