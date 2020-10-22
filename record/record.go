@@ -38,12 +38,10 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 		outputRecord["message"] = val
 		delete(outputRecord, "log")
 	}
-
 	source, ok := os.LookupEnv("SOURCE")
 	if !ok {
 		source = "BARE-METAL"
 	}
-
 	_, ok = outputRecord["plugin"]
 	if !ok {
 		outputRecord["plugin"] = map[string]string{
@@ -52,7 +50,6 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 			"source":  source,
 		}
 	}
-
 	return
 }
 
