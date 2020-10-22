@@ -42,8 +42,7 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 	if !ok {
 		source = "BARE-METAL"
 	}
-	_, ok = outputRecord["plugin"]
-	if !ok {
+	if _, ok = outputRecord["plugin"]; !ok {
 		outputRecord["plugin"] = map[string]string{
 			"type":    "fluent-bit",
 			"version": pluginVersion,

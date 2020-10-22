@@ -56,9 +56,9 @@ var _ = Describe("Out New Relic", func() {
 				time.Now(),
 			}
 			expectedType := "something"
-			pluginMapIn := make(map[string]string)
-			pluginMapIn["type"] = expectedType
-			inputMap["plugin"] = pluginMapIn
+			inputMap["plugin"] = map[string]string{
+				"type": expectedType,
+			}
 			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
 			pluginMap := foundOutput["plugin"].(map[string]string)
 			Expect(pluginMap["type"]).To(Equal(expectedType))
@@ -102,7 +102,7 @@ var _ = Describe("Out New Relic", func() {
 
 		It("Correctly handles a JSON array in a []interface{}", func() {
 			// Given
-			inputRecord := map[interface{}]interface{}{
+			inputMap := map[interface{}]interface{}{
 				"nestedArray": []interface{}{
 					map[interface{}]interface{}{
 						"stringField":  "value1",
@@ -116,7 +116,7 @@ var _ = Describe("Out New Relic", func() {
 			}
 
 			// When
-			foundOutput := parseRecord(inputRecord)
+			foundOutput := parseRecord(inputMap)
 
 			// Then
 			expectedOutput := map[string]interface{}{
