@@ -33,7 +33,6 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 	default:
 		// Unhandled timestamp type, just ignore (don't log, since I assume we'll fill up someone's disk)
 	}
-
 	if val, ok := outputRecord["log"]; ok {
 		outputRecord["message"] = val
 		delete(outputRecord, "log")
