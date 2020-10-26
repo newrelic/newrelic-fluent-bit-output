@@ -56,6 +56,6 @@ steps:
   inputs:
     command: build
     buildContext: '$(modulePath)'
-    Dockerfile: ./Dockerfile
+    Dockerfile: '$(modulePath)/Dockerfile'
     repository: newrelic/newrelic-fluentbit-output
     tags: $(VERSION)
