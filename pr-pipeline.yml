@@ -41,3 +41,21 @@ steps:
 - script: make all
   workingDirectory: '$(modulePath)'
   displayName: 'Build project file'
+
+- task: Bash@3
+  inputs:
+    targetType: 'inline'
+    workingDirectory: '$(modulePath)'
+    script: |
+      VERSION=`cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}'`
+      echo "##vso[task.setvariable variable=VERSION]$VERSION"
+  displayName: 'Get the current version into a variable'
+
+- task: Docker@2
+  displayName: Build Docker image
+  inputs:
+    command: build
+    buildContext: '$(modulePath)'
+    Dockerfile: '$(modulePath)/Dockerfile'
+    repository: newrelic/newrelic-fluentbit-output
+    tags: $(VERSION)
