@@ -48,6 +48,22 @@ var _ = Describe("Out New Relic", func() {
 			Expect(version).To(Equal(pluginVersion))
 			Expect(source).To(Equal("BARE-METAL"))
 		})
+
+		It("Doesn't rewrite plugin.type if it exits", func() {
+			inputMap := make(FluentBitRecord)
+			var inputTimestamp interface{}
+			inputTimestamp = output.FLBTime{
+				time.Now(),
+			}
+			expectedType := "something"
+			inputMap["plugin"] = map[string]string{
+				"type": expectedType,
+			}
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
+			pluginMap := foundOutput["plugin"].(map[string]string)
+			Expect(pluginMap["type"]).To(Equal(expectedType))
+		})
+
 		It("sets the source if it is included as an environment variable", func() {
 			inputMap := make(FluentBitRecord)
 			var inputTimestamp interface{}
@@ -86,7 +102,7 @@ var _ = Describe("Out New Relic", func() {
 
 		It("Correctly handles a JSON array in a []interface{}", func() {
 			// Given
-			inputRecord := map[interface{}]interface{}{
+			inputMap := map[interface{}]interface{}{
 				"nestedArray": []interface{}{
 					map[interface{}]interface{}{
 						"stringField":  "value1",
@@ -100,7 +116,7 @@ var _ = Describe("Out New Relic", func() {
 			}
 
 			// When
-			foundOutput := parseRecord(inputRecord)
+			foundOutput := parseRecord(inputMap)
 
 			// Then
 			expectedOutput := map[string]interface{}{
