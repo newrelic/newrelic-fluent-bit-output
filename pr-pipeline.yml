@@ -37,6 +37,14 @@ steps:
     testResultsFiles: '$(modulePath)/test-results.xml'
     failTaskOnFailedTests: true
 
+- task: Docker@2
+  displayName: Build Docker image
+  inputs:
+    command: build
+    buildContext: '$(modulePath)'
+    repository: newrelic/newrelic-fluentbit-output
+    tags: $(VERSION)
+
 # Attempt to build (running tests does not do all the things that making the project does)
 - script: make all
   workingDirectory: '$(modulePath)'
