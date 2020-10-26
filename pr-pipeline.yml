@@ -50,6 +50,7 @@ steps:
   displayName: Build Docker image
   inputs:
     command: build
+    Dockerfile: ./Dockerfile
     buildContext: '$(modulePath)'
     repository: newrelic/newrelic-fluentbit-output
     tags: $(VERSION)
