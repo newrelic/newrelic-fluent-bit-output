@@ -37,6 +37,11 @@ steps:
     testResultsFiles: '$(modulePath)/test-results.xml'
     failTaskOnFailedTests: true
 
+# Attempt to build (running tests does not do all the things that making the project does)
+- script: make all
+  workingDirectory: '$(modulePath)'
+  displayName: 'Build project file'
+
 - task: Bash@3
   inputs:
     targetType: 'inline'
@@ -50,12 +55,7 @@ steps:
   displayName: Build Docker image
   inputs:
     command: build
-    Dockerfile: ./Dockerfile
     buildContext: '$(modulePath)'
+    Dockerfile: ./Dockerfile
     repository: newrelic/newrelic-fluentbit-output
     tags: $(VERSION)
-
-# Attempt to build (running tests does not do all the things that making the project does)
-- script: make all
-  workingDirectory: '$(modulePath)'
-  displayName: 'Build project file'
