@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/fluent/fluent-bit-go/output"
-	"github.com/newrelic/newrelic-fluent-bit-output/utils"
 	"log"
 	"os"
+
+	"github.com/fluent/fluent-bit-go/output"
+	"github.com/newrelic/newrelic-fluent-bit-output/utils"
 )
 
 const maxPacketSize = 1000000 // bytes
@@ -32,7 +33,6 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 	default:
 		// Unhandled timestamp type, just ignore (don't log, since I assume we'll fill up someone's disk)
 	}
-
 	if val, ok := outputRecord["log"]; ok {
 		outputRecord["message"] = val
 		delete(outputRecord, "log")
@@ -41,10 +41,12 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 	if !ok {
 		source = "BARE-METAL"
 	}
-	outputRecord["plugin"] = map[string]string{
-		"type":    "fluent-bit",
-		"version": pluginVersion,
-		"source":  source,
+	if _, ok = outputRecord["plugin"]; !ok {
+		outputRecord["plugin"] = map[string]string{
+			"type":    "fluent-bit",
+			"version": pluginVersion,
+			"source":  source,
+		}
 	}
 	return
 }
