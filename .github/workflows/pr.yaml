@@ -3,8 +3,8 @@ name: New Relic Fluent Bit Output Plugin - Pull Request
 on: [pull_request]
 
 jobs:
-  unit-test:
-    name: Unit tests
+  ci:
+    name: Continuous Integration pipeline
     runs-on: ubuntu-20.04
 
     steps:
@@ -19,3 +19,7 @@ jobs:
 
       - name: Run unit tests
         run: go test ./...
+
+      - name: Build project
+        run: make all
+
