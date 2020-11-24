@@ -8,41 +8,44 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-      - name: Set up Go 1.14
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.14
-        id: go
 
-      - name: Checkout code
-        uses: actions/checkout@v2
+      # TODO: add a step that makes the build fail if the version hasn't been increased
 
-      - name: Run unit tests
-        run: go test ./...
-
-      - name: Build project
-        run: make all
-
-      # The Docker Buildx builder will be used later to leverage from the cache while building the image
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@master
-
-      # Cache to be used by Docker Buildx
-      - name: Set up Docker Buildx's cache
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-buildx-
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v2
-        with:
-          context: ./
-          file: ./Dockerfile
-          push: false
-          tags: 'pr-tag'
-          builder: ${{ steps.buildx.outputs.name }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+#      - name: Set up Go 1.14
+#        uses: actions/setup-go@v2
+#        with:
+#          go-version: ^1.14
+#        id: go
+#
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#
+#      - name: Run unit tests
+#        run: go test ./...
+#
+#      - name: Build project
+#        run: make all
+#
+#      # The Docker Buildx builder will be used later to leverage from the cache while building the image
+#      - name: Set up Docker Buildx
+#        id: buildx
+#        uses: docker/setup-buildx-action@master
+#
+#      # Cache to be used by Docker Buildx
+#      - name: Set up Docker Buildx's cache
+#        uses: actions/cache@v2
+#        with:
+#          path: /tmp/.buildx-cache
+#          key: ${{ runner.os }}-buildx-${{ github.sha }}
+#          restore-keys: ${{ runner.os }}-buildx-
+#
+#      - name: Build Docker image
+#        uses: docker/build-push-action@v2
+#        with:
+#          context: ./
+#          file: ./Dockerfile
+#          push: false
+#          tags: 'pr-tag'
+#          builder: ${{ steps.buildx.outputs.name }}
+#          cache-from: type=local,src=/tmp/.buildx-cache
+#          cache-to: type=local,dest=/tmp/.buildx-cache

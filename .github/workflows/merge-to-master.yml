@@ -1,0 +1,46 @@
+name: New Relic Fluent Bit Output Plugin - Merge to master
+
+on: [pull_request]
+#on:
+#  push:
+#    branches:
+#      - master
+
+jobs:
+  ci:
+    name: Continuous Integration pipeline
+    runs-on: ubuntu-18.04
+
+    steps:
+      - name: Set up Go 1.14
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.14
+        id: go
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # - name: Run unit tests
+      #   run: go test ./...
+
+      - name: Build project
+        run: make all
+
+      - name: Determine new plugin version
+        run: |
+          VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
+          echo "Determined version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: newrelic-fluent-bit-output-
+          release_name: nrfb v${{ env.NRFB_ARTIFACT_VERSION }}
+          draft: false
+          prerelease: false
+
