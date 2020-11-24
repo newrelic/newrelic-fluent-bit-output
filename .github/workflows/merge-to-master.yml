@@ -39,8 +39,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: newrelic-fluent-bit-output-
-          release_name: nrfb v${{ env.NRFB_ARTIFACT_VERSION }}
+          tag_name: ${{ env.VERSION }}
+          release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
           draft: false
           prerelease: false
 
+      - name: Upload Linux Package
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic.so
+          asset_name: out_newrelic-linux-amd64.so
+          asset_content_type: application/octet-stream
