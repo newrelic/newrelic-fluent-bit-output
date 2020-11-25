@@ -103,9 +103,9 @@ A example setup, which defines an HTTPS proxy and its self-signed certificate, w
     Name newrelic
     Match *
     licenseKey <NEW_RELIC_LICENSE_KEY>
-    proxy: https://https-proxy-hostname:3129
+    proxy https://https-proxy-hostname:3129
     # REMOVE following option when using it on Windows (see above)
-    caBundleFile: /path/to/proxy-certificate-bundle.pem
+    caBundleFile /path/to/proxy-certificate-bundle.pem
 ```
 
 ## Configuration Parameters
