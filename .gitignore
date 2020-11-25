@@ -1,5 +1,6 @@
 .DS_Store
 .vscode
 .idea
-out_newrelic.h
-out_newrelic.so
+out_newrelic*.h
+out_newrelic*.so
+out_newrelic*.dll

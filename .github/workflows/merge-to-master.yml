@@ -7,8 +7,8 @@ on: [pull_request]
 #      - master
 
 jobs:
-  ci:
-    name: Continuous Integration pipeline
+  cd:
+    name: Continuous Delivery pipeline
     runs-on: ubuntu-18.04
 
     steps:
@@ -24,14 +24,30 @@ jobs:
       # - name: Run unit tests
       #   run: go test ./...
 
-      - name: Build project
-        run: make all
-
       - name: Determine new plugin version
         run: |
           VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
           echo "Determined version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install mingw, arm32 and arm64 compilers
+        run: |
+          sudo apt install mingw-w64 g++-arm-linux-gnueabihf g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+
+      - name: Build project (Linux amd64)
+        run: make linux-amd64 VERSION=${{env.VERSION}}
+
+      - name: Build project (Windows 386)
+        run: make windows-386 VERSION=${{env.VERSION}}
+
+      - name: Build project (Windows amd64)
+        run: make windows-amd64 VERSION=${{env.VERSION}}
+
+      - name: Build project (Linux arm)
+        run: make linux-arm VERSION=${{env.VERSION}}
+
+      - name: Build project (Linux arm64)
+        run: make linux-arm64 VERSION=${{env.VERSION}}
 
       - name: Create Release
         id: create_release
@@ -44,12 +60,11 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Linux Package
+      - name: Include built artifacts in release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic.so
-          asset_name: out_newrelic-linux-amd64.so
+          asset_path: ./out_newrelic*
           asset_content_type: application/octet-stream
