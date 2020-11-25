@@ -28,6 +28,7 @@ jobs:
         run: |
           VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
           echo "Determined version: $VERSION"
+          # After the following command, the VERSION variable is available via the "env" command
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Install mingw, arm32 and arm64 compilers
@@ -76,8 +77,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.so
-          asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.so
+          asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+          asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
           asset_content_type: application/octet-stream
 
       - name: Include windows-386 artifact in release
@@ -86,8 +87,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.so
-          asset_name: out_newrelic-windows-386-${{ env.VERSION }}.so
+          asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
+          asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
           asset_content_type: application/octet-stream
 
       - name: Include linux-arm64 artifact in release
