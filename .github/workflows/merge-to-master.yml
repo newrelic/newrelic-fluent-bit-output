@@ -1,10 +1,9 @@
 name: New Relic Fluent Bit Output Plugin - Merge to master
 
-on: [pull_request]
-#on:
-#  push:
-#    branches:
-#      - master
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   cd:
@@ -74,7 +73,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: true
-          tags: 'newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-test'
+          tags: 'newrelic/newrelic-fluentbit-output:${{ env.VERSION }}'
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
