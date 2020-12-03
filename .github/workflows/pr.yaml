@@ -1,0 +1,57 @@
+name: New Relic Fluent Bit Output Plugin - Pull Request
+
+on: [pull_request]
+
+jobs:
+  ci:
+    name: Continuous Integration pipeline
+    runs-on: ubuntu-18.04
+
+    steps:
+      - name: Set up Go 1.14
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.14
+        id: go
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run unit tests
+        run: |
+          go get -v -u github.com/jstemmer/go-junit-report
+          go test  -v ./... 2>&1 | go-junit-report > test-results.xml
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1.5
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: test-results.xml
+
+      - name: Build project
+        run: make linux-amd64
+
+      # The Docker Buildx builder will be used later to leverage from the cache while building the image
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      # Cache to be used by Docker Buildx
+      - name: Set up Docker Buildx's cache
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-buildx-
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: false
+          tags: 'pr-tag'
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache

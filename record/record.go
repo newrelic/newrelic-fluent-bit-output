@@ -100,7 +100,7 @@ func PackageRecords(records []LogRecord) ([]PackagedRecords, error) {
 	// TODO Check Ian/Brian: I do believe that this should be compresssedData.Len(), let's confirm it before changing.
 	compressedSize := int64(compressedData.Cap())
 	if compressedSize >= maxPacketSize && len(records) == 1 {
-		log.Printf("[ERROR] Can't compress record below required maximum packet size and it will be discarded. Record: %v", records[0])
+		log.Printf("[ERROR] Can't compress record below required maximum packet size and it will be discarded.")
 		return []PackagedRecords{}, nil
 	} else if compressedSize >= maxPacketSize && len(records) > 1 {
 		log.Printf("[DEBUG] Records were too big, splitting in half and retrying compression again.")
