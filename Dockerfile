@@ -14,7 +14,7 @@ RUN make linux-amd64
 
 FROM fluent/fluent-bit:1.6.2
 
-COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-amd64-*.so /fluent-bit/bin/
+COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-amd64-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 
-CMD ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf", "-e", "/fluent-bit/bin/out_newrelic-linux-amd64-*.so"]
+CMD ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf", "-e", "/fluent-bit/bin/out_newrelic.so"]
