@@ -77,8 +77,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            '${{ env.DOCKER_REPOSITORY }}:latest'
-            '${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}'
+            ${{ env.DOCKERHUB_REPOSITORY }}:latest
+            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
@@ -108,8 +108,8 @@ jobs:
           file: ./Dockerfile_firelens
           push: true
           tags: |
-            '${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest'
-            '${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}'
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
