@@ -72,7 +72,7 @@ jobs:
         env:
           ECR_REGISTRY: 533243300146.dkr.ecr.us-east-2.amazonaws.com
           ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
-          IMAGE_TAG: ${{ env.VERSION }}
+          IMAGE_TAG: test
         with:
           context: ./
           file: ./Dockerfile_firelens
