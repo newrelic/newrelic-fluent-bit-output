@@ -17,20 +17,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Run unit tests
-        run: |
-          go get -v -u github.com/jstemmer/go-junit-report
-          go test  -v ./... 2>&1 | go-junit-report > test-results.xml
-
-      - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1.5
-        if: always()
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          files: test-results.xml
-
-      - name: Build project
-        run: make linux-amd64
+#      - name: Run unit tests
+#        run: |
+#          go get -v -u github.com/jstemmer/go-junit-report
+#          go test  -v ./... 2>&1 | go-junit-report > test-results.xml
+#
+#      - name: Publish Unit Test Results
+#        uses: EnricoMi/publish-unit-test-result-action@v1.5
+#        if: always()
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          files: test-results.xml
+#
+#      - name: Build project
+#        run: make linux-amd64
 
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
       - name: Set up Docker Buildx
@@ -45,13 +45,39 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: ${{ runner.os }}-buildx-
 
-      - name: Build Docker image
+#      - name: Build Docker image
+#        uses: docker/build-push-action@v2
+#        with:
+#          context: ./
+#          file: ./Dockerfile
+#          push: false
+#          tags: 'pr-tag'
+#          builder: ${{ steps.buildx.outputs.name }}
+#          cache-from: type=local,src=/tmp/.buildx-cache
+#          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and Publish Docker image for Firelens
         uses: docker/build-push-action@v2
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
+          IMAGE_TAG: ${{ env.VERSION }}
         with:
           context: ./
-          file: ./Dockerfile
-          push: false
-          tags: 'pr-tag'
+          file: ./Dockerfile_firelens
+          push: true
+          tags: '${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}'
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
