@@ -79,7 +79,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Image digest
-          run: 'echo "Published Docker image with digest: ${{ steps.docker_build.outputs.digest }}"'
+        run: 'echo "Published Docker image with digest: ${{ steps.docker_build.outputs.digest }}"'
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
