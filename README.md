@@ -151,7 +151,11 @@ docker build -t <YOUR-IMAGE-NAME>:<YOUR-TAG> .
 docker run -e "FILE_PATH=/var/log/*" -e "API_KEY=<YOUR-API-KEY>" <YOUR-IMAGE-NAME>:<YOUR-TAG>
 ```
 
-**A note about vulnerabilities**
+## Community
+
+New Relic hosts and moderates an online forum where customers can interact with New Relic employees as well as other customers to get help and share best practices. Like all official New Relic open source projects, there's a related Community topic in the New Relic Explorers Hub: [Log forwarding](https://discuss.newrelic.com/tag/log-forwarding)
+
+## A note about vulnerabilities
 
 As noted in our [security policy](../../security/policy), New Relic is committed to the privacy and security of our customers and their data. We believe that providing coordinated disclosure by security researchers and engaging with the security community are important means to achieve our security goals.
 
