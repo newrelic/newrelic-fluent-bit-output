@@ -12,7 +12,7 @@ ENV SOURCE docker
 RUN go get github.com/fluent/fluent-bit-go/output
 RUN make linux-amd64
 
-FROM fluent/fluent-bit:1.7.4
+FROM fluent/fluent-bit:1.7.9
 
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-amd64-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
