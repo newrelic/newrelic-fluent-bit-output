@@ -76,7 +76,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 		return output.FLB_RETRY
 	}
 
-	log.Printf("[DEBUG] Not retriable error received. Retry:false")
+	log.Printf("[DEBUG] Non-retriable error received. Retry:false")
 	return output.FLB_ERROR
 }
 

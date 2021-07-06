@@ -63,15 +63,13 @@ func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err erro
 	}
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
-
 	resp, err := nrClient.client.Do(req)
-	statusCode := resp.StatusCode
 	if err != nil {
 		log.Printf("[ERROR] Error making HTTP request: %s", err)
 		return -1, err
-	} else if !isSuccesful(statusCode) {
-		log.Printf("[ERROR] Error making HTTP request.  Got status code: %v", resp.StatusCode)
-		return statusCode, nil
+	} else if !isSuccesful(resp.StatusCode) {
+		log.Printf("[ERROR] Error making HTTP request. Got status code: %v", resp.StatusCode)
+		return resp.StatusCode, nil
 	}
 	defer resp.Body.Close()
 	defer func() {
@@ -79,7 +77,7 @@ func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err erro
 		_, err = io.Copy(ioutil.Discard, resp.Body)
 	}()
 
-	return statusCode, nil
+	return http.StatusAccepted, nil
 }
 
 func isSuccesful(statusCode int) bool {
