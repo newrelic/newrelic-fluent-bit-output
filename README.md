@@ -151,6 +151,15 @@ docker build -t <YOUR-IMAGE-NAME>:<YOUR-TAG> .
 docker run -e "FILE_PATH=/var/log/*" -e "API_KEY=<YOUR-API-KEY>" <YOUR-IMAGE-NAME>:<YOUR-TAG>
 ```
 
+### Retry logic
+For recoverables error, the plugin is set to send a Retry order to Fluent Bit to flush data again. By default the `Retry_Limit` is set to 1 attempt. But can be [overwritten manually](https://docs.fluentbit.io/manual/administration/scheduling-and-retries). 
+
+| Key | Value | Description |
+|-----|-------| ------------|
+| Retry_Limit | N | Integer value to set the maximum number of retries allowed. N must be >= 1 (default: 1) | 
+| Retry_Limit | False | When Retry_Limit is set to False, means that there is not limit for the number of retries that the Scheduler can do. |
+
+
 ## Community
 
 New Relic hosts and moderates an online forum where customers can interact with New Relic employees as well as other customers to get help and share best practices. Like all official New Relic open source projects, there's a related Community topic in the New Relic Explorers Hub: [Log forwarding](https://discuss.newrelic.com/tag/log-forwarding)
