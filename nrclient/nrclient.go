@@ -43,7 +43,7 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRCli
 func (nrClient *NRClient) Send(logRecords []record.LogRecord) (int, error) {
 	payloads, err := record.PackageRecords(logRecords)
 	if err != nil {
-		return -1, err
+		return nonRetriableConnectionError, err
 	}
 
 	for _, payload := range payloads {
