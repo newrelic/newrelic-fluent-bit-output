@@ -24,6 +24,7 @@ var _ = Describe("NR Client", func() {
 	var licenseKeyConfig config.NRClientConfig
 	var noProxy config.ProxyConfig
 	vortexSuccessCode := 202
+	vortexServerErrorCode := 500
 	logRecords := []record.LogRecord{
 		{
 			"timestamp": 1,
@@ -68,9 +69,10 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		err = nrClient.Send(nil)
+		statusCode, err := nrClient.Send(nil)
 
 		// Then
+		Expect(statusCode).To(Equal(http.StatusAccepted))
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(0))
 	})
@@ -83,9 +85,11 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		err = nrClient.Send([]record.LogRecord{})
+		
+		statusCode, err := nrClient.Send([]record.LogRecord{})
 
 		// Then
+		Expect(statusCode).To(Equal(http.StatusAccepted))
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(0))
 	})
@@ -108,9 +112,10 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		err = nrClient.Send(logRecords)
+		statusCode, err := nrClient.Send(logRecords)
 
 		// Then
+		Expect(statusCode).To(Equal(http.StatusAccepted))
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
@@ -133,9 +138,36 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		err = nrClient.Send(logRecords)
+		statusCode, err := nrClient.Send(logRecords)
 
 		// Then
+		Expect(statusCode).To(Equal(http.StatusAccepted))
+		Expect(err).To(BeNil())
+		Expect(server.ReceivedRequests()).To(HaveLen(1))
+	})
+
+	It("Returns status code when request fails", func() {
+		// Given
+		server.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.RespondWithJSONEncodedPtr(&vortexServerErrorCode, ""),
+				ghttp.VerifyRequest("POST", "/v1/logs"),
+				ghttp.VerifyHeader(http.Header{
+					"X-License-Key":    []string{licenseKey},
+					"Content-Type":     []string{"application/json"},
+					"Content-Encoding": []string{"gzip"},
+				})))
+
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
+
+		// When
+		statusCode, err := nrClient.Send(logRecords)
+
+		// Then
+		Expect(statusCode).To(Equal(vortexServerErrorCode))
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
