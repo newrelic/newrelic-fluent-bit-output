@@ -18,6 +18,11 @@ type NRClient struct {
 	config config.NRClientConfig
 }
 
+const(
+	nonRetriableConnectionError = -1
+	retriableConnectionError = -2
+)
+
 func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRClient, error) {
 	httpTransport, err := buildHttpTransport(proxyCfg, cfg.Endpoint)
 	if err != nil {
@@ -54,7 +59,7 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (int, error) {
 func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err error) {
 	req, err := http.NewRequest("POST", nrClient.config.Endpoint, buffer)
 	if err != nil {
-		return -1, err
+		return nonRetriableConnectionError, err
 	}
 	if nrClient.config.UseApiKey {
 		req.Header.Add("X-Insert-Key", nrClient.config.ApiKey)
@@ -66,9 +71,9 @@ func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err erro
 	resp, err := nrClient.client.Do(req)
 	if err != nil {
 		log.Printf("[ERROR] Error making HTTP request: %s", err)
-		return -1, err
+		return retriableConnectionError, err
 	} else if !isSuccesful(resp.StatusCode) {
-		log.Printf("[ERROR] Error making HTTP request. Got status code: %v", resp.StatusCode)
+		log.Printf("[ERROR] HTTP request made but got error reponse. Status code: %v", resp.StatusCode)
 		return resp.StatusCode, nil
 	}
 	defer resp.Body.Close()
