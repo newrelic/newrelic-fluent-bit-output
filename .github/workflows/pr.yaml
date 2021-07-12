@@ -56,17 +56,6 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Build Docker image for Firelens
-        uses: docker/build-push-action@v2
-        with:
-          context: ./
-          file: ./Dockerfile_firelens
-          push: false
-          tags: 'pr-tag'
-          builder: ${{ steps.buildx.outputs.name }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-
       - name: Build Docker image for Debug
         uses: docker/build-push-action@v2
         with:
@@ -78,13 +67,24 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-        - name: Build Docker image for arm64
-          uses: docker/build-push-action@v2
-          with:
-            context: ./
-            file: ./Dockerfile_arm64v8
-            push: false
-            tags: 'pr-tag'
-            builder: ${{ steps.buildx.outputs.name }}
-            cache-from: type=local,src=/tmp/.buildx-cache
-            cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Build Docker image for arm64
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile_arm64v8
+          push: false
+          tags: 'pr-tag'
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Build Docker image for Firelens
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile_firelens
+          push: false
+          tags: 'pr-tag'
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
