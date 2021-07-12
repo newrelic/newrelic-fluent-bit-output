@@ -93,8 +93,7 @@ jobs:
           file: ./Dockerfile_debug
           push: true
           tags: |
-            ${{ env.DOCKERHUB_REPOSITORY }}:latest
-            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}-debug
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
@@ -109,8 +108,7 @@ jobs:
           file: ./Dockerfile_arm64v8
           push: true
           tags: |
-            ${{ env.DOCKERHUB_REPOSITORY }}:latest
-            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}-arm64v8
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
