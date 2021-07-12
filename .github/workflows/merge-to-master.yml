@@ -83,6 +83,21 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
+      - name: Build and Publish Docker debug image
+        uses: docker/build-push-action@v2
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: ${{ env.VERSION }}
+        with:
+          context: ./
+          file: ./Dockerfile_debug
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}-debug
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
       - name: Image digest
         run: 'echo "Published Docker image with digest: ${{ steps.docker_build.outputs.digest }}"'
 
