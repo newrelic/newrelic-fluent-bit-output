@@ -1,0 +1,179 @@
+name: New Relic Fluent Bit Output Plugin - Merge to master
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  cd:
+    name: Continuous Delivery pipeline
+    runs-on: ubuntu-18.04
+
+    steps:
+      - name: Set up Go 1.14
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.14
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run unit tests
+        run: go test ./...
+
+      - name: Determine new plugin version
+        run: |
+          VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
+          echo "Determined version: $VERSION"
+          # After the following command, the VERSION variable is available via the "env" command
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install mingw, arm32 and arm64 compilers
+        run: |
+          sudo apt install mingw-w64 g++-arm-linux-gnueabihf g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+
+      - name: Build project (Linux amd64)
+        run: env make linux-amd64
+
+      - name: Build project (Windows 386)
+        run: env make windows-386
+
+      - name: Build project (Windows amd64)
+        run: env make windows-amd64
+
+      - name: Build project (Linux arm)
+        run: env make linux-arm
+
+      - name: Build project (Linux arm64)
+        run: env make linux-arm64
+
+      # The Docker Buildx builder will be used later to leverage from the cache while building the image
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      # Cache to be used by Docker Buildx
+      - name: Set up Docker Buildx's cache
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-buildx-
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build and Publish Docker image
+        uses: docker/build-push-action@v2
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: ${{ env.VERSION }}
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_REPOSITORY }}:latest
+            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Image digest
+        run: 'echo "Published Docker image with digest: ${{ steps.docker_build.outputs.digest }}"'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and Publish Docker image for Firelens
+        uses: docker/build-push-action@v2
+        env:
+          ECR_REGISTRY: 533243300146.dkr.ecr.us-east-2.amazonaws.com
+          ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
+          IMAGE_TAG: ${{ env.VERSION }}
+        with:
+          context: ./
+          file: ./Dockerfile_firelens
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Image digest
+        run: 'echo "Published Docker Firelens image with digest: ${{ steps.docker_build.outputs.digest }}"'
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
+          draft: false
+          prerelease: false
+
+      - name: Include linux-amd64 artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-amd64-${{ env.VERSION }}.so
+          asset_name: out_newrelic-linux-amd64-${{ env.VERSION }}.so
+          asset_content_type: application/octet-stream
+
+      - name: Include windows-amd64 artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+          asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+          asset_content_type: application/octet-stream
+
+      - name: Include windows-386 artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
+          asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
+          asset_content_type: application/octet-stream
+
+      - name: Include linux-arm64 artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          asset_content_type: application/octet-stream
+
+      - name: Include linux-arm artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
+          asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
+          asset_content_type: application/octet-stream
