@@ -27,7 +27,6 @@ touch ./test/testdata/fbtest.log
 
 echo "Building docker image"
 docker build -f ${DOCKERFILE:-Dockerfile} -t fb-output-plugin .
-docker pull fb-output-plugin --cache-from
 
 echo "Starting docker compose"
 docker-compose -f ./test/docker-compose.yml up -d
