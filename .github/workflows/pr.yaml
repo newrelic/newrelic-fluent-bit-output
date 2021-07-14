@@ -51,10 +51,15 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: false
-          tags: 'pr-tag'
+          tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Test Docker image
+        run: sh test.sh
+        env:
+          SKIP_BUILD: "yes"
 
       - name: Build Docker debug image
         uses: docker/build-push-action@v2
@@ -62,10 +67,15 @@ jobs:
           context: ./
           file: ./Dockerfile_debug
           push: false
-          tags: 'pr-tag'
+          tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Test Docker debug image
+        run: sh test.sh
+        env:
+          SKIP_BUILD: "yes"
 
       - name: Build Docker image for Firelens
         uses: docker/build-push-action@v2
@@ -73,7 +83,12 @@ jobs:
           context: ./
           file: ./Dockerfile_firelens
           push: false
-          tags: 'pr-tag'
+          tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Test Docker firelens image
+        run: sh test.sh
+        env:
+          SKIP_BUILD: "yes"
