@@ -51,6 +51,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: false
+          load: true
           tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -59,7 +60,7 @@ jobs:
       - name: Test Docker image
         run: bash test.sh
         env:
-          DOCKERFILE: "./Dockerfile"
+          SKIP_BUILD: "yes"
 
       - name: Build Docker debug image
         uses: docker/build-push-action@v2
@@ -67,18 +68,16 @@ jobs:
           context: ./
           file: ./Dockerfile_debug
           push: false
+          load: true
           tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          
-      - name: List images
-        run: docker images
 
       - name: Test Docker debug image
         run: bash test.sh
         env:
-          DOCKERFILE: "./Dockerfile_debug"
+          SKIP_BUILD: "yes"
 
       - name: Build Docker image for Firelens
         uses: docker/build-push-action@v2
@@ -86,6 +85,7 @@ jobs:
           context: ./
           file: ./Dockerfile_firelens
           push: false
+          load: true
           tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -94,4 +94,4 @@ jobs:
       - name: Test Docker firelens image
         run: bash test.sh
         env:
-          DOCKERFILE: "./Dockerfile_firelens"
+          SKIP_BUILD: "yes"
