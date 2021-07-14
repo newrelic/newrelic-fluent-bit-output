@@ -57,7 +57,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Test Docker image
-        run: sh test.sh
+        run: bash test.sh
         env:
           SKIP_BUILD: "yes"
 
@@ -73,7 +73,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Test Docker debug image
-        run: sh test.sh
+        run: bash test.sh
         env:
           SKIP_BUILD: "yes"
 
@@ -89,6 +89,6 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Test Docker firelens image
-        run: sh test.sh
+        run: bash test.sh
         env:
           SKIP_BUILD: "yes"
