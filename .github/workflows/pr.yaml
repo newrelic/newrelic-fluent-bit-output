@@ -71,6 +71,9 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+          
+      - name: List images
+        run: docker images
 
       - name: Test Docker debug image
         run: bash test.sh
