@@ -25,11 +25,10 @@ function check_logs {
 mkdir ./test/testdata || true
 touch ./test/testdata/fbtest.log
 
-# Initialize
-if [ ${SKIP_BUILD:-no} = "no" ]; then
-  echo "Building docker image"
-  docker build -f ${DOCKERFILE:-Dockerfile} -t fb-output-plugin .
-fi
+echo "Building docker image"
+docker build -f ${DOCKERFILE:-Dockerfile} -t fb-output-plugin .
+docker pull fb-output-plugin --cache-from
+
 echo "Starting docker compose"
 docker-compose -f ./test/docker-compose.yml up -d
 sleep 5
