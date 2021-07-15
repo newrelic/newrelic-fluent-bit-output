@@ -13,8 +13,6 @@ services:
 
   newrelic-fluent-bit-output:
     image: fb-output-plugin
-    depends_on:
-      - mockserver
     volumes:
       - "./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf"
       - "./testdata/fbtest.log:/var/log/fbtest.log"
