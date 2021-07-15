@@ -186,6 +186,7 @@ Testing steps are:
    - The built docker image with fluent bit configuration from ./test/fluent-bit.conf
 4. Send some logs
 5. Verify that logs are reaching the mockserver
+   - Mockserver requests are verified using ./test/verification.json
 6. Cleanup
 
 ## Community

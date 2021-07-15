@@ -2,17 +2,7 @@
   {
     "httpRequest": {
       "method": "POST",
-      "path": "/log/v1",
-      "headers": [
-        {
-          "name": "X-Insert-Key",
-          "values": ["some-insert-key"]
-        },
-        {
-          "name": "Content-Type",
-          "values": ["application/json"]
-        }
-      ]
+      "path": "/log/v1"
     },
     "httpResponse": {
       "statusCode": 202

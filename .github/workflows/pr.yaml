@@ -20,7 +20,7 @@ jobs:
       - name: Run unit tests
         run: |
           go get -v -u github.com/jstemmer/go-junit-report
-          go test  -v ./... 2>&1 | go-junit-report > test-results.xml
+          go test -v ./... 2>&1 | go-junit-report > test-results.xml
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.5
@@ -59,8 +59,6 @@ jobs:
 
       - name: Test Docker image
         run: bash test.sh
-        env:
-          SKIP_BUILD: "yes"
 
       - name: Build Docker debug image
         uses: docker/build-push-action@v2
@@ -76,8 +74,6 @@ jobs:
 
       - name: Test Docker debug image
         run: bash test.sh
-        env:
-          SKIP_BUILD: "yes"
 
       - name: Build Docker image for Firelens
         uses: docker/build-push-action@v2
@@ -93,5 +89,3 @@ jobs:
 
       - name: Test Docker firelens image
         run: bash test.sh
-        env:
-          SKIP_BUILD: "yes"
