@@ -56,8 +56,14 @@ done
 # Sending some logs
 echo "Sending logs an waiting for arrive"
 for i in {1..5}; do
-echo "Hello!\n" >> ./test/testdata/fbtest.log
+  echo "Hello!" >> ./test/testdata/fbtest.log
 done
+
+# This updates the modified date of the log file, it should
+# be updated with the echo but looks like it doesn't. A reason
+# could be that we're putting this file as a volume and writting
+# small changes so fast, if we add more echoes it works as well.
+touch ./test/testdata/fbtest.log
 
 max_retry=10
 counter=0
