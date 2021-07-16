@@ -32,6 +32,10 @@ jobs:
       - name: Build project
         run: make linux-amd64
 
+      # The QEMU will include more platforms such as arm64 to docker buildx builder
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
       - name: Set up Docker Buildx
         id: buildx
@@ -73,6 +77,22 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Test Docker debug image
+        run: bash test.sh
+
+      - name: Build Docker arm64 image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile_arm64
+          push: false
+          tags: fb-output-plugin
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          platforms: linux/arm64
+          outputs: type=docker
+
+      - name: Test Docker arm image
         run: bash test.sh
 
       - name: Build Docker image for Firelens

@@ -164,6 +164,16 @@ docker build -t <YOUR-IMAGE-NAME>:<YOUR-TAG> .
 docker run -e "FILE_PATH=/var/log/*" -e "API_KEY=<YOUR-API-KEY>" <YOUR-IMAGE-NAME>:<YOUR-TAG>
 ```
 
+#### For buidling container image for ARM platform:
+When Build is executed on a ARM platform:
+```
+docker build -f Dockerfile_arm64 -t <YOUR-IMAGE-NAME>:<YOUR-TAG> .
+```
+When Build is executed on a non-ARM platform (with buildx):
+```
+docker buildx build --platform linux/arm64 -t <YOUR-IMAGE-NAME>:<YOUR-TAG> . --load
+```
+
 ### Retry logic
 
 For recoverables error, the plugin is set to send a Retry order to Fluent Bit to flush data again. By default the `Retry_Limit` is set to 1 attempt. But can be [overwritten manually](https://docs.fluentbit.io/manual/administration/scheduling-and-retries).
