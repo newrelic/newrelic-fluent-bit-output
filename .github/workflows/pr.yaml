@@ -32,7 +32,7 @@ jobs:
       - name: Build project
         run: make linux-amd64
 
-      #
+      # The QEMU will include more platforms such as arm64 to docker buildx builder
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
