@@ -90,6 +90,7 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           platforms: linux/arm64
+          outputs: type=docker
 
       - name: Test Docker arm image
         run: bash test.sh
