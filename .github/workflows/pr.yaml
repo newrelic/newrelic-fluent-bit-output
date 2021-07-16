@@ -20,7 +20,7 @@ jobs:
       - name: Run unit tests
         run: |
           go get -v -u github.com/jstemmer/go-junit-report
-          go test  -v ./... 2>&1 | go-junit-report > test-results.xml
+          go test -v ./... 2>&1 | go-junit-report > test-results.xml
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.5
@@ -51,10 +51,14 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: false
-          tags: 'pr-tag'
+          load: true
+          tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Test Docker image
+        run: bash test.sh
 
       - name: Build Docker debug image
         uses: docker/build-push-action@v2
@@ -62,10 +66,14 @@ jobs:
           context: ./
           file: ./Dockerfile_debug
           push: false
-          tags: 'pr-tag'
+          load: true
+          tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Test Docker debug image
+        run: bash test.sh
 
       - name: Build Docker image for Firelens
         uses: docker/build-push-action@v2
@@ -73,7 +81,11 @@ jobs:
           context: ./
           file: ./Dockerfile_firelens
           push: false
-          tags: 'pr-tag'
+          load: true
+          tags: fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Test Docker firelens image
+        run: bash test.sh

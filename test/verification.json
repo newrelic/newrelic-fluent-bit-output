@@ -1,0 +1,67 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/log/v1",
+    "headers": [
+      {
+        "name": "X-Insert-Key",
+        "values": ["some-insert-key"]
+      },
+      {
+        "name": "Content-Type",
+        "values": ["application/json"]
+      }
+    ],
+    "body": {
+      "type": "JSON",
+      "matchType": "STRICT",
+      "json": [
+        {
+          "message": "Hello!",
+          "plugin": {
+            "source": "BARE-METAL",
+            "type": "fluent-bit",
+            "version": "${json-unit.any-string}"
+          },
+          "timestamp": "${json-unit.any-number}"
+        },
+        {
+          "message": "Hello!",
+          "plugin": {
+            "source": "BARE-METAL",
+            "type": "fluent-bit",
+            "version": "${json-unit.any-string}"
+          },
+          "timestamp": "${json-unit.any-number}"
+        },
+        {
+          "message": "Hello!",
+          "plugin": {
+            "source": "BARE-METAL",
+            "type": "fluent-bit",
+            "version": "${json-unit.any-string}"
+          },
+          "timestamp": "${json-unit.any-number}"
+        },
+        {
+          "message": "Hello!",
+          "plugin": {
+            "source": "BARE-METAL",
+            "type": "fluent-bit",
+            "version": "${json-unit.any-string}"
+          },
+          "timestamp": "${json-unit.any-number}"
+        },
+        {
+          "message": "Hello!",
+          "plugin": {
+            "source": "BARE-METAL",
+            "type": "fluent-bit",
+            "version": "${json-unit.any-string}"
+          },
+          "timestamp": "${json-unit.any-number}"
+        }
+      ]
+    }
+  }
+}
