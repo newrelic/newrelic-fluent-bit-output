@@ -112,6 +112,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+          platforms: linux/arm64
 
       - name: Image digest
         run: 'echo "Published Docker image with digest: ${{ steps.docker_build.outputs.digest }}"'
