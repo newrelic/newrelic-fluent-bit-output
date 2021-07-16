@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  mockserver:
+    image: mockserver/mockserver
+    volumes:
+      - "./expectations.json:/tmp/expectations.json"
+    ports:
+      - 1080:1080
+    environment:
+      MOCKSERVER_WATCH_INITIALIZATION_JSON: "true"
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /tmp/expectations.json
+
+  newrelic-fluent-bit-output:
+    image: fb-output-plugin
+    volumes:
+      - "./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf"
+      - "./testdata/fbtest.log:/var/log/fbtest.log"
+    environment:
+      FILE_PATH: /var/log/fbtest.log
+      API_KEY: some-insert-key

@@ -4,3 +4,4 @@
 out_newrelic*.h
 out_newrelic*.so
 out_newrelic*.dll
+test/testdata

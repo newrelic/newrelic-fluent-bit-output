@@ -1,0 +1,11 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/log/v1"
+    },
+    "httpResponse": {
+      "statusCode": 202
+    }
+  }
+]
