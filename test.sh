@@ -35,7 +35,10 @@ function check_mockserver {
 mkdir ./test/testdata || true
 touch ./test/testdata/fbtest.log
 
-# Initialize
+# We should skip re-building the docker image en GH
+# since we already build it on previous step so
+# we're usign the CI env var that GH set to true for
+# every job in the pipeline
 if [ ${CI:-no} = "no" ]; then
   echo "Building docker image"
   docker build -f ${DOCKERFILE:-Dockerfile} -t fb-output-plugin .
