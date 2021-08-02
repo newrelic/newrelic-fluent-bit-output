@@ -1,31 +1,36 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Report a bug so we can take care of it
 title: ''
-labels: ''
+labels: bug
 assignees: ''
-
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+[NOTE]: # ( ^^ Provide a general summary of the issue in the title above ^^ )
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+## Description
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+[NOTE]: # ( Describe the problem you're encountering )
+[TIP]:  # ( Do NOT share sensitive information, whether personal, proprietary, or otherwise! )
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## Expected Behavior
 
-**Platform (please complete the following information):**
- - OS: [e.g. iOS, AWS, Linux distribution...]
- - Plugin Version [e.g. 1.7.0]
+[NOTE]: # ( Tell us what you expected to happen )
 
-**Additional context**
-Add any other context about the problem here.
+## [Troubleshooting](https://discuss.newrelic.com/t/troubleshooting-frameworks/108787) or [NR Diag](https://docs.newrelic.com/docs/using-new-relic/cross-product-functions/troubleshooting/new-relic-diagnostics) results
+
+[NOTE]: # ( Provide any other relevant log data )
+[TIP]:  # ( Scrub logs and diagnostic information for sensitive information )
+
+## Steps to Reproduce
+
+[NOTE]: # ( Please be as specific as possible )
+[TIP]:  # ( Link a sample application that demonstrates the issue )
+
+## Your Environment
+
+[TIP]:  # ( Include as many relevant details about your environment as possible including the running version of New Relic software and any relevant configurations. )
+
+## Additional context
+
+[TIP]:  # ( Add any other context about the problem here. For example, relevant community posts, support tickets, screenshots... )
