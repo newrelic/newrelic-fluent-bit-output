@@ -34,19 +34,19 @@ jobs:
           sudo apt install mingw-w64 g++-arm-linux-gnueabihf g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
 
       - name: Build project (Linux amd64)
-        run: env make linux-amd64
+        run: env make linux/amd64
 
       - name: Build project (Windows 386)
-        run: env make windows-386
+        run: env make windows/386
 
       - name: Build project (Windows amd64)
-        run: env make windows-amd64
+        run: env make windows/amd64
 
       - name: Build project (Linux arm)
-        run: env make linux-arm
+        run: env make linux/arm
 
       - name: Build project (Linux arm64)
-        run: env make linux-arm64
+        run: env make linux/arm64
 
       # The QEMU will include more platforms such as arm64 to docker buildx builder
       - name: Set up QEMU
