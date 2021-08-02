@@ -10,11 +10,13 @@ COPY utils/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/utils
 
 ENV SOURCE docker
 RUN go get github.com/fluent/fluent-bit-go/output
-RUN make linux/amd64
+
+ARG TARGETPLATFORM
+RUN make $TARGETPLATFORM
 
 FROM fluent/fluent-bit:1.8.1
 
-COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-amd64-*.so /fluent-bit/bin/out_newrelic.so
+COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 
 CMD ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf", "-e", "/fluent-bit/bin/out_newrelic.so"]
