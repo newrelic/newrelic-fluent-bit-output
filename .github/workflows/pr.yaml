@@ -62,7 +62,7 @@ jobs:
           push: true
           tags: localhost:5000/fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
-          platforms: linux/amd64, linux/arm, linux/arm64
+          platforms: linux/amd64, linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
       
