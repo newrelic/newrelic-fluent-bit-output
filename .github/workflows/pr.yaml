@@ -45,6 +45,8 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@master
+        with:
+          driver-opts: network=host
 
       # Cache to be used by Docker Buildx
       - name: Set up Docker Buildx's cache
