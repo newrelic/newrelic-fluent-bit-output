@@ -95,7 +95,8 @@ jobs:
           push: true
           tags: localhost:5000/fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
-          platforms: linux/amd64, linux/arm64, linux/arm/v7
+          # Fluent Bit debug image only available for amd64 architecture
+          platforms: linux/amd64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -106,16 +107,6 @@ jobs:
         run: bash test.sh
         env:
           ARCHITECTURE: amd64
-
-      - name: Test Docker debug image on arm64
-        run: bash test.sh
-        env:
-          ARCHITECTURE: arm64
-
-      - name: Test Docker debug image on arm
-        run: bash test.sh
-        env:
-          ARCHITECTURE: arm
 
       - name: Build Docker multi-architecture Firelens image
         uses: docker/build-push-action@v2
