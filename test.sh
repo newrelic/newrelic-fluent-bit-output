@@ -35,16 +35,24 @@ function check_mockserver {
 mkdir ./test/testdata || true
 touch ./test/testdata/fbtest.log
 
-# We should skip re-building the docker image en GH
-# since we already build it on previous step so
-# we're usign the CI env var that GH set to true for
-# every job in the pipeline
-if [ ${CI:-no} = "no" ]; then
+# We use the CI env var that GH set to true for every job in the pipeline.
+# It will be false when executing this script locally.
+if [ ${CI:-"no"} = "no" ]; then
   echo "Building docker image"
+  # To avoid requiring QEMU and creating a buildx builder, we simplify the testing
+  # to just use the amd64 architecture
   docker build -f ${DOCKERFILE:-Dockerfile} -t fb-output-plugin .
+  export NR_FB_IMAGE=fb-output-plugin
+else
+  # We skip re-building the docker image in GH, since we already build it on previous step
+  # and make it available on a local registry
+  echo "Inspecting Fluent Bit + New Relic multi-architecture image"
+  docker buildx imagetools inspect localhost:5000/fb-output-plugin --raw | jq
+  echo "Looking for image with architecture ${ARCHITECTURE}"
+  SHA256DIGEST=$(docker buildx imagetools inspect localhost:5000/fb-output-plugin --raw | jq -r ".manifests[] | select(.platform.architecture == \"${ARCHITECTURE}\") | .digest")
+  echo "Selecting image with digest: ${SHA256DIGEST}"
+  export NR_FB_IMAGE="localhost:5000/fb-output-plugin@${SHA256DIGEST}"
 fi
-
-echo "Using docker image for: $(docker image inspect fb-output-plugin --format \"{{.Architecture}}\")"
 
 echo "Starting docker compose"
 docker-compose -f ./test/docker-compose.yml up -d
@@ -68,7 +76,7 @@ done
 
 # This updates the modified date of the log file, it should
 # be updated with the echo but looks like it doesn't. A reason
-# could be that we're putting this file as a volume and writting
+# could be that we're putting this file as a volume and writing
 # small changes so fast, if we add more echoes it works as well.
 touch ./test/testdata/fbtest.log
 

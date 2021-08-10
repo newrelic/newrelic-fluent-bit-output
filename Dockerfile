@@ -11,8 +11,11 @@ COPY utils/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/utils
 ENV SOURCE docker
 RUN go get github.com/fluent/fluent-bit-go/output
 
+# Not using default value here due to this: https://github.com/docker/buildx/issues/510
 ARG TARGETPLATFORM
-RUN make $TARGETPLATFORM
+ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
+RUN echo "Building for ${TARGETPLATFORM} architecture"
+RUN make ${TARGETPLATFORM}
 
 FROM fluent/fluent-bit:1.8.1
 
