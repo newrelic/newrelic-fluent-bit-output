@@ -47,7 +47,7 @@ else
   # We skip re-building the docker image in GH, since we already build it on previous step
   # and make it available on a local registry
   echo "Inspecting Fluent Bit + New Relic multi-architecture image"
-  docker buildx imagetools inspect localhost:5000/fb-output-plugin --raw | jq
+  docker buildx imagetools inspect localhost:5000/fb-output-plugin --raw
   echo "Looking for image with architecture ${ARCHITECTURE}"
   SHA256DIGEST=$(docker buildx imagetools inspect localhost:5000/fb-output-plugin --raw | jq -r ".manifests[] | select(.platform.architecture == \"${ARCHITECTURE}\") | .digest")
   echo "Selecting image with digest: ${SHA256DIGEST}"
