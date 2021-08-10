@@ -73,17 +73,20 @@ jobs:
         run: docker buildx imagetools inspect localhost:5000/fb-output-plugin
 
       - name: Test Docker image on amd64
-          run: bash test.sh
+          run: |
+            bash test.sh
           env:
             ARCHITECTURE: amd64
 
       - name: Test Docker image on arm64
-        run: bash test.sh
+        run: |
+          bash test.sh
         env:
           ARCHITECTURE: arm64
 
       - name: Test Docker image on arm
-          run: bash test.sh
+          run: |
+            bash test.sh
           env:
             ARCHITECTURE: arm
 # 
