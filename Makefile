@@ -8,7 +8,7 @@ linux/amd64:
 linux/arm64:
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ go build -buildmode=c-shared -o out_newrelic-linux-arm64-${VERSION}.so .
 
-linux/arm/v7:
+linux/arm:
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++ go build -buildmode=c-shared -o out_newrelic-linux-arm-${VERSION}.so .
 
 windows/amd64:
