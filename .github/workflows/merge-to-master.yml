@@ -1,11 +1,9 @@
 name: New Relic Fluent Bit Output Plugin - Merge to master
 
-# TODO REVERT
-on: [pull_request]
-# on:
-#   push:
-#     branches:
-#       - master
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   cd:
@@ -81,8 +79,7 @@ jobs:
         with:
           context: ./
           file: ./Dockerfile
-          # TODO REVERT
-          push: false
+          push: true
           tags: |
             ${{ env.DOCKERHUB_REPOSITORY }}:latest
             ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -102,8 +99,7 @@ jobs:
         with:
           context: ./
           file: ./Dockerfile_debug
-          # TODO REVERT
-          push: false
+          push: true
           tags: |
             ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
           builder: ${{ steps.buildx.outputs.name }}
@@ -135,8 +131,7 @@ jobs:
         with:
           context: ./
           file: ./Dockerfile_firelens
-          # TODO REVERT
-          push: false
+          push: true
           tags: |
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -149,63 +144,63 @@ jobs:
       - name: Inspect published Docker Firelens image
         run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
 
-#      - name: Create Release
-#        id: create_release
-#        uses: actions/create-release@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          tag_name: v${{ env.VERSION }}
-#          release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
-#          draft: false
-#          prerelease: false
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
+          draft: false
+          prerelease: false
 
-#      - name: Include linux-amd64 artifact in release
-#        uses: actions/upload-release-asset@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          upload_url: ${{ steps.create_release.outputs.upload_url }}
-#          asset_path: ./out_newrelic-linux-amd64-${{ env.VERSION }}.so
-#          asset_name: out_newrelic-linux-amd64-${{ env.VERSION }}.so
-#          asset_content_type: application/octet-stream
+      - name: Include linux-amd64 artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-amd64-${{ env.VERSION }}.so
+          asset_name: out_newrelic-linux-amd64-${{ env.VERSION }}.so
+          asset_content_type: application/octet-stream
 
-#      - name: Include windows-amd64 artifact in release
-#        uses: actions/upload-release-asset@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          upload_url: ${{ steps.create_release.outputs.upload_url }}
-#          asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
-#          asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
-#          asset_content_type: application/octet-stream
+      - name: Include windows-amd64 artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+          asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+          asset_content_type: application/octet-stream
 
-#      - name: Include windows-386 artifact in release
-#        uses: actions/upload-release-asset@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          upload_url: ${{ steps.create_release.outputs.upload_url }}
-#          asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
-#          asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
-#          asset_content_type: application/octet-stream
+      - name: Include windows-386 artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
+          asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
+          asset_content_type: application/octet-stream
 
-#      - name: Include linux-arm64 artifact in release
-#        uses: actions/upload-release-asset@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          upload_url: ${{ steps.create_release.outputs.upload_url }}
-#          asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
-#          asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
-#          asset_content_type: application/octet-stream
+      - name: Include linux-arm64 artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          asset_content_type: application/octet-stream
 
-#      - name: Include linux-arm artifact in release
-#        uses: actions/upload-release-asset@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          upload_url: ${{ steps.create_release.outputs.upload_url }}
-#          asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
-#          asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
-#          asset_content_type: application/octet-stream
+      - name: Include linux-arm artifact in release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
+          asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
+          asset_content_type: application/octet-stream

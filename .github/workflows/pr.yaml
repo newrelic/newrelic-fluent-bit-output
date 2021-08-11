@@ -1,11 +1,6 @@
 name: New Relic Fluent Bit Output Plugin - Pull Request
 
-# TODO REVERT
-# on: [pull_request]
-on:
-  push:
-    branches:
-      - master
+on: [pull_request]
 
 jobs:
   unit-tests:
