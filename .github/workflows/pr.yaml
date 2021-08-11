@@ -1,6 +1,11 @@
 name: New Relic Fluent Bit Output Plugin - Pull Request
 
-on: [pull_request]
+# TODO REVERT
+# on: [pull_request]
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   unit-tests:
@@ -68,7 +73,8 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@master
         with:
-          # This option is required to avoid this problem: https://github.com/docker/for-mac/issues/3611#issuecomment-479507361
+          # This option is required to avoid this problem https://github.com/docker/for-mac/issues/3611#issuecomment-479507361
+          # We need this option to be able to push to the local registry service used by the integration tests.
           driver-opts: network=host
 
       # Cache to be used by Docker Buildx
