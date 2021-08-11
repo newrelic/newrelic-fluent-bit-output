@@ -2,21 +2,16 @@
 
 # Fluent Bit output plugin for New Relic
 
-The **newrelic-fluent-bit-output** plugin forwards output to New Relic.
+The **newrelic-fluent-bit-output** plugin forwards output to New Relic. It works on all versions of Fluent Bit greater than 0.12 but for the best experience we recommend using versions greater than 1.0. This project is provided AS-IS WITHOUT WARRANTY OR SUPPORT, although you can report issues and contribute to the project here on GitHub. 
 
-It works on all versions of Fluent Bit greater than 0.12 but for the best experience we recommend using versions greater than 1.0.
-
-## Getting started
-
-In order to insert records into New Relic, you can configure the plugin with a config file or configure it via command line flags. You can find more details on how to configure Fluent Bit [here](https://docs.fluentbit.io/manual/configuration).
-
-You can download the output plugin pre-compiled under our [releases](https://github.com/newrelic/newrelic-fluent-bit-output/releases/latest).
-Alternatively you can compile the plugin yourself and store `out_newrelic-linux-*.so` or `out_newrelic-windows-*.dll` at a location that can be accessed by the fluent-bit daemon. See to [this section](DEVELOPER.md#compiling-the-out_newrelic-plugin) in [DEVELOPER.md](DEVELOPER.md) for more details.
+You can download the output plugin pre-compiled under our [releases](https://github.com/newrelic/newrelic-fluent-bit-output/releases/latest). Alternatively you can compile the plugin yourself and store `out_newrelic-linux-*.so` or `out_newrelic-windows-*.dll` at a location that can be accessed by the fluent-bit daemon. See to [this section](DEVELOPER.md#compiling-the-out_newrelic-plugin) in [DEVELOPER.md](DEVELOPER.md) for more details. The plugin, together with Fluent Bit, is also delivered as a standalone [Docker image](#docker-image).
 
 Note that for certain Linux Enterprise users,
 [including CentOS 7, Debian 8 and 9, Ubuntu, and Raspbian 8](https://fluentbit.io/documentation/0.13/installation/td-agent-bit.html),
 the name of Fluent Bit is td-agent-bit, instead of fluent-bit. So, anywhere in this doc where it says `fluent-bit`,
 just replace it with `td-agent-bit` (for example, you will need to edit `td-agent-bit.conf` instead of `fluent-bit.conf`).
+
+In order to insert records into New Relic, you can configure the plugin with a config file or configure it via command line flags. You can find more details on how to configure Fluent Bit [here](https://docs.fluentbit.io/manual/configuration).
 
 ## Getting started with the Fluent Bit output plugin for New Relic
 
@@ -74,7 +69,7 @@ The plugin supports the following configuration parameters (apart from the ones 
 | caBundleDir        | **[LINUX HTTPS ONLY]** Specifies a folder containing one or more Certificate Authority certificates ot use for validating HTTPS connections against the proxy. Useful when the proxy uses a self-signed certificate. **Only certificate files in the PEM format and \*.pem extension will be considered**. If not specified, then the operating system's CA list is used. Only used when `validateProxyCerts` is `true`. | (none)                                |
 | validateProxyCerts | **[HTTPS ONLY]** When using a HTTPS proxy, the proxy certificates are validated by default when establishing a HTTPS connection. To disable the proxy certificate validation, set `validateProxyCerts` to `false` (insecure)                                                                                                                                                                                             | true                                  |
 
-### Proxy support
+#### Proxy support
 
 The plugin automatically detects the `HTTP_PROXY` and `HTTPS_PROXY` environment variables, and automatically uses them to set up the proxy configuration.
 
@@ -101,7 +96,7 @@ A example setup, which defines an HTTPS proxy and its self-signed certificate, w
     caBundleFile /path/to/proxy-certificate-bundle.pem
 ```
 
-### Retry logic
+#### Retry logic
 
 Fluent Bit provides an out-of-the-box retry logic, configurable via the `Retry_Limit` option. For recoverable errors, the New Relic output plugin requests Fluent Bit to retry flushing data again later. By default, the `Retry_Limit` is set to 1 attempt, but can be [overwritten manually](https://docs.fluentbit.io/manual/administration/scheduling-and-retries).
 
@@ -110,7 +105,7 @@ Fluent Bit provides an out-of-the-box retry logic, configurable via the `Retry_L
 | Retry_Limit | N     | Integer value to set the maximum number of retries allowed. N must be >= 1 (default: 1)                              |
 | Retry_Limit | False | When Retry_Limit is set to False, means that there is not limit for the number of retries that the Scheduler can do. |
 
-## Docker Container
+## Docker Image
 
 This plugin also comes packaged in a Docker image, available [here](https://hub.docker.com/r/newrelic/newrelic-fluentbit-output). To use it, you just need to pull the image and run it with your desired configuration:
 
