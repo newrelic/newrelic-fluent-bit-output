@@ -10,11 +10,16 @@ COPY utils/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/utils
 
 ENV SOURCE docker
 RUN go get github.com/fluent/fluent-bit-go/output
-RUN make linux-amd64
+
+# Not using default value here due to this: https://github.com/docker/buildx/issues/510
+ARG TARGETPLATFORM
+ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
+RUN echo "Building for ${TARGETPLATFORM} architecture"
+RUN make ${TARGETPLATFORM}
 
 FROM amazon/aws-for-fluent-bit:2.17.0
 
-COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-amd64-*.so /fluent-bit/bin/out_newrelic.so
+COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 
 CMD ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf", "-e", "/fluent-bit/bin/out_newrelic.so"]

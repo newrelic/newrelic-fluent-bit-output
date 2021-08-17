@@ -12,7 +12,7 @@ services:
       MOCKSERVER_INITIALIZATION_JSON_PATH: /tmp/expectations.json
 
   newrelic-fluent-bit-output:
-    image: fb-output-plugin
+    image: "${NR_FB_IMAGE}"
     volumes:
       - "./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf"
       - "./testdata/fbtest.log:/var/log/fbtest.log"

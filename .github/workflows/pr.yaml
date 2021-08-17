@@ -3,8 +3,8 @@ name: New Relic Fluent Bit Output Plugin - Pull Request
 on: [pull_request]
 
 jobs:
-  ci:
-    name: Continuous Integration pipeline
+  unit-tests:
+    name: CI - Tests and Build
     runs-on: ubuntu-18.04
 
     steps:
@@ -30,7 +30,34 @@ jobs:
           files: test-results.xml
 
       - name: Build project
-        run: make linux-amd64
+        run: make linux/amd64
+
+  docker-ci:
+    name: CI - Docker image build (${{ matrix.name }})
+    runs-on: ubuntu-18.04
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    strategy:
+      matrix:
+        include:
+          - name: standard image
+            dockerfile: Dockerfile
+            platforms: linux/amd64, linux/arm64, linux/arm/v7
+          - name: debug image
+            dockerfile: Dockerfile_debug
+            # Fluent Bit debug image only available for amd64 architecture
+            platforms: linux/amd64
+          - name: Firelens image
+            dockerfile: Dockerfile_firelens
+            # Firelens image only available for amd64 and arm64 architectures
+            platforms: linux/amd64, linux/arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
 
       # The QEMU will include more platforms such as arm64 to docker buildx builder
       - name: Set up QEMU
@@ -40,6 +67,10 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@master
+        with:
+          # This option is required to avoid this problem https://github.com/docker/for-mac/issues/3611#issuecomment-479507361
+          # We need this option to be able to push to the local registry service used by the integration tests.
+          driver-opts: network=host
 
       # Cache to be used by Docker Buildx
       - name: Set up Docker Buildx's cache
@@ -49,63 +80,20 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: ${{ runner.os }}-buildx-
 
-      - name: Build Docker image
+      - name: Build Docker image (${{ matrix.name }})
         uses: docker/build-push-action@v2
         with:
           context: ./
-          file: ./Dockerfile
-          push: false
-          load: true
-          tags: fb-output-plugin
+          file: ./${{ matrix.dockerfile }}
+          push: true
+          tags: localhost:5000/fb-output-plugin
           builder: ${{ steps.buildx.outputs.name }}
+          platforms: ${{ matrix.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+      
+      - name: Inspect generated Docker image (${{ matrix.name }})
+        run: docker buildx imagetools inspect localhost:5000/fb-output-plugin
 
-      - name: Test Docker image
-        run: bash test.sh
-
-      - name: Build Docker debug image
-        uses: docker/build-push-action@v2
-        with:
-          context: ./
-          file: ./Dockerfile_debug
-          push: false
-          load: true
-          tags: fb-output-plugin
-          builder: ${{ steps.buildx.outputs.name }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-
-      - name: Test Docker debug image
-        run: bash test.sh
-
-      - name: Build Docker arm64 image
-        uses: docker/build-push-action@v2
-        with:
-          context: ./
-          file: ./Dockerfile_arm64
-          push: false
-          tags: fb-output-plugin
-          builder: ${{ steps.buildx.outputs.name }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          platforms: linux/arm64
-          outputs: type=docker
-
-      - name: Test Docker arm image
-        run: bash test.sh
-
-      - name: Build Docker image for Firelens
-        uses: docker/build-push-action@v2
-        with:
-          context: ./
-          file: ./Dockerfile_firelens
-          push: false
-          load: true
-          tags: fb-output-plugin
-          builder: ${{ steps.buildx.outputs.name }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-
-      - name: Test Docker firelens image
+      - name: Test Docker image (${{ matrix.name }})
         run: bash test.sh

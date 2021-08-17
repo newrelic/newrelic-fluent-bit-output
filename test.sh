@@ -31,54 +31,81 @@ function check_mockserver {
   return $RESULT
 }
 
-# Create testdata folder and log file
-mkdir ./test/testdata || true
-touch ./test/testdata/fbtest.log
+function run_test {
+  echo "Starting test for image ${NR_FB_IMAGE}"
 
-# We should skip re-building the docker image en GH
-# since we already build it on previous step so
-# we're usign the CI env var that GH set to true for
-# every job in the pipeline
-if [ ${CI:-no} = "no" ]; then
+  echo "Creating testdata folder and log file"
+  mkdir ./test/testdata || true
+  touch ./test/testdata/fbtest.log
+
+  echo "Starting docker compose"
+  docker-compose -f ./test/docker-compose.yml up -d
+
+  # Waiting mockserver to be ready
+  max_retry=10
+  counter=0
+  until check_mockserver
+  do
+    echo "Waiting mockserver to be ready. Trying again in 2s. Try #$counter"
+    sleep 2
+    [[ $counter -eq $max_retry ]] && echo "Mockserver failed to start!" && exit 1
+    counter+=1
+  done
+
+  # Sending some logs
+  echo "Sending logs an waiting for arrive"
+  for i in {1..5}; do
+    echo "Hello!" >> ./test/testdata/fbtest.log
+  done
+
+  # This updates the modified date of the log file, it should
+  # be updated with the echo but looks like it doesn't. A reason
+  # could be that we're putting this file as a volume and writing
+  # small changes so fast, if we add more echoes it works as well.
+  touch ./test/testdata/fbtest.log
+
+  max_retry=10
+  counter=0
+  until check_logs
+  do
+    echo "Logs not found trying again in 2s. Try #$counter"
+    sleep 2
+    [[ $counter -eq $max_retry ]] && echo "Logs do not reach the server!" && exit 1
+    counter+=1
+  done
+  echo "Success!"
+
+  echo "Tearing down test for image ${NR_FB_IMAGE}"
+  rm -r ./test/testdata || true
+  docker-compose -f ./test/docker-compose.yml down
+}
+
+
+# We use the CI env var that GH set to true for every job in the pipeline.
+# It will be false when executing this script locally.
+if [ ${CI:-"no"} = "no" ]; then
   echo "Building docker image"
+  # To avoid requiring QEMU and creating a buildx builder, we simplify the testing
+  # to just use the amd64 architecture
   docker build -f ${DOCKERFILE:-Dockerfile} -t fb-output-plugin .
+
+  NR_FB_IMAGES=(fb-output-plugin)
+else
+  # We skip re-building the docker image in GH, since we already build it on previous step
+  # and make it available on a local registry
+  echo "Inspecting Fluent Bit + New Relic image"
+  docker buildx imagetools inspect localhost:5000/fb-output-plugin --raw
+
+  NR_FB_IMAGES=( $(docker buildx imagetools inspect localhost:5000/fb-output-plugin:latest --raw | jq -r 'if (.mediaType | contains("list")) then "localhost:5000/fb-output-plugin@" + .manifests[].digest else "localhost:5000/fb-output-plugin" end') )
 fi
 
-echo "Using docker image for: $(docker image inspect fb-output-plugin --format \"{{.Architecture}}\")"
-
-echo "Starting docker compose"
-docker-compose -f ./test/docker-compose.yml up -d
-
-# Waiting mockserver to be ready
-max_retry=10
-counter=0
-until check_mockserver
+for imageName in "${NR_FB_IMAGES[@]}"
 do
-  echo "Waiting mockserver to be ready. Trying again in 2s. Try #$counter"
-  sleep 2
-  [[ $counter -eq $max_retry ]] && echo "Mockserver failed to start!" && exit 1
-  counter+=1
+   echo -e "\nTesting image ${imageName}"
+   export NR_FB_IMAGE=$imageName
+   run_test
 done
 
-# Sending some logs
-echo "Sending logs an waiting for arrive"
-for i in {1..5}; do
-  echo "Hello!" >> ./test/testdata/fbtest.log
-done
+exit 0
 
-# This updates the modified date of the log file, it should
-# be updated with the echo but looks like it doesn't. A reason
-# could be that we're putting this file as a volume and writting
-# small changes so fast, if we add more echoes it works as well.
-touch ./test/testdata/fbtest.log
 
-max_retry=10
-counter=0
-until check_logs
-do
-  echo "Logs not found trying again in 2s. Try #$counter"
-  sleep 2
-  [[ $counter -eq $max_retry ]] && echo "Logs do not reach the server!" && exit 1
-  counter+=1
-done
-echo "Success!"
