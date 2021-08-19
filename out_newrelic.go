@@ -71,15 +71,15 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	code, err := nrClient.Send(buffer)
 	
 	if err == nil  && code == statusAccepted {
-		log.Printf("[INFO] Request accepted.")
+		log.Debug("Request accepted.")
 		return output.FLB_OK
 	} 
 	if (err == nil && isRetriableStatusCode(code)) || (code == retriableConnectionError){
-		log.Printf("[DEBUG] Retriable error received. Retry:true")
+		log.Debug("Retriable error received. Retry:true")
 		return output.FLB_RETRY
 	}
 	
-	log.Printf("[DEBUG] Non-retriable error received. Retry:false")
+	log.Debug("Non-retriable error received. Retry:false")
 	return output.FLB_ERROR
 }
 
