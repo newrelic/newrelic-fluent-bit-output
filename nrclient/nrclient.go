@@ -6,7 +6,7 @@ import (
 	"github.com/newrelic/newrelic-fluent-bit-output/record"
 	"io"
 	"io/ioutil"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -70,10 +70,10 @@ func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err erro
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := nrClient.client.Do(req)
 	if err != nil {
-		log.Printf("[ERROR] Error making HTTP request: %s", err)
+		log.WithField("error", err).Error("Error making HTTP request")
 		return retriableConnectionError, err
 	} else if !isSuccesful(resp.StatusCode) {
-		log.Printf("[ERROR] HTTP request made but got error reponse. Status code: %v", resp.StatusCode)
+		log.WithField("status_code", resp.StatusCode).Error("HTTP request made but got error reponse")
 		return resp.StatusCode, nil
 	}
 	defer resp.Body.Close()
