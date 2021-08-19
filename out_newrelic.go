@@ -2,7 +2,8 @@ package main
 
 import (
 	"C"
-	"log"
+	"os"
+	log "github.com/sirupsen/logrus"
 	"unsafe"
 	"github.com/newrelic/newrelic-fluent-bit-output/record"
 	"github.com/fluent/fluent-bit-go/output"
@@ -27,13 +28,13 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	cfg, err := config.NewPluginConfig(ctx)
 	if err != nil {
-		log.Printf("[ERROR] %v", err)
+		log.WithField("error", err).Error("Error creating NewPluginConfig")
 		return output.FLB_ERROR
 	}
 	var nrClient *nrclient.NRClient
 	nrClient, err = nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig)
 	if err != nil {
-		log.Printf("[ERROR] %v", err)
+		log.WithField("error", err).Error("Error creating NewNRClient")
 	}
 
 	id := cfg.NRClientConfig.GetNewRelicKey()
@@ -100,4 +101,10 @@ func FLBPluginExit() int {
 }
 
 func main() {
+	logLevel, err := log.ParseLevel(os.Getenv("LOG_LEVEL"))
+	if err != nil {
+		logLevel = log.InfoLevel
+	}
+
+	log.SetLevel(logLevel)
 }

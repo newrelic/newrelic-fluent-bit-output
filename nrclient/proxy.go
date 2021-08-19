@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	"io/ioutil"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"net/url"
@@ -51,7 +51,7 @@ func buildHttpTransport(cfg config.ProxyConfig, nrUrl string) (*http.Transport, 
 		if cfg.ValidateCerts {
 			transport.DialTLS = fullTLSToHTTPConnectFallbackDialer(transport)
 		} else {
-			log.Print("[INFO] You are using an HTTPS proxy without certificate verification. It is recommended to enable it for enhanced security")
+			log.Info("You are using an HTTPS proxy without certificate verification. It is recommended to enable it for enhanced security")
 			transport.DialTLS = fallbackDialer(transport)
 		}
 	}
@@ -70,7 +70,7 @@ func getCertPool(certFile string, certDirectory string) (*x509.CertPool, error) 
 
 		ok := caCertPool.AppendCertsFromPEM(caCert)
 		if !ok {
-			log.Printf("[WARN] certificates from %v could not be appended", certFile)
+			log.WithField("file", certFile).Warn("certificates from file could not be appended")
 		}
 	}
 	if certDirectory != "" {
@@ -88,7 +88,7 @@ func getCertPool(certFile string, certDirectory string) (*x509.CertPool, error) 
 				}
 				ok := caCertPool.AppendCertsFromPEM(caCert)
 				if !ok {
-					log.Printf("[WARN] certificate %v could not be appended", caCertFilePath)
+					log.WithField("file", caCertFilePath).Warn("certificate could not be appended")
 				}
 			}
 		}
@@ -132,18 +132,18 @@ func resolveProxyURL(proxyResolver func(*http.Request) (*url.URL, error), nrEndp
 // therefore an HTTP CONNECT initiator request is required prior to trigger the proxy TLS handshake.
 func fullTLSToHTTPConnectFallbackDialer(t *http.Transport) func(network string, addr string) (net.Conn, error) {
 	return func(network string, addr string) (conn net.Conn, e error) {
-		log.Printf("[DEBUG] dialing to proxy via TLS")
+		log.Debug("dialing to proxy via TLS")
 		dialer := tlsDialer(t)
 		conn, err := dialer(network, addr)
 		if err == nil {
-			log.Printf("[DEBUG] usual, secured configuration worked as expected. Defaulting to it")
+			log.Debug("usual, secured configuration worked as expected. Defaulting to it")
 			t.DialTLS = dialer
 			return conn, nil
 		}
 
 		switch err.(type) {
 		case tls.RecordHeaderError:
-			log.Printf("[DEBUG] TLS handshake cannot be established. Retrying with HTTP CONNECT")
+			log.Debug("TLS handshake cannot be established. Retrying with HTTP CONNECT")
 			t.DialTLS = nonTLSDialer
 			return t.DialTLS(network, addr)
 		default:
@@ -177,18 +177,18 @@ func fullTLSToHTTPConnectFallbackDialer(t *http.Transport) func(network string, 
 func fallbackDialer(transport *http.Transport) func(network string, addr string) (net.Conn, error) {
 	return func(network string, addr string) (conn net.Conn, e error) {
 		// test the tlsDialer with normal configuration
-		log.Printf("[DEBUG] dialing with usual, secured configuration")
+		log.Debug("dialing with usual, secured configuration")
 		dialer := tlsDialer(transport)
 		conn, err := dialer(network, addr)
 		if err == nil {
-			log.Printf("[DEBUG] usual, secured configuration worked as expected. Defaulting to it")
+			log.Debug("usual, secured configuration worked as expected. Defaulting to it")
 			// if worked, we will use tlsDialer directly from now on
 			transport.DialTLS = dialer
 			return conn, err
 		}
 		switch err.(type) {
 		case x509.UnknownAuthorityError:
-			log.Printf("[DEBUG] usual, secured configuration did not work as expected (%v). Retrying with verification skip", err)
+			log.WithField("error", err).Debug("usual, secured configuration did not work as expected. Retrying with verification skip")
 			// if in the previous request we received an authority error, we skip verification and
 			// continue using tlsDialer directly from now on
 			if transport.TLSClientConfig == nil {
@@ -200,7 +200,7 @@ func fallbackDialer(transport *http.Transport) func(network string, addr string)
 			transport.DialTLS = tlsDialer(transport)
 			return transport.DialTLS(network, addr)
 		case tls.RecordHeaderError:
-			log.Printf("[DEBUG] usual, secured configuration did not work as expected (%v). Retrying with HTTP dialing", err)
+			log.WithField("error", err).Debug("usual, secured configuration did not work as expected. Retrying with HTTP dialing")
 			// if the problem was due to a non-https connection, we use a non-tls dialer directly
 			// from now on
 			transport.DialTLS = nonTLSDialer

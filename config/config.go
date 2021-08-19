@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/fluent/fluent-bit-go/output"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"strconv"
 	"unsafe"
 )
@@ -118,6 +118,6 @@ func optBool(ctx unsafe.Pointer, keyName string, defaultValue bool) (bool, error
 
 func checkDeprecatedConfigField(ctx unsafe.Pointer, keyName string) {
 	if rawVal := output.FLBPluginConfigKey(ctx, keyName); len(rawVal) > 0 {
-		log.Printf("Configuration field %s is deprecated and will be ignored\n", keyName)
+		log.WithField("key_name", keyName).Warn("Configuration field is deprecated and will be ignored\n")
 	}
 }
