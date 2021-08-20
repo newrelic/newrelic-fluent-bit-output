@@ -1,4 +1,4 @@
-# github.com/fluent/fluent-bit-go v0.0.0-20200420155746-e125cab17963
+# github.com/fluent/fluent-bit-go v0.0.0-20200729034236-b9c0d6a20853
 github.com/fluent/fluent-bit-go/output
 # github.com/golang/protobuf v1.2.0
 github.com/golang/protobuf/proto
@@ -41,7 +41,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/ugorji/go v1.1.4
+# github.com/ugorji/go/codec v1.1.7
 github.com/ugorji/go/codec
 # golang.org/x/net v0.0.0-20180906233101-161cd47e91fd
 golang.org/x/net/html
