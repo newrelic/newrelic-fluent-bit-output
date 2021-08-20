@@ -23,10 +23,9 @@ jobs:
           go test -v ./... 2>&1 | go-junit-report > test-results.xml
 
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1.5
+        uses: EnricoMi/publish-unit-test-result-action@v1.19
         if: always()
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           files: test-results.xml
 
       - name: Build project
