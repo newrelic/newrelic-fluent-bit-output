@@ -34,19 +34,23 @@ jobs:
           sudo apt install mingw-w64 g++-arm-linux-gnueabihf g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
 
       - name: Build project (Linux amd64)
-        run: env make linux-amd64
+        run: env make linux/amd64
 
       - name: Build project (Windows 386)
-        run: env make windows-386
+        run: env make windows/386
 
       - name: Build project (Windows amd64)
-        run: env make windows-amd64
+        run: env make windows/amd64
 
       - name: Build project (Linux arm)
-        run: env make linux-arm
+        run: env make linux/arm/v7
 
       - name: Build project (Linux arm64)
-        run: env make linux-arm64
+        run: env make linux/arm64
+
+      # The QEMU will include more platforms such as arm64 to docker buildx builder
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
 
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
       - name: Set up Docker Buildx
@@ -80,11 +84,32 @@ jobs:
             ${{ env.DOCKERHUB_REPOSITORY }}:latest
             ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
           builder: ${{ steps.buildx.outputs.name }}
+          platforms: linux/amd64, linux/arm64, linux/arm/v7
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Image digest
-        run: 'echo "Published Docker image with digest: ${{ steps.docker_build.outputs.digest }}"'
+      - name: Inspect published Docker image
+        run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
+
+      - name: Build and Publish Docker debug image
+        uses: docker/build-push-action@v2
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: ${{ env.VERSION }}-debug
+        with:
+          context: ./
+          file: ./Dockerfile_debug
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          builder: ${{ steps.buildx.outputs.name }}
+          # Fluent Bit debug image only available for amd64 architecture
+          platforms: linux/amd64
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Inspect published Docker debug image
+        run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -111,11 +136,13 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
           builder: ${{ steps.buildx.outputs.name }}
+          # Firelens image only available for amd64 and arm64 architectures
+          platforms: linux/amd64, linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Image digest
-        run: 'echo "Published Docker Firelens image with digest: ${{ steps.docker_build.outputs.digest }}"'
+      - name: Inspect published Docker Firelens image
+        run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
 
       - name: Create Release
         id: create_release
