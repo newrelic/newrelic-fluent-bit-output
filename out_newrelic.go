@@ -70,7 +70,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	code, err := nrClient.Send(buffer)
 	
 	if err == nil  && code == statusAccepted {
-		log.Printf("[INFO] Request accepted.")
+		// log.Printf("[INFO] Request accepted.")
 		return output.FLB_OK
 	} 
 	if (err == nil && isRetriableStatusCode(code)) || (code == retriableConnectionError){
