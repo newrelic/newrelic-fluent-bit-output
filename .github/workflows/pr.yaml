@@ -99,7 +99,7 @@ jobs:
 
   docker-windows-ci:
     name:  CI - Docker image for ${{ matrix.name }} 
-    runs-on: windows-2019
+    runs-on: windows-2022
     strategy:
       matrix:
         include:
