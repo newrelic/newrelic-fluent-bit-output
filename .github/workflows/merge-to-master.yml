@@ -144,6 +144,14 @@ jobs:
       - name: Inspect published Docker Firelens image
         run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
 
+      - name: Build and Publish Docker image for Windows
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: ${{ env.VERSION }}-windows
+        run: |
+          docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} .
+          docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} .
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
