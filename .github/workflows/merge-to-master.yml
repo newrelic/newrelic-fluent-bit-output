@@ -207,26 +207,18 @@ jobs:
 
   windows-docker-images:
     name:  ${{ matrix.name }} Docker image generation and publishing
-    runs-on: windows-2022
+    # Right now, the windows-2019 worker offerred by GitHub is based on ltsc2019/10.0.17763.2183, so it can only compile containers running this specific version and compilation number of the OS.
+    # We aim to support (but right now, we can only support LTSC2019 using GitHub actions): https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
+    # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
+    # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
+    # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
+    runs-on: windows-2019
     strategy:
       matrix:
         include:
-          # See: https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
-          - name: Windows Server LTSC 2019
+          - name: Windows Server 2019 (LTSC)
             windowsImageTag: ltsc2019-amd64
             imageTagSuffix: windows-ltsc-2019
-          - name: Windows Server SAC 1809
-            windowsImageTag: 1809-amd64
-            imageTagSuffix: windows-sac-1809
-          - name: Windows Server SAC 1909
-            windowsImageTag: 1909-amd64
-            imageTagSuffix: windows-sac-1909
-          - name: Windows Server SAC 2004
-            windowsImageTag: 2004-amd64
-            imageTagSuffix: windows-sac-2004
-          - name: Windows Server SAC 20H2
-            windowsImageTag: 20H2-amd64
-            imageTagSuffix: windows-sac-20H2
 
     steps:
       - name: Checkout code
