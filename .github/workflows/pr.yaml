@@ -96,3 +96,29 @@ jobs:
 
       - name: Test Docker image (${{ matrix.name }})
         run: bash test.sh
+
+  docker-windows-ci:
+    name:  CI - Docker image for ${{ matrix.name }} 
+    # Right now, the windows-2019 worker offerred by GitHub is based on ltsc2019/10.0.17763.2183, so it can only compile containers running this specific version and compilation number of the OS.
+    # We aim to support (but right now, we can only support LTSC2019 using GitHub actions): https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
+    # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
+    # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
+    # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        include:
+          - name: Windows Server 2019 (LTSC)
+            windowsImageTag: ltsc2019-amd64
+            imageTagSuffix: windows-ltsc-2019
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build container for ${{ matrix.name }}
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
+        run: |
+          docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
