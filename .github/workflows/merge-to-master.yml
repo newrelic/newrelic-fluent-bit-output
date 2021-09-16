@@ -226,10 +226,10 @@ jobs:
 
       - name: Determine new plugin version
         run: |
-          VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
-          echo "Determined version: $VERSION"
-          # After the following command, the VERSION variable is available via the "env" command
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
+          echo "Determined version: $env:VERSION"
+          # After the following command, the VERSION variable is available via the "env" command in the GH action
+          Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
