@@ -125,5 +125,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build container for ${{ matrix.name }}
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
         run: |
           docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
