@@ -98,13 +98,32 @@ jobs:
         run: bash test.sh
 
   docker-windows-ci:
-    name: CI - Docker image for Windows build
+    name:  CI - Docker image for ${{ matrix.name }} 
     runs-on: windows-2019
+    strategy:
+      matrix:
+        include:
+          # See: https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
+          - name: Windows Server LTSC 2019
+            windowsImageTag: ltsc2019
+            imageTagSuffix: windows-ltsc-2019
+          - name: Windows Server SAC 1809
+            windowsImageTag: "1809"
+            imageTagSuffix: windows-sac-1809
+          - name: Windows Server SAC 1909
+            windowsImageTag: "1909"
+            imageTagSuffix: windows-sac-1909
+          - name: Windows Server SAC 2004
+            windowsImageTag: "2004"
+            imageTagSuffix: windows-sac-2004
+          - name: Windows Server SAC 20H2
+            windowsImageTag: 20H2
+            imageTagSuffix: windows-sac-20H2
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Build container
+      - name: Build container for ${{ matrix.name }}
         run: |
-          docker build -f Dockerfile.windows .
+          docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
