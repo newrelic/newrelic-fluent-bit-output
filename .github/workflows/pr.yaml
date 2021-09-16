@@ -116,15 +116,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Determine new plugin version
+      - name: Build container for ${{ matrix.name }}
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
         run: |
-          $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
-          echo "Determined version: $env:VERSION"
-          # After the following command, the VERSION variable is available via the "env" command in the GH action
-          Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
-
-      - name: Determine new plugin version
-        run: |
-          echo "Got version from previous step ${{ env.VERSION }}"
-
-
+          docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
