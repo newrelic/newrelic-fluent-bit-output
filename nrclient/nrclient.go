@@ -40,6 +40,10 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRCli
 	return nrClient, nil
 }
 
+func (nrClient *NRClient) InLowDataMode() (bool) {
+	return nrClient.config.LowDataMode
+}
+
 func (nrClient *NRClient) Send(logRecords []record.LogRecord) (int, error) {
 	payloads, err := record.PackageRecords(logRecords)
 	if err != nil {

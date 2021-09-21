@@ -21,7 +21,7 @@ type PackagedRecords *bytes.Buffer
 
 // RemapRecord takes a log record emitted by FluentBit, parses it into a NewRelic LogRecord
 // domain type and performs several key name re-mappings.
-func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, pluginVersion string) (outputRecord LogRecord) {
+func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, pluginVersion string, omitPlugin bool) (outputRecord LogRecord) {
 	outputRecord = make(map[string]interface{})
 	outputRecord = parseRecord(inputRecord)
 
@@ -41,7 +41,7 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 	if !ok {
 		source = "BARE-METAL"
 	}
-	if _, ok = outputRecord["plugin"]; !ok {
+	if _, ok = outputRecord["plugin"]; !ok && !omitPlugin {
 		outputRecord["plugin"] = map[string]string{
 			"type":    "fluent-bit",
 			"version": pluginVersion,

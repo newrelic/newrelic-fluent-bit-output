@@ -18,7 +18,7 @@
 ## Developing cycle
 1. Write tests and production code
 2. Update the version in `version.go`
-3. Run tests: `go test`
+3. Run tests: `go test ./...`
 4. Compile the plugin: `make linux/amd64`. See [this section](#compiling-the-out_newrelic-plugin) for more details
 5. Run Fluent Bit with the plugin using the template config file: `FILE_PATH=/usr/local/var/log/test.log API_KEY=(your-api-key) BUFFER_SIZE= MAX_RECORDS= fluent-bit -c ./fluent-bit.conf -e ./out_newrelic.so`
 6. Cause a change that you've configured Fluent Bit to pick up: (`echo "FluentBitTest" >> /usr/local/var/log/test.log`)

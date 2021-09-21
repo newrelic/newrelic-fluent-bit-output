@@ -48,6 +48,10 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	// Create Fluent Bit decoder
 	dec := output.NewDecoder(data, int(length))
 
+	// Get New Relic Client
+	id := output.FLBPluginGetContext(ctx).(string)
+	nrClient := nrClientRepo[id]
+
 	// Iterate, parse and accumulate records to be sent
 	var buffer []record.LogRecord
 	for {
@@ -57,11 +61,9 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 			break
 		}
 
-		buffer = append(buffer, record.RemapRecord(fbRecord, ts, VERSION))
+		buffer = append(buffer, record.RemapRecord(fbRecord, ts, VERSION, nrClient.InLowDataMode()))
 	}
 
-	id := output.FLBPluginGetContext(ctx).(string)
-	nrClient := nrClientRepo[id]
 	// Return options:
 	//
 	// output.FLB_OK    = data have been processed.

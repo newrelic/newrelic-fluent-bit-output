@@ -14,10 +14,11 @@ type PluginConfig struct {
 }
 
 type NRClientConfig struct {
-	Endpoint   string
-	ApiKey     string
-	LicenseKey string
-	UseApiKey  bool
+	Endpoint    string
+	ApiKey      string
+	LicenseKey  string
+	UseApiKey   bool
+	LowDataMode bool
 }
 
 type ProxyConfig struct {
@@ -73,6 +74,8 @@ func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
 	}
 
 	cfg.UseApiKey = len(cfg.ApiKey) > 0
+
+	cfg.LowDataMode, err = optBool(ctx, "lowDataMode", false)
 
 	return
 }

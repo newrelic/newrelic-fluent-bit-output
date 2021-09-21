@@ -36,7 +36,7 @@ var _ = Describe("Out New Relic", func() {
 				time.Now(),
 			}
 			inputMap["log"] = "message"
-			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion, false)
 			Expect(foundOutput["message"]).To(Equal("message"))
 			Expect(foundOutput["log"]).To(BeNil())
 			Expect(foundOutput["timestamp"]).To(Equal(inputTimestamp.(output.FLBTime).UnixNano() / 1000000))
@@ -59,9 +59,19 @@ var _ = Describe("Out New Relic", func() {
 			inputMap["plugin"] = map[string]string{
 				"type": expectedType,
 			}
-			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion,false)
 			pluginMap := foundOutput["plugin"].(map[string]string)
 			Expect(pluginMap["type"]).To(Equal(expectedType))
+		})
+
+		It("Doesn't add plugin information if in low data mode", func() {
+			inputMap := make(FluentBitRecord)
+			var inputTimestamp interface{}
+			inputTimestamp = output.FLBTime{
+				time.Now(),
+			}
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion,true)
+			Expect(foundOutput["plugin"]).To(BeNil())
 		})
 
 		It("sets the source if it is included as an environment variable", func() {
@@ -73,7 +83,7 @@ var _ = Describe("Out New Relic", func() {
 			expectedSource := "docker"
 			inputMap["log"] = "message"
 			os.Setenv("SOURCE", expectedSource)
-			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion)
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion, false)
 			pluginMap := foundOutput["plugin"].(map[string]string)
 			Expect(pluginMap["source"]).To(Equal(expectedSource))
 		})
@@ -158,7 +168,7 @@ var _ = Describe("Out New Relic", func() {
 				func() {
 					inputMap := make(FluentBitRecord)
 
-					foundOutput := RemapRecord(inputMap, input, pluginVersion)
+					foundOutput := RemapRecord(inputMap, input, pluginVersion, false)
 
 					Expect(foundOutput["timestamp"]).To(Equal(expected))
 				},
@@ -169,7 +179,7 @@ var _ = Describe("Out New Relic", func() {
 			inputMap := make(FluentBitRecord)
 
 			// We don't handle string types
-			foundOutput := RemapRecord(inputMap, "1234567890", pluginVersion)
+			foundOutput := RemapRecord(inputMap, "1234567890", pluginVersion, false)
 
 			Expect(foundOutput["timestamp"]).To(BeNil())
 		})
