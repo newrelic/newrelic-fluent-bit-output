@@ -64,14 +64,17 @@ var _ = Describe("Out New Relic", func() {
 			Expect(pluginMap["type"]).To(Equal(expectedType))
 		})
 
-		It("Doesn't add plugin information if in low data mode", func() {
+		It("Doesn't adds lowif in low data mode", func() {
 			inputMap := make(FluentBitRecord)
 			var inputTimestamp interface{}
 			inputTimestamp = output.FLBTime{
 				time.Now(),
 			}
 			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion,true)
-			Expect(foundOutput["plugin"]).To(BeNil())
+			pluginMap := foundOutput["plugin"].(map[string]string)
+			Expect(pluginMap["source"]).To(Equal("BARE-METAL-fb-" + pluginVersion))
+			Expect(pluginMap["type"]).To(BeNil())
+			Expect(pluginMap["version"]).To(BeNil())
 		})
 
 		It("sets the source if it is included as an environment variable", func() {
