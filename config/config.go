@@ -9,15 +9,20 @@ import (
 )
 
 type PluginConfig struct {
-	NRClientConfig NRClientConfig
-	ProxyConfig    ProxyConfig
+	NRClientConfig   NRClientConfig
+	DataFormatConfig DataFormatConfig
+	ProxyConfig      ProxyConfig
 }
 
 type NRClientConfig struct {
-	Endpoint   string
-	ApiKey     string
-	LicenseKey string
-	UseApiKey  bool
+	Endpoint    string
+	ApiKey      string
+	LicenseKey  string
+	UseApiKey   bool
+}
+
+type DataFormatConfig struct {
+	LowDataMode bool
 }
 
 type ProxyConfig struct {
@@ -40,6 +45,11 @@ func (cfg NRClientConfig) GetNewRelicKey() string {
 
 func NewPluginConfig(ctx unsafe.Pointer) (cfg PluginConfig, err error) {
 	cfg.NRClientConfig, err = parseNRClientConfig(ctx)
+	if err != nil {
+		return
+	}
+
+	cfg.DataFormatConfig, err = parseDataFormatConfig(ctx)
 	if err != nil {
 		return
 	}
@@ -74,6 +84,11 @@ func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
 
 	cfg.UseApiKey = len(cfg.ApiKey) > 0
 
+	return
+}
+
+func parseDataFormatConfig(ctx unsafe.Pointer) (cfg DataFormatConfig, err error) {
+	cfg.LowDataMode, err = optBool(ctx, "lowDataMode", false)
 	return
 }
 

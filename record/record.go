@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	"log"
 	"os"
 
@@ -21,7 +22,7 @@ type PackagedRecords *bytes.Buffer
 
 // RemapRecord takes a log record emitted by FluentBit, parses it into a NewRelic LogRecord
 // domain type and performs several key name re-mappings.
-func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, pluginVersion string) (outputRecord LogRecord) {
+func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, pluginVersion string, dataFormatConfig config.DataFormatConfig) (outputRecord LogRecord) {
 	outputRecord = make(map[string]interface{})
 	outputRecord = parseRecord(inputRecord)
 
@@ -42,10 +43,14 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 		source = "BARE-METAL"
 	}
 	if _, ok = outputRecord["plugin"]; !ok {
-		outputRecord["plugin"] = map[string]string{
-			"type":    "fluent-bit",
-			"version": pluginVersion,
-			"source":  source,
+		if dataFormatConfig.LowDataMode {
+			outputRecord["plugin.source"] = source + "-fb-" + pluginVersion
+		} else {
+			outputRecord["plugin"] = map[string]string{
+				"type":    "fluent-bit",
+				"version": pluginVersion,
+				"source":  source,
+			}
 		}
 	}
 	return
