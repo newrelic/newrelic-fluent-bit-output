@@ -11,6 +11,8 @@ import (
 )
 
 var nrClientRepo = make(map[string]*nrclient.NRClient)
+var dataFormatConfigRepo = make(map[string]config.DataFormatConfig)
+
 var statusAccepted = 202
 
 const(
@@ -38,6 +40,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 
 	id := cfg.NRClientConfig.GetNewRelicKey()
 	nrClientRepo[id] = nrClient
+	dataFormatConfigRepo[id] = cfg.DataFormatConfig
 	output.FLBPluginSetContext(ctx, id)
 
 	return output.FLB_OK
@@ -51,6 +54,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	// Get New Relic Client
 	id := output.FLBPluginGetContext(ctx).(string)
 	nrClient := nrClientRepo[id]
+	dataFormatConfig := dataFormatConfigRepo[id]
 
 	// Iterate, parse and accumulate records to be sent
 	var buffer []record.LogRecord
@@ -61,7 +65,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 			break
 		}
 
-		buffer = append(buffer, record.RemapRecord(fbRecord, ts, VERSION, nrClient.InLowDataMode()))
+		buffer = append(buffer, record.RemapRecord(fbRecord, ts, VERSION, dataFormatConfig))
 	}
 
 	// Return options:
