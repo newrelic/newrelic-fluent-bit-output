@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
-	"log"
 	"os"
 
 	"github.com/fluent/fluent-bit-go/output"
@@ -105,10 +105,10 @@ func PackageRecords(records []LogRecord) ([]PackagedRecords, error) {
 	// TODO Check Ian/Brian: I do believe that this should be compresssedData.Len(), let's confirm it before changing.
 	compressedSize := int64(compressedData.Cap())
 	if compressedSize >= maxPacketSize && len(records) == 1 {
-		log.Printf("[ERROR] Can't compress record below required maximum packet size and it will be discarded.")
+		log.Error("Can't compress record below required maximum packet size and it will be discarded.")
 		return []PackagedRecords{}, nil
 	} else if compressedSize >= maxPacketSize && len(records) > 1 {
-		log.Printf("[DEBUG] Records were too big, splitting in half and retrying compression again.")
+		log.Debug("Records were too big, splitting in half and retrying compression again.")
 		firstHalf, err := PackageRecords(records[:len(records)/2])
 		if err != nil {
 			return nil, err

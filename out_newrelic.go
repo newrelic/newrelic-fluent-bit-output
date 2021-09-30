@@ -2,7 +2,8 @@ package main
 
 import (
 	"C"
-	"log"
+	"os"
+	log "github.com/sirupsen/logrus"
 	"unsafe"
 	"github.com/newrelic/newrelic-fluent-bit-output/record"
 	"github.com/fluent/fluent-bit-go/output"
@@ -29,13 +30,13 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	cfg, err := config.NewPluginConfig(ctx)
 	if err != nil {
-		log.Printf("[ERROR] %v", err)
+		log.WithField("error", err).Error("Error creating NewPluginConfig")
 		return output.FLB_ERROR
 	}
 	var nrClient *nrclient.NRClient
 	nrClient, err = nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig)
 	if err != nil {
-		log.Printf("[ERROR] %v", err)
+		log.WithField("error", err).Error("Error creating NewNRClient")
 	}
 
 	id := cfg.NRClientConfig.GetNewRelicKey()
@@ -76,14 +77,15 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	code, err := nrClient.Send(buffer)
 	
 	if err == nil  && code == statusAccepted {
+		log.Debug("Request accepted.")
 		return output.FLB_OK
 	} 
 	if (err == nil && isRetriableStatusCode(code)) || (code == retriableConnectionError){
-		log.Printf("[DEBUG] Retriable error received. Retry:true")
+		log.Debug("Retriable error received. Retry:true")
 		return output.FLB_RETRY
 	}
 	
-	log.Printf("[DEBUG] Non-retriable error received. Retry:false")
+	log.Debug("Non-retriable error received. Retry:false")
 	return output.FLB_ERROR
 }
 
@@ -105,4 +107,10 @@ func FLBPluginExit() int {
 }
 
 func main() {
+	logLevel, err := log.ParseLevel(os.Getenv("LOG_LEVEL"))
+	if err != nil {
+		logLevel = log.InfoLevel
+	}
+
+	log.SetLevel(logLevel)
 }
