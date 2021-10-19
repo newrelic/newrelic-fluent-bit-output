@@ -107,21 +107,22 @@ parameters.
 Similar to Linux, for `HTTP` proxies we don't need to setup any certificate. Out of the box the plugin will load
 the system certificates.
 
-For `HTTPS` it require attention:
+For `HTTPS`, **special attention is required**. There are two approaches to configure it: by importing them to the system certificate pool (recommended), or by using the `caBundleFile`/`caBundleDir` options.
 
-The recommended process to import the self-signed certificate (PEM file) using the MMC tool. You can refer to
+###### Approach 1: import the proxy certificate to the system pool (**recommended**)
+
+The recommended process to import the proxy self-signed certificate (PEM file) using the MMC tool. You can refer to
 [this link](https://www.ssls.com/knowledgebase/how-to-import-intermediate-and-root-certificates-via-mmc/), but in Step 2
-ensure to import it in your "Trusted Root Certification Authorities" instead of importing it in the
-"Intermediate Certification Authorities".
+ensure to import it in your `Trusted Root Certification Authorities` instead of importing it in the
+`Intermediate Certification Authorities`.
+###### Approach 2: using `caBundleFile`/`caBundleDir`
 
-If you are using `caBundleFile` or `caBundleDir`, different from Linux, on Windows we are not able to load both (the system
-certificates and the `caBundleFile`/`caBundleDir`). So you need to **assure** that all certificates are configured. You would
-end up having something like this:
+On Windows (differently from Linux) we cannot load both the certificates from system certificate pool and the one(s) specified via `caBundleFile`/`caBundleDir`. So, if you are using `caBundleFile` or `caBundleDir`, you must **ensure that the following certificates are placed in the same PEM file (when using `caBundleFile`) or in the same directory (when using `caBundleDir`)**:
 - The Proxy certificate (because it's a `HTTPS` proxy)
 - The Logging Endpoint certificate (eg. `https://log-api.newrelic.com/log/v1`)
 - The Infra-Agent Endpoint certificate (eg. `https://infra-api.newrelic.com`)
 
-The certificates can be checked though the `openssl` command:
+The Logging Endpoint certificate can be checked using the `openssl` command:
 
 ```shell
 openssl s_client -connect log-api.newrelic.com:443 -servername log-api.newrelic.com
