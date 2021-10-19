@@ -120,7 +120,6 @@ ensure to import it in your `Trusted Root Certification Authorities` instead of 
 On Windows (differently from Linux) we cannot load both the certificates from system certificate pool and the one(s) specified via `caBundleFile`/`caBundleDir`. So, if you are using `caBundleFile` or `caBundleDir`, you must **ensure that the following certificates are placed in the same PEM file (when using `caBundleFile`) or in the same directory (when using `caBundleDir`)**:
 - The Proxy certificate (because it's a `HTTPS` proxy)
 - The Logging Endpoint certificate (eg. `https://log-api.newrelic.com/log/v1`)
-- The Infra-Agent Endpoint certificate (eg. `https://infra-api.newrelic.com`)
 
 The Logging Endpoint certificate can be checked using the `openssl` command:
 
