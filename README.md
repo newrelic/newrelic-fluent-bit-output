@@ -2,7 +2,7 @@
 
 # Fluent Bit output plugin for New Relic
 
-The **newrelic-fluent-bit-output** plugin forwards output to New Relic. It works on all versions of Fluent Bit greater than 0.12 but for the best experience we recommend using versions greater than 1.0. This project is provided AS-IS WITHOUT WARRANTY OR SUPPORT, although you can report issues and contribute to the project here on GitHub. 
+The **newrelic-fluent-bit-output** plugin forwards output to New Relic. It works on all versions of Fluent Bit greater than 0.12 but for the best experience we recommend using versions greater than 1.0. This project is provided AS-IS WITHOUT WARRANTY OR SUPPORT, although you can report issues and contribute to the project here on GitHub.
 
 You can download the output plugin pre-compiled under our [releases](https://github.com/newrelic/newrelic-fluent-bit-output/releases/latest). Alternatively you can compile the plugin yourself and store `out_newrelic-linux-*.so` or `out_newrelic-windows-*.dll` at a location that can be accessed by the fluent-bit daemon. See to [this section](DEVELOPER.md#compiling-the-out_newrelic-plugin) in [DEVELOPER.md](DEVELOPER.md) for more details. The plugin, together with Fluent Bit, is also delivered as a standalone [Docker image](#docker-image).
 
@@ -19,7 +19,7 @@ Fluent Bit needs to know the location of the New Relic output plugin, and the li
 and one space between keys and values.
 
 1. Find or create a `plugins.conf` file in your Fluent Bit directory and add a reference to `out_newrelic-linux-*.so` or `out_newrelic-windows-*.dll`,
-adjacent to your `fluent-bit.conf` file:
+   adjacent to your `fluent-bit.conf` file:
     ```
     [PLUGINS]
         Path /path/to/newrelic-fluent-bit-output/out_newrelic-linux-*.so
@@ -79,9 +79,6 @@ You can also specify a custom proxy to send the logs to (different from the syst
 
 HTTPS proxies (having an `https://...` URL) use a certificate to encrypt the connection between the plugin and the proxy. If you are using a self-signed certificate (not trusted by the Certification Authorities defined at your system level), you can:
 
-- Windows: import the self-signed certificate (PEM file) using the MMC tool. You can refer to [this link](https://www.ssls.com/knowledgebase/how-to-import-intermediate-and-root-certificates-via-mmc/), but in Step 2 ensure to import it in your "Trusted Root Certification Authorities" instead of importing it in the "Intermediate Certification Authorities".
-- Linux: you can specify the self-signed certificate (PEM file) using either the `caBundleFile` or `caBundleDir` parameters (see next section).
-
 Optionally, you can skip the self-signed certificate verification by setting `validateProxyCerts` to `false`, but please note that this option is not considered safe due to potential Man In The Middle Attacks.
 
 A example setup, which defines an HTTPS proxy and its self-signed certificate, would result in the following configuration:
@@ -94,6 +91,40 @@ A example setup, which defines an HTTPS proxy and its self-signed certificate, w
     proxy https://https-proxy-hostname:3129
     # REMOVE following option when using it on Windows (see above)
     caBundleFile /path/to/proxy-certificate-bundle.pem
+```
+#### Certificates
+Certificates can be trick because depends on the proxy (`HTTP` vs `HTTPS`), Linux, Windows, Logging Endpoint,
+Infra-Agent Endpoint, etc. We will talk about these configurations below.
+
+##### Linux
+For `HTTP` proxies we don't need to setup any certificate. Out of the box the plugin will load the system certificates
+and we will be able to send logs into the logging endpoint.
+
+For `HTTPS` proxies you can specify the self-signed certificate (PEM file) using either the `caBundleFile` or `caBundleDir`
+parameters.
+
+##### Windows
+Similar to Linux, for `HTTP` proxies we don't need to setup any certificate. Out of the box the plugin will load
+the system certificates.
+
+For `HTTPS` it require attention:
+
+The recommended process to import the self-signed certificate (PEM file) using the MMC tool. You can refer to
+[this link](https://www.ssls.com/knowledgebase/how-to-import-intermediate-and-root-certificates-via-mmc/), but in Step 2
+ensure to import it in your "Trusted Root Certification Authorities" instead of importing it in the
+"Intermediate Certification Authorities".
+
+If you are using `caBundleFile` or `caBundleDir`, different from Linux, on Windows we are not able to load both (the system
+certificates and the `caBundleFile`/`caBundleDir`). So you need to **assure** that all certificates are configured. You would
+end up having something like this:
+- The Proxy certificate (because it's a `HTTPS` proxy)
+- The Logging Endpoint certificate (eg. `https://log-api.newrelic.com/log/v1`)
+- The Infra-Agent Endpoint certificate (eg. `https://infra-api.newrelic.com`)
+
+The certificates can be checked though the `openssl` command:
+
+```shell
+openssl s_client -connect log-api.newrelic.com:443 -servername log-api.newrelic.com
 ```
 
 #### Retry logic
