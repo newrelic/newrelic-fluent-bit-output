@@ -15,10 +15,10 @@ type PluginConfig struct {
 }
 
 type NRClientConfig struct {
-	Endpoint    string
-	ApiKey      string
-	LicenseKey  string
-	UseApiKey   bool
+	Endpoint   string
+	ApiKey     string
+	LicenseKey string
+	UseApiKey  bool
 }
 
 type DataFormatConfig struct {

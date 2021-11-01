@@ -2,8 +2,10 @@ package utils
 
 // Jan 24th 2065 in seconds (Feb 4th 1970 if understood as milliseconds)
 const maxSeconds = 3000000000
+
 // Jan 24th 2065 in millis (Feb 4th 1970 if understood as microseconds)
 const maxMilliseconds = maxSeconds * 1000
+
 // Jan 24th 2065 in microseconds (Feb 4th 1970 if understood as nanoseconds)
 const maxMicroseconds = maxMilliseconds * 1000
 
