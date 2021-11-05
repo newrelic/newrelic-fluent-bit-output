@@ -57,13 +57,9 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 		if err != nil {
 			return false, err
 		}
-		if statusCode/100 == 2 {
-			continue
+		if statusCode/100 != 2 {
+			return isStatusCodeRetryable(statusCode), nil
 		}
-		if _, ok := retryableCodesSet[statusCode]; ok {
-			return true, nil
-		}
-		return false, nil
 	}
 	return false, nil
 }
@@ -90,4 +86,9 @@ func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err erro
 	io.Copy(ioutil.Discard, resp.Body)
 
 	return resp.StatusCode, nil
+}
+
+func isStatusCodeRetryable(statusCode int) bool {
+	_, ok := retryableCodesSet[statusCode]
+	return ok
 }
