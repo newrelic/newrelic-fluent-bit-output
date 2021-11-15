@@ -2,18 +2,23 @@ package main
 
 import (
 	"C"
+	"os"
+	log "github.com/sirupsen/logrus"
+	"unsafe"
+	"github.com/newrelic/newrelic-fluent-bit-output/record"
 	"github.com/fluent/fluent-bit-go/output"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	"github.com/newrelic/newrelic-fluent-bit-output/nrclient"
-	"github.com/newrelic/newrelic-fluent-bit-output/record"
-	log "github.com/sirupsen/logrus"
-	"os"
-	"unsafe"
 )
 
-var (
-	nrClientRepo         = make(map[string]*nrclient.NRClient)
-	dataFormatConfigRepo = make(map[string]config.DataFormatConfig)
+var nrClientRepo = make(map[string]*nrclient.NRClient)
+var dataFormatConfigRepo = make(map[string]config.DataFormatConfig)
+
+var statusAccepted = 202
+
+const(
+	nonRetriableConnectionError = -1
+	retriableConnectionError = -2
 )
 
 //export FLBPluginRegister
@@ -69,16 +74,31 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	// output.FLB_OK    = data have been processed.
 	// output.FLB_ERROR = unrecoverable error, do not try this again.
 	// output.FLB_RETRY = retry to flush later.
-	retry, err := nrClient.Send(buffer)
-	if err != nil {
-		log.WithField("error", err).Error("Non-retryable error received. Retry:false")
-		return output.FLB_ERROR
-	}
-	if retry {
-		log.Debug("Retryable error received. Retry:true")
+	code, err := nrClient.Send(buffer)
+	
+	if err == nil  && code == statusAccepted {
+		log.Debug("Request accepted.")
+		return output.FLB_OK
+	} 
+	if (err == nil && isRetriableStatusCode(code)) || (code == retriableConnectionError){
+		log.Debug("Retriable error received. Retry:true")
 		return output.FLB_RETRY
 	}
-	return output.FLB_OK
+	
+	log.Debug("Non-retriable error received. Retry:false")
+	return output.FLB_ERROR
+}
+
+func isRetriableStatusCode (statusCode int) bool {
+	retriableCodes := []int{408, 429, 500, 502, 503, 504, 599}
+
+	for _, code := range retriableCodes {
+		if code == statusCode {
+			return true
+		}
+	}
+	
+	return false
 }
 
 //export FLBPluginExit

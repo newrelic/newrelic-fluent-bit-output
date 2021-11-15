@@ -60,7 +60,7 @@ var _ = Describe("Out New Relic", func() {
 			inputMap["plugin"] = map[string]string{
 				"type": expectedType,
 			}
-			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion, config.DataFormatConfig{false})
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion,config.DataFormatConfig{false})
 			pluginMap := foundOutput["plugin"].(map[string]string)
 			Expect(pluginMap["type"]).To(Equal(expectedType))
 		})
@@ -71,7 +71,7 @@ var _ = Describe("Out New Relic", func() {
 			inputTimestamp = output.FLBTime{
 				time.Now(),
 			}
-			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion, config.DataFormatConfig{true})
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion,config.DataFormatConfig{true})
 			Expect(foundOutput["plugin.source"]).To(Equal("BARE-METAL-fb-" + pluginVersion))
 		})
 
