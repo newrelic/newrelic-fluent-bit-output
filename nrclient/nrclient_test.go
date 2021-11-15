@@ -1,6 +1,8 @@
 package nrclient
 
 import (
+	"net/http"
+
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	"github.com/newrelic/newrelic-fluent-bit-output/record"
 	"github.com/onsi/ginkgo"
@@ -8,7 +10,6 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
-	"net/http"
 )
 
 var _ = Describe("NR Client", func() {
@@ -69,10 +70,10 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		statusCode, err := nrClient.Send(nil)
+		shouldRetry, err := nrClient.Send(nil)
 
 		// Then
-		Expect(statusCode).To(Equal(http.StatusAccepted))
+		Expect(shouldRetry).To(BeFalse())
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(0))
 	})
@@ -86,10 +87,10 @@ var _ = Describe("NR Client", func() {
 
 		// When
 
-		statusCode, err := nrClient.Send([]record.LogRecord{})
+		shouldRetry, err := nrClient.Send([]record.LogRecord{})
 
 		// Then
-		Expect(statusCode).To(Equal(http.StatusAccepted))
+		Expect(shouldRetry).To(BeFalse())
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(0))
 	})
@@ -112,10 +113,10 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		statusCode, err := nrClient.Send(logRecords)
+		shouldRetry, err := nrClient.Send(logRecords)
 
 		// Then
-		Expect(statusCode).To(Equal(http.StatusAccepted))
+		Expect(shouldRetry).To(BeFalse())
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
@@ -138,10 +139,10 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		statusCode, err := nrClient.Send(logRecords)
+		shouldRetry, err := nrClient.Send(logRecords)
 
 		// Then
-		Expect(statusCode).To(Equal(http.StatusAccepted))
+		Expect(shouldRetry).To(BeFalse())
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
@@ -164,10 +165,10 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		statusCode, err := nrClient.Send(logRecords)
+		shouldRetry, err := nrClient.Send(logRecords)
 
 		// Then
-		Expect(statusCode).To(Equal(vortexServerErrorCode))
+		Expect(shouldRetry).To(BeTrue())
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
