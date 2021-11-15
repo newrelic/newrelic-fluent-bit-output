@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
+	log "github.com/sirupsen/logrus"
 	"os"
 
 	"github.com/fluent/fluent-bit-go/output"

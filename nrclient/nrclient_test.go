@@ -28,11 +28,11 @@ var _ = Describe("NR Client", func() {
 	logRecords := []record.LogRecord{
 		{
 			"timestamp": 1,
-			"message": "Some message 1",
+			"message":   "Some message 1",
 		},
 		{
 			"timestamp": 2,
-			"message": "Some message 2",
+			"message":   "Some message 2",
 		},
 	}
 
@@ -85,7 +85,7 @@ var _ = Describe("NR Client", func() {
 		}
 
 		// When
-		
+
 		statusCode, err := nrClient.Send([]record.LogRecord{})
 
 		// Then
