@@ -20,7 +20,7 @@ jobs:
       - name: Run unit tests
         run: |
           go get -v -u github.com/jstemmer/go-junit-report
-          go test -v ./... 2>&1 | go-junit-report > test-results.xml
+          go test -v ./... 2>&1 | go-junit-report -set-exit-code=1 > test-results.xml
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.19
@@ -90,7 +90,7 @@ jobs:
           platforms: ${{ matrix.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-      
+
       - name: Inspect generated Docker image (${{ matrix.name }})
         run: docker buildx imagetools inspect localhost:5000/fb-output-plugin
 
@@ -98,7 +98,7 @@ jobs:
         run: bash test.sh
 
   docker-windows-ci:
-    name:  CI - Docker image for ${{ matrix.name }} 
+    name:  CI - Docker image for ${{ matrix.name }}
     # Right now, the windows-2019 worker offerred by GitHub is based on ltsc2019/10.0.17763.2183, so it can only compile containers running this specific version and compilation number of the OS.
     # We aim to support (but right now, we can only support LTSC2019 using GitHub actions): https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
     # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
