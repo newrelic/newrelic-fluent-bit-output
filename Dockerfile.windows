@@ -63,7 +63,7 @@ RUN go build -buildmode=c-shared -o out_newrelic.dll .
 FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as builder
 
 # The FLUENTBIT_VERSION ARG must be after the FROM instruction
-ARG FLUENTBIT_VERSION=1.8.1
+ARG FLUENTBIT_VERSION=1.8.12
 ARG IMAGE_CREATE_DATE
 ARG IMAGE_SOURCE_REVISION
 
