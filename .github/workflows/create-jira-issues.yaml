@@ -29,7 +29,7 @@ jobs:
             [${{ github.repository }}] ISSUE #issue.number
           description: |
             Please check this issue: ${{ github.event.issue.url }}
-          fields: '{"labels": ["sunstone-hero"], "customfield_11700": "LOGGING-5562"}'
+          fields: '{"customfield_11700": "LOGGING-5562", "labels": "sunstone-hero"}'
 
       - name: Log created issue
         run: echo "Issue ${{ steps.create.outputs.issue }} was created"
