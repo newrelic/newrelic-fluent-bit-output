@@ -9,6 +9,8 @@ jobs:
     name: Create Ticket for new Issue
     runs-on: ubuntu-latest
     steps:
+      - name: Create issue
+        -
       - name: Checkout
         uses: actions/checkout@master
 
@@ -29,7 +31,29 @@ jobs:
             [${{ github.repository }}] ISSUE #issue.number
           description: |
             Please check this issue: ${{ github.event.issue.url }}
-          fields: '{"customfield_11700": "LOGGING-5562", "labels": "sunstone-hero"}'
+          fields: '{"customfield_11700": "LOGGING-5562"}'
 
       - name: Log created issue
         run: echo "Issue ${{ steps.create.outputs.issue }} was created"
+
+      # There is an automation in our JIRA that modifies the labels, so even if we include it during the
+      # creation of the issue, they are removed. So, unfortunately we need to add them later.
+      # Same as reported here: https://community.atlassian.com/t5/Jira-questions/can-t-create-issue-w-labels-via-API-on-some-backlogs-boards/qaq-p/1689772
+      - name: Update labels
+        id: update
+        run: |
+          curl \
+             -s \
+             -D- \
+             --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
+             -X PUT \
+             --data '{"fields":{"labels":["sunstone", "sunstone-hero"]}}' \
+             -H "Content-Type: application/json" \
+             "$JIRA_API_TOKEN/rest/api/2/issue/LOGGING-7847"
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: Log updated issue
+        run: echo "Issue ${{ steps.create.outputs.issue }} had the sunstone and sunstone-hero labels applied"
