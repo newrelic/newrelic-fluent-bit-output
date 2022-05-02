@@ -65,6 +65,19 @@ var _ = Describe("Out New Relic", func() {
 			Expect(pluginMap["type"]).To(Equal(expectedType))
 		})
 
+		It("Doesn't rewrite plugin.type [dot notation] if it exits", func() {
+			inputMap := make(FluentBitRecord)
+			var inputTimestamp interface{}
+			inputTimestamp = output.FLBTime{
+				time.Now(),
+			}
+			expectedType := "something"
+			inputMap["plugin.type"] = expectedType
+			foundOutput := RemapRecord(inputMap, inputTimestamp, pluginVersion, config.DataFormatConfig{false})
+			pluginString := foundOutput["plugin.type"].(string)
+			Expect(pluginString).To(Equal(expectedType))
+		})
+
 		It("Doesn't add plugin.type and plugin.version and uses compacted plugin.source format when in low data mode", func() {
 			inputMap := make(FluentBitRecord)
 			var inputTimestamp interface{}

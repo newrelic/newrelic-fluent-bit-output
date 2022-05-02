@@ -42,7 +42,7 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 	if !ok {
 		source = "BARE-METAL"
 	}
-	if _, ok = outputRecord["plugin"]; !ok {
+	if !pluginTypeIsSet(outputRecord) {
 		if dataFormatConfig.LowDataMode {
 			outputRecord["plugin.source"] = source + "-fb-" + pluginVersion
 		} else {
@@ -143,4 +143,16 @@ func asGzippedJson(records []LogRecord) (*bytes.Buffer, error) {
 		return nil, err
 	}
 	return buff, nil
+}
+
+// Check if the plugin type is set on the record using an object
+// `{"plugin": {"type": "something"}}` or using dot notation
+// `plugin.type="something"`
+func pluginTypeIsSet(record LogRecord) bool {
+	for _, key := range []string{"plugin", "plugin.type"} {
+		if _, ok := record[key]; ok {
+			return true
+		}
+	}
+	return false
 }
