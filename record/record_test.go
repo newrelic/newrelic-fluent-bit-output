@@ -50,7 +50,7 @@ var _ = Describe("Out New Relic", func() {
 			Expect(source).To(Equal("BARE-METAL"))
 		})
 
-		It("Doesn't rewrite plugin.type if it exits", func() {
+		It("Doesn't rewrite plugin.type if it exists", func() {
 			inputMap := make(FluentBitRecord)
 			var inputTimestamp interface{}
 			inputTimestamp = output.FLBTime{
@@ -65,7 +65,7 @@ var _ = Describe("Out New Relic", func() {
 			Expect(pluginMap["type"]).To(Equal(expectedType))
 		})
 
-		It("Doesn't rewrite plugin.type [dot notation] if it exits", func() {
+		It("Doesn't rewrite plugin.type [dot notation] if it exists", func() {
 			inputMap := make(FluentBitRecord)
 			var inputTimestamp interface{}
 			inputTimestamp = output.FLBTime{
