@@ -38,7 +38,7 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRCli
 	nrClient := &NRClient{
 		client: &http.Client{
 			Transport: httpTransport,
-			Timeout:   time.Second * cfg.TimeoutSeconds,
+			Timeout:   time.Second * time.Duration(cfg.TimeoutSeconds),
 		},
 		config: cfg,
 	}
