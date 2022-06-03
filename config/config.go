@@ -15,10 +15,11 @@ type PluginConfig struct {
 }
 
 type NRClientConfig struct {
-	Endpoint   string
-	ApiKey     string
-	LicenseKey string
-	UseApiKey  bool
+	Endpoint       string
+	ApiKey         string
+	LicenseKey     string
+	UseApiKey      bool
+	TimeoutSeconds int
 }
 
 type DataFormatConfig struct {
@@ -84,6 +85,7 @@ func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
 
 	cfg.UseApiKey = len(cfg.ApiKey) > 0
 
+	cfg.TimeoutSeconds, err = optInt(ctx, "httpClientTimeout", 5)
 	return
 }
 
@@ -126,6 +128,19 @@ func optBool(ctx unsafe.Pointer, keyName string, defaultValue bool) (bool, error
 		value, err := strconv.ParseBool(rawVal)
 		if err != nil {
 			return false, fmt.Errorf("invalid value for %s: %s. Valid values: true, false.", keyName, rawVal)
+		}
+		return value, nil
+	}
+}
+
+func optInt(ctx unsafe.Pointer, keyName string, defaultValue int) (int, error) {
+	rawVal := output.FLBPluginConfigKey(ctx, keyName)
+	if len(rawVal) == 0 {
+		return defaultValue, nil
+	} else {
+		value, err := strconv.Atoi(rawVal)
+		if err != nil {
+			return defaultValue, fmt.Errorf("invalid value for %s: %s. It should be an integer", keyName, rawVal)
 		}
 		return value, nil
 	}
