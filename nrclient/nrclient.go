@@ -3,12 +3,13 @@ package nrclient
 import (
 	"bytes"
 	"fmt"
-	"github.com/newrelic/newrelic-fluent-bit-output/record"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/newrelic/newrelic-fluent-bit-output/record"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 )
@@ -37,7 +38,7 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRCli
 	nrClient := &NRClient{
 		client: &http.Client{
 			Transport: httpTransport,
-			Timeout:   5 * time.Second,
+			Timeout:   time.Second * time.Duration(cfg.TimeoutSeconds),
 		},
 		config: cfg,
 	}
