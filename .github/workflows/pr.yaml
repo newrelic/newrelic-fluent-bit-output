@@ -19,7 +19,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          go get -v -u github.com/jstemmer/go-junit-report
+          go install -v github.com/jstemmer/go-junit-report@latest
           go test -v ./... 2>&1 | go-junit-report -set-exit-code=1 > test-results.xml
 
       - name: Publish Unit Test Results

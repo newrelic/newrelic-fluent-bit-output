@@ -3,12 +3,13 @@ package nrclient
 import (
 	"bytes"
 	"fmt"
-	"github.com/newrelic/newrelic-fluent-bit-output/record"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/newrelic/newrelic-fluent-bit-output/record"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 )
