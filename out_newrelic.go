@@ -71,7 +71,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	// output.FLB_RETRY = retry to flush later.
 	retry, err := nrClient.Send(buffer)
 	if retry {
-		log.Debug("Retryable error received.")
+		log.WithField("error", err).Info("Retryable error received. Will retry to send the logs (if there are attempts remaining, check Retry_Limit option)")
 		return output.FLB_RETRY
 	}
 	if err != nil {
