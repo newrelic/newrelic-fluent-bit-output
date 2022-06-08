@@ -75,7 +75,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 		return output.FLB_RETRY
 	}
 	if err != nil {
-		log.WithField("error", err).Error("Non-retryable error received. Logs were discarded.")
+		log.WithField("error", err).Error("Unexpected non-retryable error received. Logs were discarded.")
 		return output.FLB_ERROR
 	}
 	return output.FLB_OK

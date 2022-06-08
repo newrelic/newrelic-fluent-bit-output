@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"time"
 
@@ -56,18 +55,15 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 
 	for _, payload := range payloads {
 		statusCode, err := nrClient.sendPacket(payload)
-		// Timeout errors will be retried
-		if err, ok := err.(net.Error); ok && err.Timeout() {
-			log.WithField("error", err).Warn("Timed out when sending HTTP request")
+
+		// If we receive any error, we'll always retry sending the logs...
+		if err != nil {
 			return true, err
 		}
-		// Any other error will not be retried
-		if err != nil {
-			log.WithField("error", err).Error("Error making HTTP request")
-			return false, err
-		}
-		if statusCode/100 != 2 {
-			return isStatusCodeRetryable(statusCode), nil
+
+		// ...unless we receive an explicit non-2XX HTTP status code from the server that tells us otherwise
+		if statusCode/100 != 2 && isStatusCodeRetryable(statusCode) {
+			return true, nil
 		}
 	}
 	return false, nil
