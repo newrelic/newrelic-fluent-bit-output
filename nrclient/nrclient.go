@@ -55,11 +55,15 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 
 	for _, payload := range payloads {
 		statusCode, err := nrClient.sendPacket(payload)
+
+		// If we receive any error, we'll always retry sending the logs...
 		if err != nil {
-			return false, err
+			return true, err
 		}
-		if statusCode/100 != 2 {
-			return isStatusCodeRetryable(statusCode), nil
+
+		// ...unless we receive an explicit non-2XX HTTP status code from the server that tells us otherwise
+		if statusCode/100 != 2 && isStatusCodeRetryable(statusCode) {
+			return true, nil
 		}
 	}
 	return false, nil
@@ -79,7 +83,6 @@ func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err erro
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := nrClient.client.Do(req)
 	if err != nil {
-		log.WithField("error", err).Error("Error making HTTP request")
 		return 0, err
 	}
 
