@@ -1,6 +1,11 @@
 # escape=`
 
+ARG FLUENTBIT_VERSION=1.9.4
 ARG WINDOWS_VERSION=ltsc2019
+
+#################################################
+# Build New Relic Fluent Bit Output Plugin
+#################################################
 
 FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION  AS nrBuilder
 
@@ -8,10 +13,7 @@ WORKDIR /build
 
 USER ContainerAdministrator
 
-#################################################
 # Install Chocolatey
-#################################################
-
 RUN powershell.exe Invoke-WebRequest `
   -Uri https://chocolatey.org/install.ps1 `
   -OutFile C:\chocolatey-install.ps1
@@ -22,19 +24,14 @@ RUN powershell.exe `
   C:\chocolatey-install.ps1
 RUN setx PATH "%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
 
-#################################################
-# Base Dependencies
-#################################################
-
+# Install Base Dependencies
 RUN choco install --yes --no-progress mingw git
 RUN choco install --yes --no-progress golang --version=1.12
 
 # Put the path before the other paths so that MinGW shadows Windows commands.
 RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
 
-#################################################
 # Compile the newrelic-fluent-bit-output plugin
-#################################################
 COPY Makefile go.* *.go ./
 COPY config/ ./config
 COPY nrclient/ ./nrclient
@@ -49,21 +46,105 @@ RUN setx GOARCH "amd64"
 RUN go build -buildmode=c-shared -o out_newrelic.dll .
 
 
-# -------------------------------------------------------------------------------------------------------------#
-#                                                                                                              #
-# The following contents are copied from the original Fluent Bit repository (except the last part,             #
-# where we build and copy the New Relic plugin inside the resulting runtime image), as there is no published   #
-# Docker image for it. Link:  https://github.com/fluent/fluent-bit/blob/master/dockerfiles/Dockerfile.windows  #
-#                                                                                                              #
-# -------------------------------------------------------------------------------------------------------------#
+############################################################################################
+# Build Fluent Bit and include the newrelic-fluent-bit-output plugin to the resulting image
+############################################################################################
 
-#
-# Builder Image - Windows Server Core
-#
+# **NOTE**: Fluent Bit currently does not publish a Docker image variant for Windows. They do
+# provide a Dockerfile.windows (https://github.com/fluent/fluent-bit/blob/master/dockerfiles/Dockerfile.windows)
+# which we mostly reuse below to build our own image containing Fluent Bit for Windows + New Relic Fluent Bit plugin
+
+# Builder Image - Windows Server Core (copied from Fluent Bit's official Dockerfile.windows file)
 FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as builder
 
-# The FLUENTBIT_VERSION ARG must be after the FROM instruction
-ARG FLUENTBIT_VERSION=1.8.12
+ARG FLUENTBIT_VERSION
+
+# Install Chocolatey
+RUN powershell.exe Invoke-WebRequest `
+  -Uri https://chocolatey.org/install.ps1 `
+  -OutFile C:\chocolatey-install.ps1
+RUN powershell.exe `
+  -ExecutionPolicy bypass `
+  -InputFormat none `
+  -NoProfile `
+  C:\chocolatey-install.ps1
+RUN setx PATH "%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
+
+# Install Git
+RUN choco install --yes --no-progress git
+
+# FluentBit's Dockerfile.windows is based on the assumption that the pipeline building it does
+# a clone of the source repository previously to the build.
+RUN git clone -b v%FLUENTBIT_VERSION% https://github.com/fluent/fluent-bit /src
+RUN echo Cloned branch v%FLUENTBIT_VERSION%
+
+# -------------------------------------------------------------------------------------------------------------#
+#                                                                                                              #
+# The following contents are copied from the original Fluent Bit repository, except:                           #
+#   - The FROM for the builder is specified above, so we can install Git and download                          #
+#     the source code prior to the build.                                                                      #
+#   - Comment out the COPY as in the official Fluent Bit pipeline the source code is cloned externally         #
+#   - At the very last step, we build and copy the New Relic plugin inside the resulting runtime image         #
+# -------------------------------------------------------------------------------------------------------------#
+
+RUN setx /M PATH "%PATH%;C:\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;C:\WinFlexBison"
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+WORKDIR /local
+
+# Install Visual Studio 2019
+ADD https://aka.ms/vs/16/release/vs_buildtools.exe /local/vs_buildtools.exe
+ADD https://aka.ms/vs/16/release/channel /local/VisualStudio.chman
+
+RUN Start-Process /local/vs_buildtools.exe `
+    -ArgumentList '--quiet ', '--wait ', '--norestart ', '--nocache', `
+    '--installPath C:\BuildTools', `
+    '--channelUri C:\local\VisualStudio.chman', `
+    '--installChannelUri C:\local\VisualStudio.chman', `
+    '--add Microsoft.VisualStudio.Workload.VCTools', `
+    '--includeRecommended'  -NoNewWindow -Wait;
+
+ADD https://github.com/lexxmark/winflexbison/releases/download/v2.5.22/win_flex_bison-2.5.22.zip /local/win_flex_bison.zip
+
+RUN Expand-Archive /local/win_flex_bison.zip -Destination /WinFlexBison; `
+    Copy-Item -Path /WinFlexBison/win_bison.exe /WinFlexBison/bison.exe; `
+    Copy-Item -Path /WinFlexBison/win_flex.exe /WinFlexBison/flex.exe;
+
+# Technique from https://github.com/StefanScherer/dockerfiles-windows/blob/master/mongo/3.6/Dockerfile
+WORKDIR /local
+ADD https://aka.ms/vs/15/release/vc_redist.x64.exe /local/vc_redist.x64.exe
+
+WORKDIR /fluent-bit/bin/
+RUN Start-Process /local/vc_redist.x64.exe -ArgumentList '/install', '/quiet', '/norestart' -NoNewWindow -Wait; `
+    Copy-Item -Path /Windows/System32/msvcp140.dll -Destination /fluent-bit/bin/; `
+    Copy-Item -Path /Windows/System32/vccorlib140.dll -Destination /fluent-bit/bin/; `
+    Copy-Item -Path /Windows/System32/vcruntime140.dll -Destination /fluent-bit/bin/;
+
+# Build Fluent Bit from source - context must be the root of the Git repo
+WORKDIR /src/build
+# COPY . /src/
+
+RUN cmake -G "'Visual Studio 16 2019'" -DCMAKE_BUILD_TYPE=Release ../; `
+    cmake --build . --config Release;
+
+# Set up config files and binaries in single /fluent-bit hierarchy for easy copy in later stage
+RUN New-Item -Path  /fluent-bit/etc/ -ItemType "directory"; `
+    Copy-Item -Path /src/conf/fluent-bit-win32.conf /fluent-bit/etc/fluent-bit.conf; `
+    Copy-Item -Path /src/conf/parsers.conf /fluent-bit/etc/; `
+    Copy-Item -Path /src/conf/parsers_ambassador.conf /fluent-bit/etc/; `
+    Copy-Item -Path /src/conf/parsers_java.conf /fluent-bit/etc/; `
+    Copy-Item -Path /src/conf/parsers_extra.conf /fluent-bit/etc/; `
+    Copy-Item -Path /src/conf/parsers_openstack.conf /fluent-bit/etc/; `
+    Copy-Item -Path /src/conf/parsers_cinder.conf /fluent-bit/etc/; `
+    Copy-Item -Path /src/conf/plugins.conf /fluent-bit/etc/; `
+    Copy-Item -Path /src/build/bin/Release/fluent-bit.exe /fluent-bit/bin/; `
+    Copy-Item -Path /src/build/bin/Release/fluent-bit.dll /fluent-bit/bin/;
+#
+# Runtime Image - Windows Server Core
+#
+FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as runtime
+
+ARG FLUENTBIT_VERSION
 ARG IMAGE_CREATE_DATE
 ARG IMAGE_SOURCE_REVISION
 
@@ -73,7 +154,7 @@ LABEL org.opencontainers.image.title="Fluent Bit" `
       org.opencontainers.image.description="Fluent Bit is an open source and multi-platform Log Processor and Forwarder which allows you to collect data/logs from different sources, unify and send them to multiple destinations. It's fully compatible with Docker and Kubernetes environments." `
       org.opencontainers.image.created=$IMAGE_CREATE_DATE `
       org.opencontainers.image.version=$FLUENTBIT_VERSION `
-      org.opencontainers.image.authors="Eduardo Silva <eduardo@treasure-data.com>" `
+      org.opencontainers.image.authors="Eduardo Silva <eduardo@calyptia.com>" `
       org.opencontainers.image.url="https://hub.docker.com/r/fluent/fluent-bit" `
       org.opencontainers.image.documentation="https://docs.fluentbit.io/manual/" `
       org.opencontainers.image.vendor="Fluent Organization" `
@@ -81,45 +162,11 @@ LABEL org.opencontainers.image.title="Fluent Bit" `
       org.opencontainers.image.source="https://github.com/fluent/fluent-bit" `
       org.opencontainers.image.revision=$IMAGE_SOURCE_REVISION
 
-#
-# Basic setup
-#
-SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
-
-RUN Write-Host ('Creating folders'); `
-    New-Item -Type Directory -Path /local; `
-    New-Item -Type Directory -Path /fluent-bit;
-
-WORKDIR /local
-
-#
-# Install Fluent Bit
-#
-RUN Write-Host ('Installing Fluent Bit'); `
-    $majorminor = ([Version]::Parse("$env:FLUENTBIT_VERSION")).toString(2); `
-    Invoke-WebRequest -Uri "https://fluentbit.io/releases/$($majorminor)/td-agent-bit-$($env:FLUENTBIT_VERSION)-win64.zip" -OutFile td-agent-bit.zip; `
-    Expand-Archive -Path td-agent-bit.zip -Destination /local/fluent-bit; `
-    Move-Item -Path /local/fluent-bit/*/* -Destination /fluent-bit/;
-
-#
-# Technique from https://github.com/StefanScherer/dockerfiles-windows/blob/master/mongo/3.6/Dockerfile
-#
-ADD https://aka.ms/vs/15/release/vc_redist.x64.exe /local/vc_redist.x64.exe
-
-RUN Write-Host ('Installing Visual C++ Redistributable Package'); `
-    Start-Process /local/vc_redist.x64.exe -ArgumentList '/install', '/quiet', '/norestart' -NoNewWindow -Wait; `
-    Copy-Item -Path /Windows/System32/msvcp140.dll -Destination /fluent-bit/bin/; `
-    Copy-Item -Path /Windows/System32/vccorlib140.dll -Destination /fluent-bit/bin/; `
-    Copy-Item -Path /Windows/System32/vcruntime140.dll -Destination /fluent-bit/bin/;
-
-#
-# Runtime Image - Windows Server Nano
-#
-FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as runtime
-
 COPY --from=builder /fluent-bit /fluent-bit
 
 RUN setx /M PATH "%PATH%;C:\fluent-bit\bin"
+
+ENTRYPOINT [ "C:\fluent-bit\bin\fluent-bit.exe" ]
 
 COPY --from=nrBuilder /build/out_newrelic.dll /fluent-bit/bin/out_newrelic.dll
 
