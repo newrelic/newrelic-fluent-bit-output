@@ -18,8 +18,8 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-# aws-for-fluent-bit 2.26.0 is based on Fluent Bit 1.9.4
-FROM amazon/aws-for-fluent-bit:2.26.0
+# aws-for-fluent-bit 2.28.3 is based on Fluent Bit 1.9.9: https://github.com/fala-aws/aws-for-fluent-bit/blob/mainline/CHANGELOG.md#2283
+FROM amazon/aws-for-fluent-bit:2.28.3
 
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
