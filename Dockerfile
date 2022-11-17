@@ -1,4 +1,4 @@
-FROM golang:1.11 AS builder
+FROM golang:1.14 AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
@@ -9,8 +9,6 @@ COPY record/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/record
 COPY utils/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/utils
 
 ENV SOURCE docker
-RUN go get github.com/fluent/fluent-bit-go/output
-RUN go get github.com/sirupsen/logrus
 
 # Not using default value here due to this: https://github.com/docker/buildx/issues/510
 ARG TARGETPLATFORM
