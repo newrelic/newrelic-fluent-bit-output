@@ -43,6 +43,9 @@ ENV SOURCE docker
 RUN setx CGO_ENABLED "1"
 RUN setx GOOS "windows"
 RUN setx GOARCH "amd64"
+RUN setx CC "x86_64-w64-mingw32-gcc"
+RUN setx CXX "x86_64-w64-mingw32-g++"
+
 RUN go build -buildmode=c-shared -o out_newrelic.dll .
 
 
