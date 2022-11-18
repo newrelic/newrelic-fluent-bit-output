@@ -1,6 +1,6 @@
 # escape=`
 
-ARG FLUENTBIT_VERSION=1.9.4
+ARG FLUENTBIT_VERSION=1.9.9
 ARG WINDOWS_VERSION=ltsc2019
 
 #################################################
@@ -26,7 +26,7 @@ RUN setx PATH "%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
 
 # Install Base Dependencies
 RUN choco install --yes --no-progress mingw git
-RUN choco install --yes --no-progress golang --version=1.12
+RUN choco install --yes --no-progress golang --version=1.14
 
 # Put the path before the other paths so that MinGW shadows Windows commands.
 RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
@@ -43,6 +43,9 @@ ENV SOURCE docker
 RUN setx CGO_ENABLED "1"
 RUN setx GOOS "windows"
 RUN setx GOARCH "amd64"
+RUN setx CC "x86_64-w64-mingw32-gcc"
+RUN setx CXX "x86_64-w64-mingw32-g++"
+
 RUN go build -buildmode=c-shared -o out_newrelic.dll .
 
 
