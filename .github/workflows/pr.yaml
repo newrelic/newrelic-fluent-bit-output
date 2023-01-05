@@ -5,7 +5,7 @@ on: [pull_request]
 jobs:
   unit-tests:
     name: CI - Tests and Build
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Set up Go 1.14
@@ -33,7 +33,7 @@ jobs:
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     services:
       registry:
         image: registry:2
