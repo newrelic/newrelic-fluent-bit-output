@@ -19,6 +19,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Check go version
+        run: go version
+
       - name: Run unit tests
         run: go test ./...
 
