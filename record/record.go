@@ -81,9 +81,9 @@ func parseValue(value interface{}) interface{} {
 	}
 }
 
-func resolveTimestamp(outputRecord LogRecord, inputTimestamp interface{}) (int64, error) {
-	if val, ok := outputRecord["timestamp"].(int64); ok {
-		return utils.TimeToMillis(val), nil
+func resolveTimestamp(outputRecord LogRecord, inputTimestamp interface{}) (interface{}, error) {
+	if val, ok := outputRecord["timestamp"]; ok {
+		return val, nil
 	}
 
 	switch inputTimestamp.(type) {
