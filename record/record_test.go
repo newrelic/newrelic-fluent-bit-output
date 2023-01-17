@@ -184,6 +184,14 @@ var _ = Describe("Out New Relic", func() {
 
 			Expect(foundOutput["timestamp"]).To(BeNil())
 		})
+
+		It("Record timestamp has precedence over fluentbit's", func() {
+			inputMap := FluentBitRecord{"timestamp": int64(654321)}
+
+			foundOutput := RemapRecord(inputMap, uint64(1234567890), pluginVersion, config.DataFormatConfig{false})
+
+			Expect(foundOutput["timestamp"]).To(Equal(int64(654321000)))
+		})
 	})
 
 	Describe("Record packaging", func() {

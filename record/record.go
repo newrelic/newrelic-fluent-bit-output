@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -26,14 +27,10 @@ func RemapRecord(inputRecord FluentBitRecord, inputTimestamp interface{}, plugin
 	outputRecord = make(map[string]interface{})
 	outputRecord = parseRecord(inputRecord)
 
-	switch inputTimestamp.(type) {
-	case output.FLBTime:
-		outputRecord["timestamp"] = utils.TimeToMillis(inputTimestamp.(output.FLBTime).UnixNano())
-	case uint64:
-		outputRecord["timestamp"] = utils.TimeToMillis(int64(inputTimestamp.(uint64)))
-	default:
-		// Unhandled timestamp type, just ignore (don't log, since I assume we'll fill up someone's disk)
+	if timestamp, err := resolveTimestamp(outputRecord, inputTimestamp); err == nil {
+		outputRecord["timestamp"] = timestamp
 	}
+
 	if val, ok := outputRecord["log"]; ok {
 		outputRecord["message"] = val
 		delete(outputRecord, "log")
@@ -81,6 +78,22 @@ func parseValue(value interface{}) interface{} {
 		return remapped
 	default:
 		return value
+	}
+}
+
+func resolveTimestamp(outputRecord LogRecord, inputTimestamp interface{}) (int64, error) {
+	if val, ok := outputRecord["timestamp"].(int64); ok {
+		return utils.TimeToMillis(val), nil
+	}
+
+	switch inputTimestamp.(type) {
+	case output.FLBTime:
+		return utils.TimeToMillis(inputTimestamp.(output.FLBTime).UnixNano()), nil
+	case uint64:
+		return utils.TimeToMillis(int64(inputTimestamp.(uint64))), nil
+	default:
+		// Unhandled timestamp type, just ignore (don't log, since I assume we'll fill up someone's disk)
+		return 0, errors.New("unhandled timestamp type")
 	}
 }
 
