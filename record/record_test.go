@@ -184,6 +184,16 @@ var _ = Describe("Out New Relic", func() {
 
 			Expect(foundOutput["timestamp"]).To(BeNil())
 		})
+
+		// If the record has a timestamp attribute, we use it as-is
+		// Otherwise we use the timestamp provided by fluentbit
+		It("Record timestamp has precedence over fluentbit's", func() {
+			inputMap := FluentBitRecord{"timestamp": 654321}
+
+			foundOutput := RemapRecord(inputMap, uint64(1234567890), pluginVersion, config.DataFormatConfig{false})
+
+			Expect(foundOutput["timestamp"]).To(Equal(654321))
+		})
 	})
 
 	Describe("Record packaging", func() {
