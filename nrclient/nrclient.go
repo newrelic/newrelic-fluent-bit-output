@@ -63,7 +63,7 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 
 		// ...unless we receive an explicit non-2XX HTTP status code from the server that tells us otherwise
 		if statusCode/100 != 2 && isStatusCodeRetryable(statusCode) {
-			return true, nil
+			return true, fmt.Errorf("received non-2XX HTTP status code: %d", statusCode)
 		}
 	}
 	return false, nil
