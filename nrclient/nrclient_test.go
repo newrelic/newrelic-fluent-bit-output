@@ -202,7 +202,7 @@ var _ = Describe("NR Client", func() {
 
 		// Then
 		Expect(shouldRetry).To(BeFalse())
-		Expect(err).To(BeNil())
+    Expect(err).To(MatchError(fmt.Sprintf("received non-2XX HTTP status code: %d", httpNonRetryableErrorCode)))
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
 
