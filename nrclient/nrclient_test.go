@@ -1,6 +1,7 @@
 package nrclient
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -175,7 +176,7 @@ var _ = Describe("NR Client", func() {
 
 		// Then
 		Expect(shouldRetry).To(BeTrue())
-		Expect(err).To(BeNil())
+    Expect(err).To(MatchError(fmt.Sprintf("received non-2XX HTTP status code: %d", httpRetryableErrorCode)))
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
 
