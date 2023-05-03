@@ -5,11 +5,12 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	"io"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/newrelic/newrelic-fluent-bit-output/config"
 
 	"github.com/fluent/fluent-bit-go/output"
 	"github.com/onsi/ginkgo"
@@ -320,10 +321,10 @@ var _ = Describe("Out New Relic", func() {
 			// Then
 			Expect(err).To(BeNil())
 			Expect(packagedRecords).To(Not(BeNil()))
-			// The 20 records are compressed into 8 byte buffers, as overall they exceed 1MB. Note that this is
+			// The 20 records are compressed into 12 byte buffers, as overall they exceed 1MB. Note that this is
 			// a deterministic result (unless the gzip implementation changes), since we're always using the same
 			// seed when generating the random messages, which will lead to the same messages always being sent.
-			Expect(packagedRecords).To(HaveLen(8))
+			Expect(packagedRecords).To(HaveLen(12))
 
 			// Count that we end up having 20 uncompressed records, with all the recordIds
 			type Record struct {

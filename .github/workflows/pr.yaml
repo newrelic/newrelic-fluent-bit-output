@@ -5,14 +5,17 @@ on: [pull_request]
 jobs:
   unit-tests:
     name: CI - Tests and Build
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
 
     steps:
-      - name: Set up Go 1.14
+      - name: Set up Go ^1.20
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.14
+          go-version: ^1.20
         id: go
+
+      - name: Check go version
+        run: go version
 
       - name: Checkout code
         uses: actions/checkout@v2
@@ -23,7 +26,7 @@ jobs:
           go test -v ./... 2>&1 | go-junit-report -set-exit-code=1 > test-results.xml
 
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1.19
+        uses: EnricoMi/publish-unit-test-result-action@v2.6.2
         if: always()
         with:
           files: test-results.xml
@@ -33,7 +36,7 @@ jobs:
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     services:
       registry:
         image: registry:2
