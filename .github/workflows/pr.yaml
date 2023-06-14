@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - name: Set up Go ^1.20
+      - name: Set up Go ^1.20.5
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.20
+          go-version: ^1.20.5
         id: go
 
       - name: Check go version
@@ -110,11 +110,11 @@ jobs:
       matrix:
         include:
           - name: Windows Server 2019 (LTSC)
-            windowsImageTag: ltsc2019-amd64
+            windowsImageTag: ltsc2019
             imageTagSuffix: windows-ltsc-2019
             runsOn: windows-2019
           - name: Windows Server 2022 (LTSC)
-            windowsImageTag: ltsc2022-amd64
+            windowsImageTag: ltsc2022
             imageTagSuffix: windows-ltsc-2022
             runsOn: windows-2022
 
