@@ -6,8 +6,7 @@ ARG WINDOWS_VERSION=ltsc2019
 #################################################
 # Build New Relic Fluent Bit Output Plugin
 #################################################
-
-FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION  AS nrBuilder
+FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-$WINDOWS_VERSION as nrBuilder
 
 WORKDIR /build
 
