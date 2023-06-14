@@ -6,11 +6,14 @@ ARG WINDOWS_VERSION=ltsc2019
 #################################################
 # Build New Relic Fluent Bit Output Plugin
 #################################################
-FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-$WINDOWS_VERSION as nrBuilder
+
+FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION  AS nrBuilder
 
 WORKDIR /build
 
 USER ContainerAdministrator
+
+ENV chocolateyVersion 1.4.0
 
 # Install Chocolatey
 RUN powershell.exe Invoke-WebRequest `
@@ -25,7 +28,7 @@ RUN setx PATH "%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
 
 # Install Base Dependencies
 RUN choco install --yes --no-progress mingw git
-RUN choco install --yes --no-progress golang --version=1.20.5
+RUN choco install --yes --no-progress golang --version=1.14
 
 # Put the path before the other paths so that MinGW shadows Windows commands.
 RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
@@ -56,9 +59,12 @@ RUN go build -buildmode=c-shared -o out_newrelic.dll .
 # provide a Dockerfile.windows (https://github.com/fluent/fluent-bit/blob/master/dockerfiles/Dockerfile.windows)
 # which we mostly reuse below to build our own image containing Fluent Bit for Windows + New Relic Fluent Bit plugin
 
-FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-$WINDOWS_VERSION as builder
+# Builder Image - Windows Server Core (copied from Fluent Bit's official Dockerfile.windows file)
+FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as builder
 
 ARG FLUENTBIT_VERSION
+
+ENV chocolateyVersion 1.4.0
 
 # Install Chocolatey
 RUN powershell.exe Invoke-WebRequest `

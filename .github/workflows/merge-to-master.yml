@@ -218,11 +218,11 @@ jobs:
       matrix:
         include:
           - name: Windows Server 2019 (LTSC)
-            windowsImageTag: ltsc2019
+            windowsImageTag: ltsc2019-amd64
             imageTagSuffix: windows-ltsc-2019
             runsOn: windows-2019
           - name: Windows Server 2022 (LTSC)
-            windowsImageTag: ltsc2022
+            windowsImageTag: ltsc2022-amd64
             imageTagSuffix: windows-ltsc-2022
             runsOn: windows-2022
 
