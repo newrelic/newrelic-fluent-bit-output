@@ -34,6 +34,7 @@ jobs:
 
       - name: Install mingw, arm32 and arm64 compilers
         run: |
+          sudo apt update
           sudo apt install mingw-w64 g++-arm-linux-gnueabihf g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
 
       - name: Build project (Linux amd64)
