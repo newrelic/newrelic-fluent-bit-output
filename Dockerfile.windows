@@ -28,7 +28,7 @@ RUN setx PATH "%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
 
 # Install Base Dependencies
 RUN choco install --yes --no-progress mingw git
-RUN choco install --yes --no-progress golang --version=1.14
+RUN choco install --yes --no-progress golang --version=1.20.5
 
 # Put the path before the other paths so that MinGW shadows Windows commands.
 RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
@@ -64,6 +64,9 @@ FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as builder
 
 ARG FLUENTBIT_VERSION
 
+# This line was added because chocolatey version 2.0 was released and it depends on .NET 4.8
+# We can update this with the approach that fluent-bit takes but at the moment of doing this change
+# the fluent-bit image is not updated (and not working anymore)
 ENV chocolateyVersion 1.4.0
 
 # Install Chocolatey
