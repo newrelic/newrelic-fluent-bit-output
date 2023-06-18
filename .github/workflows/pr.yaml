@@ -45,14 +45,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: standard image
+          - name: standard-image
             dockerfile: Dockerfile
             platforms: linux/amd64, linux/arm64, linux/arm/v7
-          - name: debug image
+          - name: debug-image
             dockerfile: Dockerfile_debug
             # Fluent Bit debug image only available for amd64 architecture
             platforms: linux/amd64
-          - name: Firelens image
+          - name: firelens-image
             dockerfile: Dockerfile_firelens
             # Firelens image only available for amd64 and arm64 architectures
             platforms: linux/amd64, linux/arm64
