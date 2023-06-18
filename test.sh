@@ -98,7 +98,7 @@ else
   echo "Inspecting Fluent Bit + New Relic image"
   docker buildx imagetools inspect $IMAGE --raw
 
-  NR_FB_IMAGES=( $(docker buildx imagetools inspect $IMAGE:latest --raw | jq -r 'if (.mediaType | contains("list")) then "$IMAGE@" + .manifests[].digest else "$IMAGE" end') )
+  NR_FB_IMAGES=( $(docker buildx imagetools inspect $IMAGE --raw | jq -r "if (.mediaType | contains(\"list\")) then "$IMAGE@" + .manifests[].digest else \"$IMAGE\" end") )
 fi
 
 for imageName in "${NR_FB_IMAGES[@]}"
