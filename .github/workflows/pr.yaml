@@ -88,17 +88,18 @@ jobs:
           context: ./
           file: ./${{ matrix.dockerfile }}
           push: true
-          tags: localhost:5000/fb-output-plugin
+          load: true
+          tags: fb-output-plugin-${{ matrix.name }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: ${{ matrix.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Inspect generated Docker image (${{ matrix.name }})
-        run: docker buildx imagetools inspect localhost:5000/fb-output-plugin
+        run: docker buildx imagetools inspect fb-output-plugin-${{ matrix.name }}
 
       - name: Test Docker image (${{ matrix.name }})
-        run: bash test.sh
+        run: bash test.sh fb-output-plugin-${{ matrix.name }}
 
   docker-windows-ci:
     name:  CI - Docker image for ${{ matrix.name }}

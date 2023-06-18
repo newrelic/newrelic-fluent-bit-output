@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+IMAGE=${1:-"fb-output-plugin"}
+
 clean_up () {
     ARG=$?
 
@@ -87,16 +89,16 @@ if [ ${CI:-"no"} = "no" ]; then
   echo "Building docker image"
   # To avoid requiring QEMU and creating a buildx builder, we simplify the testing
   # to just use the amd64 architecture
-  docker build -f ${DOCKERFILE:-Dockerfile} -t fb-output-plugin .
+  docker build -f ${DOCKERFILE:-Dockerfile} -t $IMAGE .
 
-  NR_FB_IMAGES=(fb-output-plugin)
+  NR_FB_IMAGES=($IMAGE)
 else
   # We skip re-building the docker image in GH, since we already build it on previous step
   # and make it available on a local registry
   echo "Inspecting Fluent Bit + New Relic image"
-  docker buildx imagetools inspect localhost:5000/fb-output-plugin --raw
+  docker buildx imagetools inspect $IMAGE --raw
 
-  NR_FB_IMAGES=( $(docker buildx imagetools inspect localhost:5000/fb-output-plugin:latest --raw | jq -r 'if (.mediaType | contains("list")) then "localhost:5000/fb-output-plugin@" + .manifests[].digest else "localhost:5000/fb-output-plugin" end') )
+  NR_FB_IMAGES=( $(docker buildx imagetools inspect $IMAGE:latest --raw | jq -r 'if (.mediaType | contains("list")) then "$IMAGE@" + .manifests[].digest else "$IMAGE" end') )
 fi
 
 for imageName in "${NR_FB_IMAGES[@]}"
