@@ -73,7 +73,7 @@ function run_test {
     echo "Logs not found trying again in 2s. Try #$counter"
     sleep 2
     [[ $counter -eq $max_retry ]] && echo "Logs do not reach the server!" && exit 1
-    counter+=1
+    counter=$((counter+1))
   done
   echo "Success!"
 
