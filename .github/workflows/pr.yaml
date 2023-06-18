@@ -87,7 +87,6 @@ jobs:
         with:
           context: ./
           file: ./${{ matrix.dockerfile }}
-          push: true
           load: true
           tags: fb-output-plugin-${{ matrix.name }}
           builder: ${{ steps.buildx.outputs.name }}
