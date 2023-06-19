@@ -45,14 +45,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: standard image
+          - name: standard-image
             dockerfile: Dockerfile
             platforms: linux/amd64, linux/arm64, linux/arm/v7
-          - name: debug image
+          - name: debug-image
             dockerfile: Dockerfile_debug
             # Fluent Bit debug image only available for amd64 architecture
             platforms: linux/amd64
-          - name: Firelens image
+          - name: firelens-image
             dockerfile: Dockerfile_firelens
             # Firelens image only available for amd64 and arm64 architectures
             platforms: linux/amd64, linux/arm64
@@ -88,17 +88,17 @@ jobs:
           context: ./
           file: ./${{ matrix.dockerfile }}
           push: true
-          tags: localhost:5000/fb-output-plugin
+          tags: localhost:5000/fb-output-plugin-${{ matrix.name }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: ${{ matrix.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Inspect generated Docker image (${{ matrix.name }})
-        run: docker buildx imagetools inspect localhost:5000/fb-output-plugin
+        run: docker buildx imagetools inspect localhost:5000/fb-output-plugin-${{ matrix.name }}
 
       - name: Test Docker image (${{ matrix.name }})
-        run: bash test.sh
+        run: bash test.sh localhost:5000/fb-output-plugin-${{ matrix.name }}
 
   docker-windows-ci:
     name:  CI - Docker image for ${{ matrix.name }}
