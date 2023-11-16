@@ -9,6 +9,11 @@ github.com/hpcloud/tail/ratelimiter
 github.com/hpcloud/tail/util
 github.com/hpcloud/tail/watch
 github.com/hpcloud/tail/winfile
+# github.com/newrelic/newrelic-telemetry-sdk-go v0.8.1
+## explicit
+github.com/newrelic/newrelic-telemetry-sdk-go/internal
+github.com/newrelic/newrelic-telemetry-sdk-go/internal/jsonx
+github.com/newrelic/newrelic-telemetry-sdk-go/telemetry
 # github.com/onsi/ginkgo v1.8.0
 ## explicit
 github.com/onsi/ginkgo
