@@ -25,6 +25,8 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 //export FLBPluginInit
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	cfg, err := config.NewPluginConfig(ctx)
+	id := cfg.NRClientConfig.GetNewRelicKey()
+	
 	if err != nil {
 		log.WithField("error", err).Error("Error creating NewPluginConfig")
 		return output.FLB_ERROR
@@ -43,7 +45,6 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		log.WithField("error", err).Error("Error creating NewNRClient")
 	}
 
-	id := cfg.NRClientConfig.GetNewRelicKey()
 	nrClientRepo[id] = nrClient
 	dataFormatConfigRepo[id] = cfg.DataFormatConfig
 	output.FLBPluginSetContext(ctx, id)
