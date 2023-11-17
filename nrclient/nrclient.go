@@ -3,7 +3,7 @@ package nrclient
 import (
 	"bytes"
 	"fmt"
-	"github.com/newrelic/newrelic-telemetry-sdk-go/telemetry"
+	"github.com/newrelic/newrelic-fluent-bit-output/metrics"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -26,12 +26,12 @@ var retryableCodesSet = map[int]struct{}{
 }
 
 type NRClient struct {
-	client           *http.Client
-	config           config.NRClientConfig
-	metric_harvester *telemetry.Harvester
+	client        *http.Client
+	config        config.NRClientConfig
+	metricsClient *metrics.MetricsClient
 }
 
-func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metric_harvester *telemetry.Harvester) (*NRClient, error) {
+func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metricHarvester *metrics.MetricsClient) (*NRClient, error) {
 	httpTransport, err := buildHttpTransport(proxyCfg, cfg.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("building HTTP transport: %v", err)
@@ -42,8 +42,8 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metric_
 			Transport: httpTransport,
 			Timeout:   time.Second * time.Duration(cfg.TimeoutSeconds),
 		},
-		config:           cfg,
-		metric_harvester: metric_harvester,
+		config:        cfg,
+		metricsClient: metricHarvester,
 	}
 
 	return nrClient, nil
@@ -53,8 +53,7 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 	packaging_start := time.Now()
 	payloads, err := record.PackageRecords(logRecords)
 	packaging_time := time.Since(packaging_start)
-	nrClient.metric_harvester.MetricAggregator().Summary(
-		"logs.fb.packaging.time", nil).RecordDuration(packaging_time)
+	nrClient.metricsClient.SendSummaryDuration(metrics.PackagingTime, nil, packaging_time)
 	if err != nil {
 		log.WithField("error", err).Error("Error packaging request")
 		return false, err
@@ -71,11 +70,12 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 			return true, err
 		}
 
-		nrClient.metric_harvester.MetricAggregator().Summary(
-			"logs.fb.payload.send.time",
+		nrClient.metricsClient.SendSummaryDuration(
+			metrics.PayloadSendTime,
 			map[string]interface{}{
 				"statusCode": statusCode,
-			}).RecordDuration(send_time)
+			},
+			send_time)
 
 		// ...unless we receive an explicit non-2XX HTTP status code from the server that tells us otherwise
 		if statusCode/100 != 2 {
@@ -83,10 +83,8 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 		}
 	}
 	payload_send_time := time.Since(payload_send_start)
-	nrClient.metric_harvester.MetricAggregator().Summary(
-		"logs.fb.total.send.time", nil).RecordDuration(payload_send_time)
-	nrClient.metric_harvester.MetricAggregator().Summary(
-		"logs.fb.payload.count", nil).Record(float64(len(payloads)))
+	nrClient.metricsClient.SendSummaryDuration(metrics.TotalSendTime, nil, payload_send_time)
+	nrClient.metricsClient.SendSummaryValue(metrics.PayloadCountPerChunk, nil, float64(len(payloads)))
 
 	return false, nil
 }

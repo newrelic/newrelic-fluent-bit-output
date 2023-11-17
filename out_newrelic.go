@@ -4,9 +4,9 @@ import (
 	"C"
 	"github.com/fluent/fluent-bit-go/output"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
+	"github.com/newrelic/newrelic-fluent-bit-output/metrics"
 	"github.com/newrelic/newrelic-fluent-bit-output/nrclient"
 	"github.com/newrelic/newrelic-fluent-bit-output/record"
-	"github.com/newrelic/newrelic-telemetry-sdk-go/telemetry"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"unsafe"
@@ -26,21 +26,16 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	cfg, err := config.NewPluginConfig(ctx)
 	id := cfg.NRClientConfig.GetNewRelicKey()
-	
+
 	if err != nil {
 		log.WithField("error", err).Error("Error creating NewPluginConfig")
 		return output.FLB_ERROR
 	}
-	var metric_harvester *telemetry.Harvester
-	if cfg.NRClientConfig.SendMetrics {
-		metric_harvester, err = telemetry.NewHarvester(telemetry.ConfigAPIKey(id))
-		if err != nil {
-			log.WithField("error", err).Error("Error creating metric harvester")
-		}
-	}
+
+	metricHarvester := metrics.NewMetricsHarvester(cfg)
 
 	var nrClient *nrclient.NRClient
-	nrClient, err = nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig, metric_harvester)
+	nrClient, err = nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig, metricHarvester)
 	if err != nil {
 		log.WithField("error", err).Error("Error creating NewNRClient")
 	}
