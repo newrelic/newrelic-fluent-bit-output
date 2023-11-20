@@ -18,6 +18,7 @@ const (
 	PayloadSendTime      = "logs.fb.payload.send.time"
 	TotalSendTime        = "logs.fb.total.send.time"
 	PayloadCountPerChunk = "logs.fb.payload.count"
+	PayloadSize          = "logs.fb.payload.size"
 )
 
 // Metrics API URL to be used depending on the environment where logs are being sent

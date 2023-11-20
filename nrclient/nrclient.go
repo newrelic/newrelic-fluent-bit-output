@@ -59,31 +59,31 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 		return false, err
 	}
 
-	payload_send_start := time.Now()
+	payloadSendStart := time.Now()
 	for _, payload := range payloads {
-		send_start := time.Now()
+		payloadSize := payload.Len()
+		sendStart := time.Now()
 		statusCode, err := nrClient.sendPacket(payload)
-		send_time := time.Since(send_start)
+		sendTime := time.Since(sendStart)
 
 		// If we receive any error, we'll always retry sending the logs...
 		if err != nil {
 			return true, err
 		}
 
-		nrClient.metricsClient.SendSummaryDuration(
-			metrics.PayloadSendTime,
-			map[string]interface{}{
-				"statusCode": statusCode,
-			},
-			send_time)
+		dimensions := map[string]interface{}{
+			"statusCode": statusCode,
+		}
+		nrClient.metricsClient.SendSummaryValue(metrics.PayloadSize, dimensions, float64(payloadSize))
+		nrClient.metricsClient.SendSummaryDuration(metrics.PayloadSendTime, dimensions, sendTime)
 
 		// ...unless we receive an explicit non-2XX HTTP status code from the server that tells us otherwise
 		if statusCode/100 != 2 {
 			return isStatusCodeRetryable(statusCode), fmt.Errorf("received non-2XX HTTP status code: %d", statusCode)
 		}
 	}
-	payload_send_time := time.Since(payload_send_start)
-	nrClient.metricsClient.SendSummaryDuration(metrics.TotalSendTime, nil, payload_send_time)
+	payloadSendTime := time.Since(payloadSendStart)
+	nrClient.metricsClient.SendSummaryDuration(metrics.TotalSendTime, nil, payloadSendTime)
 	nrClient.metricsClient.SendSummaryValue(metrics.PayloadCountPerChunk, nil, float64(len(payloads)))
 
 	return false, nil
