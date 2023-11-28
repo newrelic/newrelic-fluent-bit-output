@@ -28,10 +28,10 @@ var retryableCodesSet = map[int]struct{}{
 type NRClient struct {
 	client        *http.Client
 	config        config.NRClientConfig
-	metricsClient *metrics.MetricsClient
+	metricsClient metrics.Client
 }
 
-func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metricHarvester *metrics.MetricsClient) (*NRClient, error) {
+func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metricsClient metrics.Client) (*NRClient, error) {
 	httpTransport, err := buildHttpTransport(proxyCfg, cfg.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("building HTTP transport: %v", err)
@@ -43,7 +43,7 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metricH
 			Timeout:   time.Second * time.Duration(cfg.TimeoutSeconds),
 		},
 		config:        cfg,
-		metricsClient: metricHarvester,
+		metricsClient: metricsClient,
 	}
 
 	return nrClient, nil

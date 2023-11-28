@@ -1,66 +1,65 @@
 package metrics
 
 import (
+	"fmt"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	"github.com/newrelic/newrelic-telemetry-sdk-go/telemetry"
-	log "github.com/sirupsen/logrus"
-	"strings"
 	"time"
 )
 
-type MetricsClient struct {
-	metricHarvester *telemetry.Harvester
+type Client interface {
+	SendSummaryDuration(metricName string, attributes map[string]interface{}, duration time.Duration)
+	SendSummaryValue(metricName string, attributes map[string]interface{}, value float64)
 }
 
-// Metrics sent from this plugin
-const (
-	PackagingTime        = "logs.fb.packaging.time"
-	PayloadSendTime      = "logs.fb.payload.send.time"
-	TotalSendTime        = "logs.fb.total.send.time"
-	PayloadCountPerChunk = "logs.fb.payload.count"
-	PayloadSize          = "logs.fb.payload.size"
-)
-
-// Metrics API URL to be used depending on the environment where logs are being sent
-const (
-	metricsUsProdUrl  = "https://metric-api.newrelic.com/metric/v1"
-	metricsEuProdUrl  = "https://metric-api.eu.newrelic.com/metric/v1"
-	metricsStagingUrl = "https://staging-metric-api.newrelic.com/metric/v1"
-)
-
-func NewMetricsHarvester(cfg config.PluginConfig) *MetricsClient {
-	if cfg.NRClientConfig.SendMetrics {
-		metricHarvester, err := telemetry.NewHarvester(
-			telemetry.ConfigMetricsURLOverride(getCorrespondingMetricsUrl(cfg.NRClientConfig.Endpoint)),
-			telemetry.ConfigAPIKey(cfg.NRClientConfig.GetNewRelicKey()))
-		if err != nil {
-			log.WithField("error", err).Error("Error creating metric harvester")
-		}
-		return &MetricsClient{
-			metricHarvester: metricHarvester,
-		}
-	}
-	return &MetricsClient{}
+type wrappedMetricAggregator struct {
+	metricAggregator *telemetry.MetricAggregator
 }
 
-func getCorrespondingMetricsUrl(logsUrl string) string {
-	if strings.Contains(logsUrl, "staging") {
-		return metricsStagingUrl
-	} else if strings.Contains(logsUrl, "eu") {
-		return metricsEuProdUrl
-	} else {
-		return metricsUsProdUrl
-	}
+func (m *wrappedMetricAggregator) SendSummaryDuration(metricName string, attributes map[string]interface{}, duration time.Duration) {
+	m.metricAggregator.Summary(metricName, attributes).RecordDuration(duration)
 }
 
-func (m *MetricsClient) SendSummaryDuration(metricName string, attributes map[string]interface{}, duration time.Duration) {
-	if m.metricHarvester != nil {
-		m.metricHarvester.MetricAggregator().Summary(metricName, attributes).RecordDuration(duration)
-	}
+func (m *wrappedMetricAggregator) SendSummaryValue(metricName string, attributes map[string]interface{}, value float64) {
+	m.metricAggregator.Summary(metricName, attributes).Record(value)
 }
 
-func (m MetricsClient) SendSummaryValue(metricName string, attributes map[string]interface{}, value float64) {
-	if m.metricHarvester != nil {
-		m.metricHarvester.MetricAggregator().Summary(metricName, attributes).Record(value)
+type noopMetricAggregator struct{}
+
+func (*noopMetricAggregator) SendSummaryDuration(metricName string, attributes map[string]interface{}, duration time.Duration) {
+}
+
+func (*noopMetricAggregator) SendSummaryValue(metricName string, attributes map[string]interface{}, value float64) {
+}
+
+func NewClient(nrClientConfig config.NRClientConfig) (Client, error) {
+	metricReportingEnabled := nrClientConfig.SendMetrics
+	logsApiUrl := nrClientConfig.Endpoint
+	metricsApiUrl, ok := logsToMetricsUrlMapping[logsApiUrl]
+	if metricReportingEnabled && !ok {
+		return nil, fmt.Errorf("no Metrics API URL can be inferred out ot the Logs API URL %s", logsApiUrl)
 	}
+
+	if metricReportingEnabled {
+		licenseKey := nrClientConfig.GetNewRelicKey()
+		return newWrappedMetricAggregator(metricsApiUrl, licenseKey)
+	}
+	return newNoopMetricAggregator(), nil
+}
+
+func newWrappedMetricAggregator(metricsApiUrl string, licenseKey string) (*wrappedMetricAggregator, error) {
+	metricHarvester, err := telemetry.NewHarvester(
+		telemetry.ConfigMetricsURLOverride(metricsApiUrl),
+		telemetry.ConfigAPIKey(licenseKey))
+	if err != nil {
+		return nil, fmt.Errorf("can't create metrics harvester: %v", err)
+	}
+
+	return &wrappedMetricAggregator{
+		metricAggregator: metricHarvester.MetricAggregator(),
+	}, nil
+}
+
+func newNoopMetricAggregator() *noopMetricAggregator {
+	return &noopMetricAggregator{}
 }

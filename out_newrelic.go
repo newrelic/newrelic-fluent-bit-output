@@ -25,24 +25,25 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 //export FLBPluginInit
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	cfg, err := config.NewPluginConfig(ctx)
-	id := cfg.NRClientConfig.GetNewRelicKey()
-
 	if err != nil {
 		log.WithField("error", err).Error("Error creating NewPluginConfig")
 		return output.FLB_ERROR
 	}
 
-	metricHarvester := metrics.NewMetricsHarvester(cfg)
+	metricsClient, err := metrics.NewClient(cfg.NRClientConfig)
+	if err != nil {
+		log.WithField("error", err).Error("Error creating Metrics client")
+	}
 
-	var nrClient *nrclient.NRClient
-	nrClient, err = nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig, metricHarvester)
+	nrClient, err := nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig, metricsClient)
 	if err != nil {
 		log.WithField("error", err).Error("Error creating NewNRClient")
 	}
 
-	nrClientRepo[id] = nrClient
-	dataFormatConfigRepo[id] = cfg.DataFormatConfig
-	output.FLBPluginSetContext(ctx, id)
+	licenseKey := cfg.NRClientConfig.GetNewRelicKey()
+	nrClientRepo[licenseKey] = nrClient
+	dataFormatConfigRepo[licenseKey] = cfg.DataFormatConfig
+	output.FLBPluginSetContext(ctx, licenseKey)
 
 	return output.FLB_OK
 }

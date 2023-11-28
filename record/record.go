@@ -19,7 +19,7 @@ type FluentBitRecord map[interface{}]interface{}
 
 type LogRecord map[string]interface{}
 
-type PackagedRecords = *bytes.Buffer
+type PackagedRecords *bytes.Buffer
 
 // RemapRecord takes a log record emitted by FluentBit, parses it into a NewRelic LogRecord
 // domain type and performs several key name re-mappings.
@@ -104,9 +104,8 @@ func resolveTimestamp(outputRecord LogRecord, inputTimestamp interface{}) (inter
 // and the resulting compressed array is split at the  point where that long record was present.
 //
 // For example:
-//
-//	INPUT: [shortRecord, longRecord, shortRecord2, shortRecord3]
-//	OUTPUT: [GZIP(JSON(shortRecord)), GZIP(JSON(shortRecord2, shortRecord3))]
+//     INPUT: [shortRecord, longRecord, shortRecord2, shortRecord3]
+//     OUTPUT: [GZIP(JSON(shortRecord)), GZIP(JSON(shortRecord2, shortRecord3))]
 func PackageRecords(records []LogRecord) ([]PackagedRecords, error) {
 	if len(records) == 0 {
 		return []PackagedRecords{}, nil
