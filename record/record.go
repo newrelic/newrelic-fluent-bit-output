@@ -19,7 +19,7 @@ type FluentBitRecord map[interface{}]interface{}
 
 type LogRecord map[string]interface{}
 
-type PackagedRecords *bytes.Buffer
+type PackagedRecords = *bytes.Buffer
 
 // RemapRecord takes a log record emitted by FluentBit, parses it into a NewRelic LogRecord
 // domain type and performs several key name re-mappings.
