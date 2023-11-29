@@ -104,8 +104,9 @@ func resolveTimestamp(outputRecord LogRecord, inputTimestamp interface{}) (inter
 // and the resulting compressed array is split at the  point where that long record was present.
 //
 // For example:
-//     INPUT: [shortRecord, longRecord, shortRecord2, shortRecord3]
-//     OUTPUT: [GZIP(JSON(shortRecord)), GZIP(JSON(shortRecord2, shortRecord3))]
+//
+//	INPUT: [shortRecord, longRecord, shortRecord2, shortRecord3]
+//	OUTPUT: [GZIP(JSON(shortRecord)), GZIP(JSON(shortRecord2, shortRecord3))]
 func PackageRecords(records []LogRecord) ([]PackagedRecords, error) {
 	if len(records) == 0 {
 		return []PackagedRecords{}, nil
