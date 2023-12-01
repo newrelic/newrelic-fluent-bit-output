@@ -121,7 +121,7 @@
                 "accountIds": [
                   YOUR_ACCOUNT_ID
                 ],
-                "query": "SELECT rate(count(logs.fb.payload.send.time), 1 minute) AS 'Status Code' FROM Metric FACET CASES(WHERE statusCode = 0 AS 'Send error') OR statusCode timeseries since 1 hour ago"
+                "query": "SELECT rate(count(logs.fb.payload.send.time), 1 minute) AS 'Status Code' FROM Metric FACET CASES(WHERE statusCode = 0 AS 'Send error') OR statusCode timeseries max"
               }
             ],
             "platformOptions": {
@@ -162,9 +162,12 @@
                 "accountIds": [
                   YOUR_ACCOUNT_ID
                 ],
-                "query": "SELECT average(logs.fb.payload.send.time) AS 'Payload sending', average(logs.fb.packaging.time) AS 'Payload packaging' FROM Metric timeseries since 1 hour ago"
+                "query": "SELECT average(logs.fb.payload.send.time) AS 'Payload sending', average(logs.fb.packaging.time) AS 'Payload packaging' FROM Metric timeseries max"
               }
             ],
+            "nullValues": {
+              "nullValue": "zero"
+            },
             "platformOptions": {
               "ignoreTimeRange": false
             },
@@ -203,9 +206,12 @@
                 "accountIds": [
                   YOUR_ACCOUNT_ID
                 ],
-                "query": "SELECT rate(sum(logs.fb.total.send.time), 1 minute) AS 'Sending', rate(sum(logs.fb.packaging.time), 1 minute) AS 'Packaging' FROM Metric TIMESERIES "
+                "query": "SELECT rate(sum(logs.fb.total.send.time), 1 minute) AS 'Sending', rate(sum(logs.fb.packaging.time), 1 minute) AS 'Packaging' FROM Metric TIMESERIES max"
               }
             ],
+            "nullValues": {
+              "nullValue": "zero"
+            },
             "platformOptions": {
               "ignoreTimeRange": false
             },
@@ -238,9 +244,12 @@
                 "accountIds": [
                   YOUR_ACCOUNT_ID
                 ],
-                "query": "SELECT min(logs.fb.payload.size) AS 'Minimum', average(logs.fb.payload.size) AS 'Average', max(logs.fb.payload.size) AS 'Maximum' FROM Metric timeseries"
+                "query": "SELECT min(logs.fb.payload.size) AS 'Minimum', average(logs.fb.payload.size) AS 'Average', max(logs.fb.payload.size) AS 'Maximum' FROM Metric timeseries MAX "
               }
             ],
+            "nullValues": {
+              "nullValue": "default"
+            },
             "platformOptions": {
               "ignoreTimeRange": false
             },
@@ -279,7 +288,7 @@
                 "accountIds": [
                   YOUR_ACCOUNT_ID
                 ],
-                "query": "SELECT min(logs.fb.payload.count) AS 'Minimum', average(logs.fb.payload.count) AS 'Average', max(logs.fb.payload.count) AS 'Maximum' FROM Metric timeseries since 1 hour ago"
+                "query": "SELECT min(logs.fb.payload.count) AS 'Minimum', average(logs.fb.payload.count) AS 'Average', max(logs.fb.payload.count) AS 'Maximum' FROM Metric timeseries MAX "
               }
             ],
             "platformOptions": {
