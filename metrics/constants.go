@@ -14,9 +14,9 @@ const (
 	metricsUsProdUrl  = "https://metric-api.newrelic.com/metric/v1"
 	metricsEuProdUrl  = "https://metric-api.eu.newrelic.com/metric/v1"
 	metricsStagingUrl = "https://staging-metric-api.newrelic.com/metric/v1"
-	logsUsProdUrl     = "https://log-api.newrelic.com/metric/v1"
-	logsEuProdUrl     = "https://log-api.eu.newrelic.com/metric/v1"
-	logsStagingUrl    = "https://staging-log-api.newrelic.com/metric/v1"
+	logsUsProdUrl     = "https://log-api.newrelic.com/log/v1"
+	logsEuProdUrl     = "https://log-api.eu.newrelic.com/log/v1"
+	logsStagingUrl    = "https://staging-log-api.newrelic.com/log/v1"
 )
 
 // Maps the Metrics API URL that corresponds to the same environment as the provided

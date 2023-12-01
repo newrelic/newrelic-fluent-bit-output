@@ -18,16 +18,16 @@ var _ = Describe("metrics", func() {
 		Expect(metricsClient).To(BeAssignableToTypeOf(&noopMetricAggregator{}))
 	})
 
-	It("Returns a nil metricsClient and an error if an invalid Logs URL is provided and sendMetrics is enabled", func() {
+	It("Returns a noop metricsClient and an error if an invalid Logs URL is provided and sendMetrics is enabled", func() {
 		nrClientConfig := config.NRClientConfig{
-			Endpoint:    "willCauseAnError",
+			Endpoint:    "invalidOnPurpose",
 			SendMetrics: true,
 		}
 
 		metricsClient, err := NewClient(nrClientConfig)
 
 		Expect(err).NotTo(BeNil())
-		Expect(metricsClient).To(BeNil())
+		Expect(metricsClient).To(BeAssignableToTypeOf(&noopMetricAggregator{}))
 	})
 
 	It("Returns a no-op metricsClient and a nil error if an invalid Logs URL is provided but sendMetrics is disabled", func() {
@@ -44,7 +44,7 @@ var _ = Describe("metrics", func() {
 
 	It("Returns a real metricsClient and a nil error if a valid Logs URL is provided and sendMetrics is enabled", func() {
 		nrClientConfig := config.NRClientConfig{
-			Endpoint:    "https://log-api.newrelic.com/metric/v1",
+			Endpoint:    "https://log-api.newrelic.com/log/v1",
 			LicenseKey:  "dummy",
 			SendMetrics: true,
 		}

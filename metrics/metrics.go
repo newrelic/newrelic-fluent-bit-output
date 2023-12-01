@@ -32,12 +32,14 @@ func (*noopMetricAggregator) SendSummaryDuration(metricName string, attributes m
 func (*noopMetricAggregator) SendSummaryValue(metricName string, attributes map[string]interface{}, value float64) {
 }
 
+// Return a new metrics client. If sendMetrics is true and a valid Logs API URL is supplied, a real client is returned.
+// If sendMetrics is true or no Metrics API URL mapping exists for the supplied Logs API URL, a noop client is returned.
 func NewClient(nrClientConfig config.NRClientConfig) (Client, error) {
 	metricReportingEnabled := nrClientConfig.SendMetrics
 	logsApiUrl := nrClientConfig.Endpoint
 	metricsApiUrl, ok := logsToMetricsUrlMapping[logsApiUrl]
 	if metricReportingEnabled && !ok {
-		return nil, fmt.Errorf("no Metrics API URL can be inferred out ot the Logs API URL %s", logsApiUrl)
+		return newNoopMetricAggregator(), fmt.Errorf("no Metrics API URL can be inferred out ot the Logs API URL %s", logsApiUrl)
 	}
 
 	if metricReportingEnabled {
