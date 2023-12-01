@@ -152,7 +152,7 @@ The following are the metrics currently reported by the plugin:
 | logs.fb.payload.send.time | statusCode (int), hasError (bool) | Time used to send an individual <=1MB compressed New Relic payload                                        | milliseconds  |
 | logs.fb.payload.size      | statusCode (int), hasError (bool) | Compressed size of an individual <=1MB compressed New Relic payload                                       | bytes         |
 
-For convenience, we have included a Dashboard in JSON format that you can import into your New Relic account that displays these metrics in a convenient way to help you quickly detect problems in your installation. As mentioned above, this dashboard should be used when troubleshooting a malfunctioning installation, but should not be relied upon in the long term as any of the metrics it uses or their related dimensions could change at any time.
+For convenience, we have included a Dashboard in JSON format (`troubleshooting-dashboard.json.template`) that you can import into your New Relic account.  **To use it, search for "YOUR_ACCOUNT_ID" and replace it by your New Relic Account ID before importing it as JSON.** The dashboard displays the above metrics in a convenient way and guidance to help you quickly detect problems in your installation. As mentioned above, this dashboard should be used when troubleshooting a malfunctioning installation, but should not be relied upon in the long term as any of the metrics it uses or their related dimensions could change at any time.
 
 ## Docker Image
 
