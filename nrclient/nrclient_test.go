@@ -300,6 +300,16 @@ var _ = Describe("NR Client", func() {
 		Expect(err).NotTo(BeNil())
 		// The server is never called in this test, since the host name is unresolvable
 		Expect(server.ReceivedRequests()).To(HaveLen(0))
+
+		expectedPayloadSendDimensions := map[string]interface{}{
+			"statusCode": 0, // no status code
+			"hasError":   true,
+		}
+		testingT := GinkgoT()
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryDuration", "logs.fb.payload.send.time", expectedPayloadSendDimensions, mock.AnythingOfType("time.Duration"))
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryValue", "logs.fb.payload.size", expectedPayloadSendDimensions, mock.AnythingOfType("float64"))
 	})
 
 	It("Records the required plugin metrics with appropriate dimensions", func() {
@@ -319,22 +329,26 @@ var _ = Describe("NR Client", func() {
 		Expect(err).To(BeNil())
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 
-		expectedDimensions := map[string]interface{}{
+		expectedPayloadSendDimensions := map[string]interface{}{
 			"statusCode": 202,
+			"hasError":   false,
+		}
+		expectedPackagingDimensions := map[string]interface{}{
+			"hasError": false,
 		}
 		// This is a nil map! Note that doing this would result in an empty map, not a nil map value:
 		// emptyDimensions := map[string]interface{}{}
 		var emptyDimensions map[string]interface{}
 		testingT := GinkgoT()
 		mockMetricsClient.AssertCalled(testingT,
-			"SendSummaryDuration", "logs.fb.packaging.time", emptyDimensions, mock.AnythingOfType("time.Duration"))
+			"SendSummaryDuration", "logs.fb.packaging.time", expectedPackagingDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
-			"SendSummaryDuration", "logs.fb.payload.send.time", expectedDimensions, mock.AnythingOfType("time.Duration"))
+			"SendSummaryDuration", "logs.fb.payload.send.time", expectedPayloadSendDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryDuration", "logs.fb.total.send.time", emptyDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryValue", "logs.fb.payload.count", emptyDimensions, mock.AnythingOfType("float64"))
 		mockMetricsClient.AssertCalled(testingT,
-			"SendSummaryValue", "logs.fb.payload.size", expectedDimensions, mock.AnythingOfType("float64"))
+			"SendSummaryValue", "logs.fb.payload.size", expectedPayloadSendDimensions, mock.AnythingOfType("float64"))
 	})
 })

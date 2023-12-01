@@ -53,7 +53,10 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 	packaging_start := time.Now()
 	payloads, err := record.PackageRecords(logRecords)
 	packaging_time := time.Since(packaging_start)
-	nrClient.metricsClient.SendSummaryDuration(metrics.PackagingTime, nil, packaging_time)
+	dimensions := map[string]interface{}{
+		"hasError": err != nil,
+	}
+	nrClient.metricsClient.SendSummaryDuration(metrics.PackagingTime, dimensions, packaging_time)
 	if err != nil {
 		log.WithField("error", err).Error("Error packaging request")
 		return false, err
@@ -66,16 +69,17 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 		statusCode, err := nrClient.sendPacket(payload)
 		sendTime := time.Since(sendStart)
 
+		dimensions := map[string]interface{}{
+			"statusCode": statusCode,
+			"hasError":   err != nil,
+		}
+		nrClient.metricsClient.SendSummaryValue(metrics.PayloadSize, dimensions, float64(payloadSize))
+		nrClient.metricsClient.SendSummaryDuration(metrics.PayloadSendTime, dimensions, sendTime)
+
 		// If we receive any error, we'll always retry sending the logs...
 		if err != nil {
 			return true, err
 		}
-
-		dimensions := map[string]interface{}{
-			"statusCode": statusCode,
-		}
-		nrClient.metricsClient.SendSummaryValue(metrics.PayloadSize, dimensions, float64(payloadSize))
-		nrClient.metricsClient.SendSummaryDuration(metrics.PayloadSendTime, dimensions, sendTime)
 
 		// ...unless we receive an explicit non-2XX HTTP status code from the server that tells us otherwise
 		if statusCode/100 != 2 {
