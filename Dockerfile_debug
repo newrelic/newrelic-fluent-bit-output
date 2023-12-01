@@ -4,6 +4,7 @@ WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
 COPY Makefile go.* *.go /go/src/github.com/newrelic/newrelic-fluent-bit-output/
 COPY config/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/config
+COPY metrics/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/metrics
 COPY nrclient/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/nrclient
 COPY record/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/record
 COPY utils/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/utils
