@@ -2,6 +2,7 @@ package nrclient
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"net"
 	"net/http"
 	"net/url"
@@ -15,6 +16,20 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 )
+
+type mockMetricsAggregator struct{ mock.Mock }
+
+func newMockMetricsAggregatorProvider() *mockMetricsAggregator {
+	return &mockMetricsAggregator{}
+}
+
+func (m *mockMetricsAggregator) SendSummaryDuration(metricName string, attributes map[string]interface{}, duration time.Duration) {
+	m.Called(metricName, attributes, duration)
+}
+
+func (m *mockMetricsAggregator) SendSummaryValue(metricName string, attributes map[string]interface{}, value float64) {
+	m.Called(metricName, attributes, value)
+}
 
 var _ = Describe("NR Client", func() {
 
@@ -41,6 +56,7 @@ var _ = Describe("NR Client", func() {
 			"message":   "Some message 2",
 		},
 	}
+	var mockMetricsClient *mockMetricsAggregator
 
 	BeforeEach(func() {
 		server = ghttp.NewServer()
@@ -63,6 +79,10 @@ var _ = Describe("NR Client", func() {
 			UseApiKey:      false,
 			TimeoutSeconds: 2,
 		}
+
+		mockMetricsClient = newMockMetricsAggregatorProvider()
+		mockMetricsClient.On("SendSummaryDuration", mock.Anything, mock.Anything, mock.Anything).Return()
+		mockMetricsClient.On("SendSummaryValue", mock.Anything, mock.Anything, mock.Anything).Return()
 	})
 
 	AfterEach(func() {
@@ -71,7 +91,7 @@ var _ = Describe("NR Client", func() {
 
 	It("Makes no HTTP call when a nil slice is provided", func() {
 		// Given
-		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -87,7 +107,7 @@ var _ = Describe("NR Client", func() {
 
 	It("Makes no HTTP call when no records are provided", func() {
 		// Given
-		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -114,7 +134,7 @@ var _ = Describe("NR Client", func() {
 					"Content-Encoding": []string{"gzip"},
 				})))
 
-		nrClient, err := NewNRClient(insertKeyConfig, noProxy)
+		nrClient, err := NewNRClient(insertKeyConfig, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -140,7 +160,7 @@ var _ = Describe("NR Client", func() {
 					"Content-Encoding": []string{"gzip"},
 				})))
 
-		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -166,7 +186,7 @@ var _ = Describe("NR Client", func() {
 					"Content-Encoding": []string{"gzip"},
 				})))
 
-		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -176,7 +196,7 @@ var _ = Describe("NR Client", func() {
 
 		// Then
 		Expect(shouldRetry).To(BeTrue())
-    Expect(err).To(MatchError(fmt.Sprintf("received non-2XX HTTP status code: %d", httpRetryableErrorCode)))
+		Expect(err).To(MatchError(fmt.Sprintf("received non-2XX HTTP status code: %d", httpRetryableErrorCode)))
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
 
@@ -192,7 +212,7 @@ var _ = Describe("NR Client", func() {
 					"Content-Encoding": []string{"gzip"},
 				})))
 
-		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -202,7 +222,7 @@ var _ = Describe("NR Client", func() {
 
 		// Then
 		Expect(shouldRetry).To(BeFalse())
-    Expect(err).To(MatchError(fmt.Sprintf("received non-2XX HTTP status code: %d", httpNonRetryableErrorCode)))
+		Expect(err).To(MatchError(fmt.Sprintf("received non-2XX HTTP status code: %d", httpNonRetryableErrorCode)))
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
 
@@ -213,7 +233,7 @@ var _ = Describe("NR Client", func() {
 			time.Sleep(4 * time.Second)
 		})
 
-		nrClient, err := NewNRClient(licenseKeyConfig, noProxy)
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -234,10 +254,10 @@ var _ = Describe("NR Client", func() {
 			LicenseKey: licenseKey,
 			// Ideally we shouldn't have to set this separately from licenseKey, but where this is set is
 			// in the Fluent Bit code that we can't unit test
-			UseApiKey:      false,
+			UseApiKey: false,
 		}
 
-		nrClient, err := NewNRClient(configWithWrongEndpoint, noProxy)
+		nrClient, err := NewNRClient(configWithWrongEndpoint, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -264,10 +284,10 @@ var _ = Describe("NR Client", func() {
 			LicenseKey: licenseKey,
 			// Ideally we shouldn't have to set this separately from licenseKey, but where this is set is
 			// in the Fluent Bit code that we can't unit test
-			UseApiKey:      false,
+			UseApiKey: false,
 		}
 
-		nrClient, err := NewNRClient(configWithWrongEndpoint, noProxy)
+		nrClient, err := NewNRClient(configWithWrongEndpoint, noProxy, mockMetricsClient)
 		if err != nil {
 			Fail("Could not initialize the NRClient")
 		}
@@ -280,5 +300,55 @@ var _ = Describe("NR Client", func() {
 		Expect(err).NotTo(BeNil())
 		// The server is never called in this test, since the host name is unresolvable
 		Expect(server.ReceivedRequests()).To(HaveLen(0))
+
+		expectedPayloadSendDimensions := map[string]interface{}{
+			"statusCode": 0, // no status code
+			"hasError":   true,
+		}
+		testingT := GinkgoT()
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryDuration", "logs.fb.payload.send.time", expectedPayloadSendDimensions, mock.AnythingOfType("time.Duration"))
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryValue", "logs.fb.payload.size", expectedPayloadSendDimensions, mock.AnythingOfType("float64"))
+	})
+
+	It("Records the required plugin metrics with appropriate dimensions", func() {
+		// Given
+		server.AppendHandlers(ghttp.RespondWithJSONEncodedPtr(&httpSuccessCode, ""))
+
+		nrClient, err := NewNRClient(licenseKeyConfig, noProxy, mockMetricsClient)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
+
+		// When
+		shouldRetry, err := nrClient.Send(logRecords)
+
+		// Then
+		Expect(shouldRetry).To(BeFalse())
+		Expect(err).To(BeNil())
+		Expect(server.ReceivedRequests()).To(HaveLen(1))
+
+		expectedPayloadSendDimensions := map[string]interface{}{
+			"statusCode": 202,
+			"hasError":   false,
+		}
+		expectedPackagingDimensions := map[string]interface{}{
+			"hasError": false,
+		}
+		// This is a nil map! Note that doing this would result in an empty map, not a nil map value:
+		// emptyDimensions := map[string]interface{}{}
+		var emptyDimensions map[string]interface{}
+		testingT := GinkgoT()
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryDuration", "logs.fb.packaging.time", expectedPackagingDimensions, mock.AnythingOfType("time.Duration"))
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryDuration", "logs.fb.payload.send.time", expectedPayloadSendDimensions, mock.AnythingOfType("time.Duration"))
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryDuration", "logs.fb.total.send.time", emptyDimensions, mock.AnythingOfType("time.Duration"))
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryValue", "logs.fb.payload.count", emptyDimensions, mock.AnythingOfType("float64"))
+		mockMetricsClient.AssertCalled(testingT,
+			"SendSummaryValue", "logs.fb.payload.size", expectedPayloadSendDimensions, mock.AnythingOfType("float64"))
 	})
 })

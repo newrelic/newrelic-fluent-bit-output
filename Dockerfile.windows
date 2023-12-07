@@ -36,6 +36,7 @@ RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH
 # Compile the newrelic-fluent-bit-output plugin
 COPY Makefile go.* *.go ./
 COPY config/ ./config
+COPY metrics/ ./metrics
 COPY nrclient/ ./nrclient
 COPY record/ ./record
 COPY utils/ ./utils

@@ -3,6 +3,7 @@ package nrclient
 import (
 	"bytes"
 	"fmt"
+	"github.com/newrelic/newrelic-fluent-bit-output/metrics"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -25,11 +26,12 @@ var retryableCodesSet = map[int]struct{}{
 }
 
 type NRClient struct {
-	client *http.Client
-	config config.NRClientConfig
+	client        *http.Client
+	config        config.NRClientConfig
+	metricsClient metrics.Client
 }
 
-func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRClient, error) {
+func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metricsClient metrics.Client) (*NRClient, error) {
 	httpTransport, err := buildHttpTransport(proxyCfg, cfg.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("building HTTP transport: %v", err)
@@ -40,21 +42,39 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig) (*NRCli
 			Transport: httpTransport,
 			Timeout:   time.Second * time.Duration(cfg.TimeoutSeconds),
 		},
-		config: cfg,
+		config:        cfg,
+		metricsClient: metricsClient,
 	}
 
 	return nrClient, nil
 }
 
 func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err error) {
+	packaging_start := time.Now()
 	payloads, err := record.PackageRecords(logRecords)
+	packaging_time := time.Since(packaging_start)
+	dimensions := map[string]interface{}{
+		"hasError": err != nil,
+	}
+	nrClient.metricsClient.SendSummaryDuration(metrics.PackagingTime, dimensions, packaging_time)
 	if err != nil {
 		log.WithField("error", err).Error("Error packaging request")
 		return false, err
 	}
 
+	payloadSendStart := time.Now()
 	for _, payload := range payloads {
+		payloadSize := payload.Len()
+		sendStart := time.Now()
 		statusCode, err := nrClient.sendPacket(payload)
+		sendTime := time.Since(sendStart)
+
+		dimensions := map[string]interface{}{
+			"statusCode": statusCode,
+			"hasError":   err != nil,
+		}
+		nrClient.metricsClient.SendSummaryValue(metrics.PayloadSize, dimensions, float64(payloadSize))
+		nrClient.metricsClient.SendSummaryDuration(metrics.PayloadSendTime, dimensions, sendTime)
 
 		// If we receive any error, we'll always retry sending the logs...
 		if err != nil {
@@ -66,6 +86,9 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 			return isStatusCodeRetryable(statusCode), fmt.Errorf("received non-2XX HTTP status code: %d", statusCode)
 		}
 	}
+	payloadSendTime := time.Since(payloadSendStart)
+	nrClient.metricsClient.SendSummaryDuration(metrics.TotalSendTime, nil, payloadSendTime)
+	nrClient.metricsClient.SendSummaryValue(metrics.PayloadCountPerChunk, nil, float64(len(payloads)))
 
 	return false, nil
 }

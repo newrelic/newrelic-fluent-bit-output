@@ -4,6 +4,7 @@ import (
 	"C"
 	"github.com/fluent/fluent-bit-go/output"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
+	"github.com/newrelic/newrelic-fluent-bit-output/metrics"
 	"github.com/newrelic/newrelic-fluent-bit-output/nrclient"
 	"github.com/newrelic/newrelic-fluent-bit-output/record"
 	log "github.com/sirupsen/logrus"
@@ -28,16 +29,21 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		log.WithField("error", err).Error("Error creating NewPluginConfig")
 		return output.FLB_ERROR
 	}
-	var nrClient *nrclient.NRClient
-	nrClient, err = nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig)
+
+	metricsClient, err := metrics.NewClient(cfg.NRClientConfig)
+	if err != nil {
+		log.WithField("error", err).Error("Error creating Metrics client")
+	}
+
+	nrClient, err := nrclient.NewNRClient(cfg.NRClientConfig, cfg.ProxyConfig, metricsClient)
 	if err != nil {
 		log.WithField("error", err).Error("Error creating NewNRClient")
 	}
 
-	id := cfg.NRClientConfig.GetNewRelicKey()
-	nrClientRepo[id] = nrClient
-	dataFormatConfigRepo[id] = cfg.DataFormatConfig
-	output.FLBPluginSetContext(ctx, id)
+	licenseKey := cfg.NRClientConfig.GetNewRelicKey()
+	nrClientRepo[licenseKey] = nrClient
+	dataFormatConfigRepo[licenseKey] = cfg.DataFormatConfig
+	output.FLBPluginSetContext(ctx, licenseKey)
 
 	return output.FLB_OK
 }

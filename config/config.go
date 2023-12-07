@@ -20,6 +20,7 @@ type NRClientConfig struct {
 	LicenseKey     string
 	UseApiKey      bool
 	TimeoutSeconds int
+	SendMetrics    bool
 }
 
 type DataFormatConfig struct {
@@ -86,6 +87,9 @@ func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
 	cfg.UseApiKey = len(cfg.ApiKey) > 0
 
 	cfg.TimeoutSeconds, err = optInt(ctx, "httpClientTimeout", 5)
+
+	cfg.SendMetrics, err = optBool(ctx, "sendMetrics", false)
+
 	return
 }
 
