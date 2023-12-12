@@ -5,9 +5,11 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"reflect"
 
 	"github.com/fluent/fluent-bit-go/output"
 	"github.com/newrelic/newrelic-fluent-bit-output/utils"
@@ -91,9 +93,14 @@ func resolveTimestamp(outputRecord LogRecord, inputTimestamp interface{}) (inter
 		return utils.TimeToMillis(inputTimestamp.(output.FLBTime).UnixNano()), nil
 	case uint64:
 		return utils.TimeToMillis(int64(inputTimestamp.(uint64))), nil
+	// Since Fluent Bit v2.1.0, Event format is represented as 2-element array with a nested array as the first element
+	// The timestamp field is allocated in the first position of that nested array: [[TIMESTAMP, METADATA], MESSAGE]
+	// https://docs.fluentbit.io/manual/concepts/key-concepts#event-format
+	case []interface{}:
+		return resolveTimestamp(outputRecord, inputTimestamp.([]interface{})[0])
 	default:
 		// Unhandled timestamp type, just ignore (don't log, since I assume we'll fill up someone's disk)
-		return 0, errors.New("unhandled timestamp type")
+		return 0, errors.New(fmt.Sprintf("unhandled timestamp type: %s", reflect.TypeOf(inputTimestamp)))
 	}
 }
 
