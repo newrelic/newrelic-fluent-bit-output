@@ -177,6 +177,32 @@ var _ = Describe("Out New Relic", func() {
 			)
 		}
 
+		It("extracts FLBTime timestamp from Fluent Bit Event nested array", func() {
+			inputMap := make(FluentBitRecord)
+
+			timestamp := []interface{}{
+				output.FLBTime{time.Unix(1234567890, 123456789)},
+				"Other metadata",
+			}
+
+			foundOutput := RemapRecord(inputMap, timestamp, pluginVersion, config.DataFormatConfig{false})
+
+			Expect(foundOutput["timestamp"]).To(Equal(int64(1234567890123)))
+		})
+
+		It("extracts UInt64 timestamp from Fluent Bit Event nested array", func() {
+			inputMap := make(FluentBitRecord)
+
+			timestamp := []interface{}{
+				uint64(1234567890),
+				"Other metadata",
+			}
+
+			foundOutput := RemapRecord(inputMap, timestamp, pluginVersion, config.DataFormatConfig{false})
+
+			Expect(foundOutput["timestamp"]).To(Equal(int64(1234567890000)))
+		})
+
 		It("ignores timestamps of unhandled types", func() {
 			inputMap := make(FluentBitRecord)
 
