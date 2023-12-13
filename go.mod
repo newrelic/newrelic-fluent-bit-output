@@ -19,9 +19,9 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
-	golang.org/x/net v0.0.0-20180906233101-161cd47e91fd // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/text v0.3.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.2.1 // indirect
