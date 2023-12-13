@@ -1,5 +1,5 @@
 # We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
-FROM golang:1.20.12-bookworm AS builder
+FROM golang:1.20.12-bullseye AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
