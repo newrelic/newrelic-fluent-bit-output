@@ -1,5 +1,6 @@
 module github.com/newrelic/newrelic-fluent-bit-output
 
+// We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
 go 1.20
 
 require (
