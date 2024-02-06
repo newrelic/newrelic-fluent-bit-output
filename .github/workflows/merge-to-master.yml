@@ -108,8 +108,7 @@ jobs:
           tags: |
             ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
           builder: ${{ steps.buildx.outputs.name }}
-          # Fluent Bit debug image only available for amd64 architecture
-          platforms: linux/amd64
+          platforms: linux/amd64, linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
