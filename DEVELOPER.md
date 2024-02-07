@@ -79,5 +79,3 @@ Update the image version number [here](https://github.com/newrelic/helm-charts/b
 * Refer to the [Makefile](Makefile) file for the available cross-compiling targets.
 
 
-
-
