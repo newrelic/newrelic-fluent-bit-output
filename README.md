@@ -24,7 +24,7 @@ and one space between keys and values.
     [PLUGINS]
         Path /path/to/newrelic-fluent-bit-output/out_newrelic-linux-*.so
     ```
-2. Modify fluent-bit.conf` and add the following line under the `[SERVICE]` block:
+2. Modify `fluent-bit.conf` and add the following line under the `[SERVICE]` block:
     ```
     [SERVICE]
         # This is the main configuration block for fluent bit.
