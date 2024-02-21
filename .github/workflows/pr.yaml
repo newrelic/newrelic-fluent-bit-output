@@ -51,8 +51,7 @@ jobs:
             platforms: linux/amd64, linux/arm64, linux/arm/v7
           - name: debug-image
             dockerfile: Dockerfile_debug
-            # Fluent Bit debug image only available for amd64 architecture
-            platforms: linux/amd64
+            platforms: linux/amd64, linux/arm64
           - name: firelens-image
             dockerfile: Dockerfile_firelens
             # Firelens image only available for amd64 and arm64 architectures
