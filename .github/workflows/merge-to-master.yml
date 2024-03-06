@@ -132,6 +132,11 @@ jobs:
           ECR_REGISTRY: 533243300146.dkr.ecr.us-east-2.amazonaws.com
           ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
           IMAGE_TAG: ${{ env.VERSION }}
+          REQUEST: > 
+            Please add ECR replication for this repo to the following regions: af-south-1, ca-west-1, eu-central-2, eu-south-1, eu-south-2, me-central-1, me-south-1
+            We have opened a support Case #00167375 on  Nov 28, 2023 with no action so far, so trying to get an engineer's attention that has access to modifying 
+            the ECR replication rules.
+
         with:
           context: ./
           file: ./Dockerfile_firelens
