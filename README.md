@@ -156,22 +156,43 @@ For convenience, we have included a Dashboard in JSON format (`troubleshooting-d
 
 ## Docker Image
 
-This plugin also comes packaged in a Docker image, available [here](https://hub.docker.com/r/newrelic/newrelic-fluentbit-output). To use it, you just need to pull the image and run it with your desired configuration:
+This plugin also comes packaged in a Docker image, available [here](https://hub.docker.com/r/newrelic/newrelic-fluentbit-output). You can just pull the image and run it with your desired configuration:
 
 ```
 docker pull newrelic/newrelic-fluentbit-output
 docker run -e "FILE_PATH=/var/log/*" -e "API_KEY=<YOUR-API-KEY>" newrelic/newrelic-fluentbit-output
 ```
 
-The available Docker container configuration options are:
+The image embeds a [default fluent-bit.conf file](https://github.com/newrelic/newrelic-fluent-bit-output/blob/master/fluent-bit.conf) with some basic options that can be configured via environment variables:
 
-| Key         | Description                                          | Required                                        |
-| ----------- | ---------------------------------------------------- | ----------------------------------------------- |
-| API_KEY     | Your New Relic Insights Insert Key                   | Yes (either License Key or API Key is required) |
-| FILE_PATH   | A path or glob to the file or files you wish to tail | Yes                                             |
-| LICENSE_KEY | Your New Relic License key                           | Yes (either License Key or API Key is required) |
+| Key         | Description                                                                                                                                                 | Required                                        |
+| ----------- |-------------------------------------------------------------------------------------------------------------------------------------------------------------| ----------------------------------------------- |
+| API_KEY     | Your New Relic Insights Insert Key                                                                                                                          | Yes (either License Key or API Key is required) |
+| FILE_PATH   | A path or glob to the file or files you wish to tail. This is typically a host path, in which case you need to mount it to the container to this same path. | Yes                                             |
+| LICENSE_KEY | Your New Relic License key                                                                                                                                  | Yes (either License Key or API Key is required) |
 
-Alternatively, you can mount your own Fluent Bit configuration file as a volume at `/fluent-bit/etc/fluent-bit.conf` to use your custom configuration.
+Note that `ENDPOINT` is not supported when directly using the default embedded configuration.
+
+Nevertheless, **the intended use of this image is by providing your own `fluent-bit.conf` file, mount it to `/fluent-bit/etc/fluent-bit.conf` and pass any environment variables as specified in your configuration file**. For example, if your custom configuration `fluent-bit.conf` configuration was placed under `/some_hostpath/fluent-bit.conf` in your host with these contents:
+
+```
+[INPUT]
+    Name          dummy
+
+[OUTPUT]
+    Name          newrelic
+    Match         *
+    licenseKey    ${LICENSE_KEY}
+    endpoint      ${ENDPOINT}
+    sendMetrics   ${SEND_METRICS}
+```
+
+Then you would run the image as:
+
+```
+docker pull newrelic/newrelic-fluentbit-output
+docker run -v /some_hostpath/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf -e "LICENSE_KEY=<YOUR_LICENSE_KEY>" -e "ENDPOINT=https://log-api.eu.newrelic.com/log/v1" -e "SEND_METRICS=true" newrelic/newrelic-fluentbit-output
+```
 
 ## Community
 
