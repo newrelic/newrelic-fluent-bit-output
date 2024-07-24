@@ -1,4 +1,4 @@
-FROM golang
+FROM golang:1.23rc2
 
 RUN mkdir -p $GOPATH/src/github.com/hpcloud/tail/
 ADD . $GOPATH/src/github.com/hpcloud/tail/
