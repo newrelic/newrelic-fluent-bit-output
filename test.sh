@@ -8,14 +8,14 @@ clean_up () {
     if [[ $ARG -ne 0 ]]; then
       echo "Test failed, showing docker logs"
       echo "- Mockserver"
-      docker-compose -f ./test/docker-compose.yml logs mockserver
+      docker compose -f ./test/docker-compose.yml logs mockserver
       echo "- Fluent Bit"
-      docker-compose -f ./test/docker-compose.yml logs newrelic-fluent-bit-output
+      docker compose -f ./test/docker-compose.yml logs newrelic-fluent-bit-output
     fi
 
     echo "Cleaning up"
     rm -r ./test/testdata || true
-    docker-compose -f ./test/docker-compose.yml down
+    docker compose -f ./test/docker-compose.yml down
 
     exit $ARG
 }
@@ -41,7 +41,7 @@ function run_test {
   touch ./test/testdata/fbtest.log
 
   echo "Starting docker compose"
-  docker-compose -f ./test/docker-compose.yml up -d
+  docker compose -f ./test/docker-compose.yml up -d
 
   # Waiting mockserver to be ready
   max_retry=10
@@ -79,7 +79,7 @@ function run_test {
 
   echo "Tearing down test for image ${NR_FB_IMAGE}"
   rm -r ./test/testdata || true
-  docker-compose -f ./test/docker-compose.yml down
+  docker compose -f ./test/docker-compose.yml down
 }
 
 
