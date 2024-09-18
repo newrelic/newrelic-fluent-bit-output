@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - Fluent Bit
-- A Go environment. On Mac,you can install it with `brew install go`
+- A Go environment. On Mac,you can install it with `brew install go`.
 - Cross-compilation requirements (optional, only required when building for non-native platforms):
     - For `linux/arm64` cross-compilation: `aarch64-linux-gnu-gcc` and `aarch64-linux-gnu-g++` compilers.
     - For `linux/arm/v7` cross-compilation: `arm-linux-gnueabihf-gcc` and `arm-linux-gnueabihf-g++` compilers.
