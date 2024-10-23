@@ -1,6 +1,6 @@
 # escape=`
 
-ARG FLUENTBIT_VERSION=3.1.9
+ARG FLUENTBIT_VERSION=3.1.5
 ARG WINDOWS_VERSION=ltsc2019
 
 #################################################
