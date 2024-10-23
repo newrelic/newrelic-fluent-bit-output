@@ -1,6 +1,6 @@
 # escape=`
 
-ARG FLUENTBIT_VERSION=3.1.5
+ARG FLUENTBIT_VERSION=3.1.9
 ARG WINDOWS_VERSION=ltsc2019
 
 #################################################
@@ -137,7 +137,16 @@ RUN Start-Process /local/vc_redist.x64.exe -ArgumentList '/install', '/quiet', '
 ENV chocolateyUseWindowsCompression false
 RUN iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1')); `
   choco feature disable --name showDownloadProgress ; `
-  choco install -y openssl;
+  # choco install -y openssl;
+
+  # Install vcpkg
+RUN Invoke-WebRequest -Uri https://github.com/microsoft/vcpkg/releases/download/2022.07.04/vcpkg.exe -OutFile C:\vcpkg.exe
+
+# Install OpenSSL using vcpkg
+WORKDIR /local
+RUN .\vcpkg.exe integrate install
+    .\vcpkg.exe --triplet x64-windows-static install openssl
+
 
 # Build Fluent Bit from source - context must be the root of the Git repo
 WORKDIR /src/build
