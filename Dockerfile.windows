@@ -143,15 +143,19 @@ RUN Invoke-WebRequest -Uri https://github.com/microsoft/vcpkg/releases/download/
 
 # Install OpenSSL using vcpkg
 WORKDIR /local
+# Install OpenSSL using vcpkg
 RUN vcpkg.exe integrate install
 RUN vcpkg.exe --triplet x64-windows-static install openssl
+ENV OPENSSL_ROOT_DIR=C:\vcpkg\installed\x64-windows-static
+
 
 # Build Fluent Bit from source - context must be the root of the Git repo
 WORKDIR /src/build
 # COPY . /src/
 
-RUN cmake -G "'Visual Studio 16 2019'" -DOPENSSL_ROOT_DIR='C:\Program Files\OpenSSL-Win64\lib\VC\x64\MT' -DOPENSSL_INCLUDE_DIR='C:\Program Files\OpenSSL-Win64\include' -DCMAKE_BUILD_TYPE=Release ../;`
+RUN cmake -G "Visual Studio 16 2019" -DOPENSSL_ROOT_DIR="C:\vcpkg\installed\x64-windows-static" -DOPENSSL_INCLUDE_DIR="C:\vcpkg\installed\x64-windows-static\include" -DCMAKE_BUILD_TYPE=Release ../; `
     cmake --build . --config Release;
+
 
 # Set up config files and binaries in single /fluent-bit hierarchy for easy copy in later stage
 RUN New-Item -Path  /fluent-bit/etc/ -ItemType "directory"; `
