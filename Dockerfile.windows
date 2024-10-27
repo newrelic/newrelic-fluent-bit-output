@@ -138,10 +138,15 @@ ENV chocolateyUseWindowsCompression false
 RUN iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1')); `
   choco feature disable --name showDownloadProgress
 
-WORKDIR /local
+RUN Invoke-WebRequest -Uri https://github.com/microsoft/vcpkg-tool/releases/download/2024-10-18/vcpkg.exe -OutFile C:\vcpkg.exe
+
 # Install OpenSSL using vcpkg
-RUN vcpkg.exe integrate install
-RUN vcpkg.exe --triplet x64-windows-static install openssl
+# Install vcpkg
+
+WORKDIR C:\
+# Install OpenSSL using vcpkg
+RUN .\vcpkg.exe integrate install
+RUN .\vcpkg.exe --triplet x64-windows-static install openssl
 ENV OPENSSL_ROOT_DIR=C:\vcpkg\installed\x64-windows-static
 
 
