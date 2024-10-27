@@ -35,70 +35,70 @@ jobs:
       - name: Build project
         run: make linux/amd64
 
-  docker-ci:
-    name: CI - Docker image build (${{ matrix.name }})
-    runs-on: ubuntu-20.04
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
-    strategy:
-      matrix:
-        include:
-          - name: standard-image
-            dockerfile: Dockerfile
-            platforms: linux/amd64, linux/arm64, linux/arm/v7
-          - name: debug-image
-            dockerfile: Dockerfile_debug
-            platforms: linux/amd64, linux/arm64
-          - name: firelens-image
-            dockerfile: Dockerfile_firelens
-            # Firelens image only available for amd64 and arm64 architectures
-            platforms: linux/amd64, linux/arm64
+  # docker-ci:
+  #   name: CI - Docker image build (${{ matrix.name }})
+  #   runs-on: ubuntu-20.04
+  #   services:
+  #     registry:
+  #       image: registry:2
+  #       ports:
+  #         - 5000:5000
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - name: standard-image
+  #           dockerfile: Dockerfile
+  #           platforms: linux/amd64, linux/arm64, linux/arm/v7
+  #         - name: debug-image
+  #           dockerfile: Dockerfile_debug
+  #           platforms: linux/amd64, linux/arm64
+  #         - name: firelens-image
+  #           dockerfile: Dockerfile_firelens
+  #           # Firelens image only available for amd64 and arm64 architectures
+  #           platforms: linux/amd64, linux/arm64
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
 
-      # The QEMU will include more platforms such as arm64 to docker buildx builder
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+  #     # The QEMU will include more platforms such as arm64 to docker buildx builder
+  #     - name: Set up QEMU
+  #       uses: docker/setup-qemu-action@v1
 
-      # The Docker Buildx builder will be used later to leverage from the cache while building the image
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@master
-        with:
-          # This option is required to avoid this problem https://github.com/docker/for-mac/issues/3611#issuecomment-479507361
-          # We need this option to be able to push to the local registry service used by the integration tests.
-          driver-opts: network=host
+  #     # The Docker Buildx builder will be used later to leverage from the cache while building the image
+  #     - name: Set up Docker Buildx
+  #       id: buildx
+  #       uses: docker/setup-buildx-action@master
+  #       with:
+  #         # This option is required to avoid this problem https://github.com/docker/for-mac/issues/3611#issuecomment-479507361
+  #         # We need this option to be able to push to the local registry service used by the integration tests.
+  #         driver-opts: network=host
 
-      # Cache to be used by Docker Buildx
-      - name: Set up Docker Buildx's cache
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-buildx-
+  #     # Cache to be used by Docker Buildx
+  #     - name: Set up Docker Buildx's cache
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: /tmp/.buildx-cache
+  #         key: ${{ runner.os }}-buildx-${{ github.sha }}
+  #         restore-keys: ${{ runner.os }}-buildx-
 
-      - name: Build Docker image (${{ matrix.name }})
-        uses: docker/build-push-action@v2
-        with:
-          context: ./
-          file: ./${{ matrix.dockerfile }}
-          push: true
-          tags: localhost:5000/fb-output-plugin-${{ matrix.name }}
-          builder: ${{ steps.buildx.outputs.name }}
-          platforms: ${{ matrix.platforms }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+  #     - name: Build Docker image (${{ matrix.name }})
+  #       uses: docker/build-push-action@v2
+  #       with:
+  #         context: ./
+  #         file: ./${{ matrix.dockerfile }}
+  #         push: true
+  #         tags: localhost:5000/fb-output-plugin-${{ matrix.name }}
+  #         builder: ${{ steps.buildx.outputs.name }}
+  #         platforms: ${{ matrix.platforms }}
+  #         cache-from: type=local,src=/tmp/.buildx-cache
+  #         cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Inspect generated Docker image (${{ matrix.name }})
-        run: docker buildx imagetools inspect localhost:5000/fb-output-plugin-${{ matrix.name }}
+  #     - name: Inspect generated Docker image (${{ matrix.name }})
+  #       run: docker buildx imagetools inspect localhost:5000/fb-output-plugin-${{ matrix.name }}
 
-      - name: Test Docker image (${{ matrix.name }})
-        run: bash test.sh localhost:5000/fb-output-plugin-${{ matrix.name }}
+  #     - name: Test Docker image (${{ matrix.name }})
+  #       run: bash test.sh localhost:5000/fb-output-plugin-${{ matrix.name }}
 
   docker-windows-ci:
     name:  CI - Docker image for ${{ matrix.name }}

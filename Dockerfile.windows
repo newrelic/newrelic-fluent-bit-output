@@ -155,7 +155,7 @@ ENV OPENSSL_ROOT_DIR=C:\vcpkg\installed\x64-windows-static
 WORKDIR /src/build
 # COPY . /src/
 
-RUN cmake -G "Visual Studio 16 2019" -DOPENSSL_ROOT_DIR="C:\vcpkg\installed\x64-windows-static" -DOPENSSL_INCLUDE_DIR="C:\vcpkg\installed\x64-windows-static\include" -DCMAKE_BUILD_TYPE=Release ../; `
+RUN cmake -G "Visual Studio 16 2019" -A x64 -DOPENSSL_ROOT_DIR="C:\vcpkg\installed\x64-windows-static" -DOPENSSL_INCLUDE_DIR="C:\vcpkg\installed\x64-windows-static\include" -DCMAKE_BUILD_TYPE=Release ../; `
     cmake --build . --config Release;
 
 
