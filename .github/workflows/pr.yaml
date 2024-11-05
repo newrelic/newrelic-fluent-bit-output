@@ -93,7 +93,7 @@ jobs:
           platforms: ${{ matrix.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          load: true
+          # load: true
       
       - name: Run Trivy in table mode for (${{ matrix.name }})
         # Table output is only useful when running on a pull request or push.
