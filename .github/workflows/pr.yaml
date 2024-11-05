@@ -93,6 +93,17 @@ jobs:
           platforms: ${{ matrix.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+      
+      - name: Run Trivy in table mode for (${{ matrix.name }})
+        # Table output is only useful when running on a pull request or push.
+        if: matrix.name == 'standard-image'
+        uses: aquasecurity/trivy-action@0.18.0
+        with:
+          image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
+          format: table
+          # exit-code: 1
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
 
       - name: Inspect generated Docker image (${{ matrix.name }})
         run: docker buildx imagetools inspect localhost:5000/fb-output-plugin-${{ matrix.name }}
@@ -130,3 +141,13 @@ jobs:
           IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
         run: |
           docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
+      
+      - name: Run Trivy in table mode for (${{ matrix.name }})
+      # Table output is only useful when running on a pull request or push.
+        uses: aquasecurity/trivy-action@0.18.0
+        with:
+          image-ref: newrelic/newrelic-fluentbit-output:development-${{ matrix.imageTagSuffix }}
+          format: table
+          # exit-code: 1
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
