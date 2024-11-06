@@ -114,7 +114,7 @@ jobs:
       - name: Run Trivy scan
         if: matrix.name == 'firelens-image'
         run: |
-          IMAGE_REF="localhost:5000/fb-output-plugin-${{ matrix.name }}"
+          IMAGE_REF=localhost:5000/fb-output-plugin-${{ matrix.name }}
           trivy image --format table --ignore-unfixed --severity CRITICAL,HIGH,MEDIUM,LOW $IMAGE_REF
 
       - name: Inspect generated Docker image (${{ matrix.name }})
