@@ -106,7 +106,7 @@ jobs:
       
       - name: Run Trivy in table mode for (${{ matrix.name }})
         # Table output is only useful when running on a pull request or push.
-        if: matrix.name == 'standard-image'
+        if: matrix.name == 'firelens-image'
         uses: aquasecurity/trivy-action@0.18.0
         with:
           image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
