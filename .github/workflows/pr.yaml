@@ -98,6 +98,11 @@ jobs:
       - name: Check Docker container logs
         run: |
           docker ps -a
+    
+      - name: Check Local Docker Registry
+        run: |
+          echo "Checking if the local Docker registry is accessible..."
+          curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/v2/ | grep 200 || (echo "Local Docker registry is not accessible." && exit 1)
       
       - name: Run Trivy in table mode for (${{ matrix.name }})
         # Table output is only useful when running on a pull request or push.
