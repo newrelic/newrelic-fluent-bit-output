@@ -139,7 +139,7 @@ jobs:
       - name: Run Trivy scan
         run: |
           IMAGE_REF=localhost:5000/fb-output-plugin-${{ matrix.name }}
-          trivy image --format table --ignore-unfixed --severity CRITICAL,HIGH,MEDIUM,LOW $IMAGE_REF --cache-dir ${{ github.workspace }}/.cache/trivy
+          trivy image --format table --ignore-unfixed --severity CRITICAL,HIGH,MEDIUM,LOW $IMAGE_REF --cache-dir ${{ github.workspace }}/.cache/trivy --skip-update
           
       # - name: Run Trivy in table mode for (${{ matrix.name }})
       #   # Table output is only useful when running on a pull request or push.
