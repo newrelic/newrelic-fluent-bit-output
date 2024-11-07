@@ -122,7 +122,7 @@ jobs:
         if: matrix.name == 'firelens-image'
         uses: aquasecurity/trivy-action@0.18.0
         with:
-          image-ref: host.docker.internal:5000/fb-output-plugin-${{ matrix.name }}
+          image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
           format: table
           # exit-code: 1
           ignore-unfixed: true
