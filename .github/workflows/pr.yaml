@@ -35,9 +35,30 @@ jobs:
       - name: Build project
         run: make linux/amd64
 
+  trivy-db-cache-init:
+    name: CI - Trivy DB Cache Initialization
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup oras
+        uses: oras-project/setup-oras@v1
+
+      - name: Download and extract the vulnerability DB
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/.cache/trivy/db
+          oras pull ghcr.io/aquasecurity/trivy-db:2
+          tar -xzf db.tar.gz -C $GITHUB_WORKSPACE/.cache/trivy/db
+          rm db.tar.gz
+
+      - name: Cache DB
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/.cache/trivy
+          key: cache-trivy-db
+
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
     runs-on: ubuntu-20.04
+    needs: trivy-db-cache-init
     services:
       registry:
         image: registry:2
@@ -125,6 +146,8 @@ jobs:
         if: matrix.name == 'firelens-image'
         env:
           TRIVY_INSECURE: true
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
         uses: aquasecurity/trivy-action@0.18.0
         with:
           image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
