@@ -146,7 +146,7 @@ jobs:
         if: matrix.name == 'firelens-image'
         env:
           TRIVY_NON_SSL: true
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
         uses: aquasecurity/trivy-action@0.18.0
         with:
           image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
