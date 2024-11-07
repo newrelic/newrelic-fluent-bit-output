@@ -115,41 +115,13 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           
-
-      - name: Check Docker container logs
-        run: |
-          docker ps -a
-
-      - name: Check Docker images
-        run: |
-          docker images
-    
-      - name: Check Local Docker Registry
-        run: |
-          echo "Checking if the local Docker registry is accessible..."
-          curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/v2/ | grep 200 || (echo "Local Docker registry is not accessible." && exit 1)
-      
-      # - name: Install Trivy
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y wget
-      #     wget https://github.com/aquasecurity/trivy/releases/download/v0.57.0/trivy_0.57.0_Linux-64bit.deb
-      #     sudo dpkg -i trivy_0.57.0_Linux-64bit.deb
-
-      # - name: Run Trivy scan
-      #   run: |
-      #     IMAGE_REF=localhost:5000/fb-output-plugin-${{ matrix.name }}
-      #     trivy image --format table --ignore-unfixed --severity CRITICAL,HIGH,MEDIUM,LOW $IMAGE_REF --cache-dir ${{ github.workspace }}/.cache/trivy --skip-update
-          
       - name: Run Trivy in table mode for (${{ matrix.name }})
-        # Table output is only useful when running on a pull request or push.
-        if: matrix.name == 'firelens-image'
         env:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
         uses: aquasecurity/trivy-action@0.18.0
         with:
-          image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
+          image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
           format: table
           # exit-code: 1
           ignore-unfixed: true
@@ -192,11 +164,13 @@ jobs:
         run: |
           docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
       
-      - name: Install Trivy
-        run: |
-          choco install trivy
-
-      - name: Run Trivy scan
-        run: |
-          IMAGE_REF=${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          trivy image --format table --ignore-unfixed --severity CRITICAL,HIGH,MEDIUM,LOW $IMAGE_REF
+      - name: Run Trivy in table mode for (${{ matrix.name }})
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+        uses: aquasecurity/trivy-action@0.18.0
+        with:
+          image-ref: ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          format: table
+          # exit-code: 1
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
