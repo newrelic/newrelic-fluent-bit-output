@@ -93,11 +93,15 @@ jobs:
           platforms: ${{ matrix.platforms }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          outputs: type=image,name=localhost:5000/fb-output-plugin-${{ matrix.name }}
+          
 
       - name: Check Docker container logs
         run: |
           docker ps -a
+
+      - name: Check Docker images
+        run: |
+          docker images
     
       - name: Check Local Docker Registry
         run: |
