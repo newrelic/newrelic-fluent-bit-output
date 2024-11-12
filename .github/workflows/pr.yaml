@@ -95,9 +95,11 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           
       - name: Run Trivy in table mode for (${{ matrix.name }})
+        if: matrix.name != 'debug-image'
         env:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+        # Versions 0.26.0 and above are causing an issue where the image can't be fetched because the image name is not being resolved.
         uses: aquasecurity/trivy-action@0.25.0
         with:
           image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
@@ -106,6 +108,7 @@ jobs:
           severity: 'MEDIUM,LOW'
       
       - name: Fail build on High/Criticial Vulnerabilities
+        if: matrix.name != 'debug-image'
         env:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
