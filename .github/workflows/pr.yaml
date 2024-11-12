@@ -123,9 +123,21 @@ jobs:
         with:
           image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
           format: table
-          # exit-code: 1
           ignore-unfixed: true
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          severity: 'MEDIUM,LOW'
+      
+      - name: Fail build on High/Criticial Vulnerabilities
+        env:
+          TRIVY_NON_SSL: true
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+        uses: aquasecurity/trivy-action@0.18.0
+        with:
+          image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+          skip-setup-trivy: true
 
       - name: Inspect generated Docker image (${{ matrix.name }})
         run: docker buildx imagetools inspect localhost:5000/fb-output-plugin-${{ matrix.name }}
@@ -163,14 +175,3 @@ jobs:
           IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
         run: |
           docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
-      
-      - name: Run Trivy in table mode for (${{ matrix.name }})
-        env:
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
-        uses: aquasecurity/trivy-action@0.18.0
-        with:
-          image-ref: ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          format: table
-          # exit-code: 1
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
