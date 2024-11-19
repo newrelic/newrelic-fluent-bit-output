@@ -119,7 +119,6 @@ jobs:
           exit-code: 1
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
-          skip-setup-trivy: true
 
       - name: Inspect generated Docker image (${{ matrix.name }})
         run: docker buildx imagetools inspect localhost:5000/fb-output-plugin-${{ matrix.name }}
