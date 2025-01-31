@@ -2,11 +2,10 @@ package config
 
 import (
 	"fmt"
-	"strconv"
-	"unsafe"
-
 	"github.com/fluent/fluent-bit-go/output"
 	log "github.com/sirupsen/logrus"
+	"strconv"
+	"unsafe"
 )
 
 type PluginConfig struct {
