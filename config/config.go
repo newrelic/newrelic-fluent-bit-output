@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
-	"github.com/fluent/fluent-bit-go/output"
-	log "github.com/sirupsen/logrus"
 	"strconv"
 	"unsafe"
+
+	"github.com/fluent/fluent-bit-go/output"
+	log "github.com/sirupsen/logrus"
 )
 
 type PluginConfig struct {
@@ -88,7 +89,7 @@ func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
 
 	cfg.TimeoutSeconds, err = optInt(ctx, "httpClientTimeout", 5)
 
-	cfg.SendMetrics, err = optBool(ctx, "sendMetrics", false)
+	cfg.SendMetrics, err = optBool(ctx, "sendMetrics", true)
 
 	return
 }
