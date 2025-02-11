@@ -3,6 +3,8 @@ FROM golang:1.20.7-bullseye AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
+#hello-world
+
 COPY Makefile go.* *.go /go/src/github.com/newrelic/newrelic-fluent-bit-output/
 COPY config/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/config
 COPY metrics/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/metrics
