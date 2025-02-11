@@ -112,6 +112,7 @@ jobs:
         env:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
         uses: aquasecurity/trivy-action@0.25.0
         with:
           image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
