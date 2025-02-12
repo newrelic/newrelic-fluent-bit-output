@@ -3,6 +3,8 @@ FROM golang:1.20.7-bullseye AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
+#hello-world
+
 COPY Makefile go.* *.go /go/src/github.com/newrelic/newrelic-fluent-bit-output/
 COPY config/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/config
 COPY metrics/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/metrics
@@ -19,7 +21,7 @@ RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
 # aws-for-fluent-bit 2.32.2.20240516 is based on Fluent Bit 1.9.10: https://github.com/aws/aws-for-fluent-bit/releases/tag/v2.32.2.20240516
-FROM amazon/aws-for-fluent-bit:2.32.2.20240516
+FROM amazon/aws-for-fluent-bit:2.32.5
 
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
