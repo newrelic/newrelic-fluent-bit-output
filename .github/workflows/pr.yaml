@@ -49,7 +49,8 @@ jobs:
           scan-type: 'fs'
           ignore-unfixed: true
           format: table
-          severity: 'CRITICAL'
+          exit-code: 1
+          severity: 'MEDIUM,LOW,CRITICAL,HIGH'
 
         
   docker-ci:
