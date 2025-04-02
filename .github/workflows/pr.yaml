@@ -5,14 +5,13 @@ on: [pull_request]
 jobs:
   unit-tests:
     name: CI - Tests and Build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     steps:
-      # We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
-      - name: Set up Go 1.20.7
+      - name: Set up Go 1.23.7
         uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
         with:
-          go-version: '1.20.7'
+          go-version: '1.23.7'
         id: go
 
       - name: Check go version
@@ -37,7 +36,7 @@ jobs:
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     services:
       registry:
         image: registry:2
