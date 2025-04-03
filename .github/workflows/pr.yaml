@@ -48,8 +48,9 @@ jobs:
         with:
           scan-type: 'fs'
           ignore-unfixed: true
-          format: table
+          format: json
           severity: 'HIGH,CRITICAL,MEDIUM,LOW'
+          output: trivy.json
 
       - name: Check for vulnerabilities with fixes
         id: check_vulnerabilities
