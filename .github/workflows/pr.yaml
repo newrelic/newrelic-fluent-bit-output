@@ -60,10 +60,12 @@ jobs:
 
       - name: Send Slack Notification
         if: ${{ steps.check_vulnerabilities.outputs.vulnerabilities != '0' }}
-        run: |
-          curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "Trivy scan found high and critical vulnerabilities with available fixes in the repository."
-          }' ${{ secrets.SLACK_WEBHOOK_URL }}
+        uses: ravsamhq/notify-slack-action@v1
+        with:
+          status: failure
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
