@@ -55,7 +55,7 @@ jobs:
       - name: Check for vulnerabilities with fixes
         id: check_vulnerabilities
         run: |
-          vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL") | select(.FixedVersion != null)] | length' trivy.json)
+          vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL" or .Severity == "LOW" or .Severity == "MEDIUM") | select(.FixedVersion != null)] | length' trivy.json)
           echo "vulnerabilities=$vulnerabilities" >> $GITHUB_ENV
 
       - name: Send Slack Notification
