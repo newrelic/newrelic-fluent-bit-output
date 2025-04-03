@@ -59,7 +59,7 @@ jobs:
           echo "vulnerabilities=$vulnerabilities" >> $GITHUB_ENV
 
       - name: Send Slack Notification
-        if: ${{ steps.check_vulnerabilities.outputs.vulnerabilities != '0' }}
+        if: ${{ steps.check_vulnerabilities.outputs.vulnerabilities == '0' }}
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: failure
