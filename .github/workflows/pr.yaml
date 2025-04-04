@@ -10,7 +10,7 @@ jobs:
     steps:
       # We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
       - name: Set up Go 1.20.7
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5
         with:
           go-version: '1.20.7'
         id: go
@@ -19,7 +19,7 @@ jobs:
         run: go version
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Run unit tests
         run: |
@@ -27,7 +27,7 @@ jobs:
           go test -v ./... 2>&1 | go-junit-report -set-exit-code=1 > test-results.xml
 
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2.6.2
+        uses: EnricoMi/publish-unit-test-result-action@39ee91a16bb587a6c2b4791d4954cf5299736efd # v2.6.2
         if: always()
         with:
           files: test-results.xml
@@ -59,16 +59,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       # The QEMU will include more platforms such as arm64 to docker buildx builder
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
 
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@master
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3
         with:
           # This option is required to avoid this problem https://github.com/docker/for-mac/issues/3611#issuecomment-479507361
           # We need this option to be able to push to the local registry service used by the integration tests.
@@ -76,14 +76,14 @@ jobs:
 
       # Cache to be used by Docker Buildx
       - name: Set up Docker Buildx's cache
-        uses: actions/cache@v2
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: ${{ runner.os }}-buildx-
 
       - name: Build Docker image (${{ matrix.name }})
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6
         with:
           context: ./
           file: ./${{ matrix.dockerfile }}
@@ -100,7 +100,7 @@ jobs:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
         # Versions 0.26.0 and above are causing an issue where the image can't be fetched because the image name is not being resolved.
-        uses: aquasecurity/trivy-action@0.25.0
+        uses: aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8 # 0.25.0
         with:
           image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
           format: table
@@ -113,7 +113,7 @@ jobs:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
           TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
-        uses: aquasecurity/trivy-action@0.25.0
+        uses: aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8 # 0.25.0
         with:
           image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
           format: table
@@ -149,7 +149,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Build container for ${{ matrix.name }}
         env:
