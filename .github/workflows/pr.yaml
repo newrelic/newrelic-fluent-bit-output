@@ -57,17 +57,15 @@ jobs:
         run: |
           vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL" or .Severity == "LOW" or .Severity == "MEDIUM") | select(.FixedVersion != null)] | length' trivy.json)
           echo "vulnerabilities=$vulnerabilities" >> $GITHUB_ENV
+
       - name: Debug Slack Webhook URL
         run: echo "SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Send Slack Notification
-        if: ${{ steps.check_vulnerabilities.outputs.vulnerabilities == '0' }}
+        if: always()
         uses: ravsamhq/notify-slack-action@v1
-        with:
-          status: failure
-          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         
