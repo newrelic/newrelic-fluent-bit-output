@@ -74,7 +74,7 @@ jobs:
         with:
           status: ${{ job.status }}
         env:
-          SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/sjdhfjdsf/jxbvjcv/smndbnjdv"
+          SLACK_WEBHOOK_URL: ${{ secrets.JIRA_BASE_URL}}
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
