@@ -65,7 +65,7 @@ jobs:
             echo "Secret SLACK_WEBHOOK_URL is not available."
             exit 1
           else
-            echo "Secret SLACK_WEBHOOK_URL is available."
+            echo "Secret SLACK_WEBHOOK_URL is available. "
           fi
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
