@@ -60,7 +60,7 @@ jobs:
 
       - name: Send Slack Notification
         if: always()
-        uses: ravsamhq/notify-slack-action@v1
+        uses: slackapi/slack-github-action@v1.22.0
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         
