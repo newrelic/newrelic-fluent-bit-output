@@ -59,15 +59,14 @@ jobs:
           vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL" or .Severity == "LOW" or .Severity == "MEDIUM") | select(.FixedVersion != null)] | length' trivy.json)
           echo "vulnerabilities=$vulnerabilities" >> $GITHUB_ENV
 
-      - name: Send Slack Notification
+      - name: Send failure notification to Slack
+        if: always()
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
-        if: always()
+          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
