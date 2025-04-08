@@ -64,14 +64,14 @@ jobs:
       
       - name: Check for secret presence
         run: |
-          if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
-            echo "Secret SLACK_WEBHOOK_URL is not available."
+          if [ -z "${{ secrets.JIRA_USER_EMAIL }}" ]; then
+            echo "Secret JIRA_USER_EMAIL is not available."
             exit 1
           else
-            echo "Secret SLACK_WEBHOOK_URL is available. "
+            echo "Secret JIRA_USER_EMAIL is available. "
           fi
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
 
       - name: Send failure notification to Slack
         if: always()
