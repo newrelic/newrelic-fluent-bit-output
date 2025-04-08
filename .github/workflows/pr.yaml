@@ -60,8 +60,9 @@ jobs:
 
       - name: Send Slack Notification
         if: always()
-        uses: ravsamhq/notify-slack-action@v1
-        id: '{"text": "Vulnerabilities found in the source code: ${{ env.vulnerabilities }}"}'
+        uses: aquasecurity/trivy-action@0.25.0
+        with:
+          message: '{"text": "Vulnerabilities found in the source code: ${{ env.vulnerabilities }}"}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
