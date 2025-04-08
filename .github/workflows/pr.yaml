@@ -62,24 +62,19 @@ jobs:
       - name: Inspect environment
         run: env
       
-      - name: Check for secret presence
-        run: |
-          if [ -z "${{ secrets.JIRA_USER_EMAIL }}" ]; then
-            echo "Secret JIRA_USER_EMAIL is not available."
-            exit 1
-          else
-            echo "Secret JIRA_USER_EMAIL is available. "
-          fi
-        env:
-          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
-
+      - name: "check is MY_SECRET exists"
+        env: 
+            super_secret: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
+        if: ${{ env.SLACK_LOGINT_WEBHOOK_URL == '' }}
+        run: 'echo "echo the secret \"SLACK_LOGINT_WEBHOOK_URL\" has not been made; echo please go to \"settings \> secrets \> actions\" to create it"'
+  
       - name: Send failure notification to Slack
         if: always()
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
