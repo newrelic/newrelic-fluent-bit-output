@@ -67,6 +67,8 @@ jobs:
           else
             echo "Secret SLACK_WEBHOOK_URL is available."
           fi
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Send failure notification to Slack
         if: always()
