@@ -60,7 +60,8 @@ jobs:
 
       - name: Send Slack Notification
         if: always()
-        uses: slackapi/slack-github-action@v1.22.0
+        uses: ravsamhq/notify-slack-action@v1
+        id: '{"text": "Vulnerabilities found in the source code: ${{ env.vulnerabilities }}"}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
