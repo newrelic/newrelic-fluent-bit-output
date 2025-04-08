@@ -70,6 +70,9 @@ jobs:
           payload=$(jq -n --arg text "$message" '{text: $text}')
 
           curl -X POST -H 'Content-type: application/json' --data "$payload" ${{ secrets.SLACK_WEBHOOK_URL }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
