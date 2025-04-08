@@ -58,13 +58,21 @@ jobs:
         run: |
           vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL" or .Severity == "LOW" or .Severity == "MEDIUM") | select(.FixedVersion != null)] | length' trivy.json)
           echo "vulnerabilities=$vulnerabilities" >> $GITHUB_ENV
+      
+      - name: Check for secret presence
+        run: |
+          if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            echo "Secret SLACK_WEBHOOK_URL is not available."
+            exit 1
+          else
+            echo "Secret SLACK_WEBHOOK_URL is available."
+          fi
 
       - name: Send failure notification to Slack
         if: always()
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
-          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
