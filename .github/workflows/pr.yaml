@@ -61,15 +61,7 @@ jobs:
       - name: Send Slack Notification
         if: always()
         run: |
-          if [ "$vulnerabilities" -gt 0 ]; then
-            message="Found $vulnerabilities vulnerabilities with fixes in the repository."
-          else
-            message="No vulnerabilities with fixes found in the repository."
-          fi
-          
-          payload=$(jq -n --arg text "$message" '{text: $text}')
-          
-          curl -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Generating Trivy Report\"}" ${{ secrets.SLACK_WEBHOOK_URL}}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
