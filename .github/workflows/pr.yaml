@@ -46,10 +46,10 @@ jobs:
       - name: Run Trivy vulnerability scanner in repo mode
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          scan-type: 'fs'
+          scan-type: "fs"
           ignore-unfixed: true
           format: json
-          severity: 'HIGH,CRITICAL,MEDIUM,LOW'
+          severity: "HIGH,CRITICAL,MEDIUM,LOW"
           output: trivy.json
 
       - name: Check for vulnerabilities with fixes
@@ -60,13 +60,17 @@ jobs:
 
       - name: Send Slack Notification
         if: always()
-        uses: aquasecurity/trivy-action@0.25.0
-        with:
-          message: '{"text": "Vulnerabilities found in the source code: ${{ env.vulnerabilities }}"}'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-        
+        run: |
+          if [ "$vulnerabilities" -gt 0 ]; then
+            message="Found $vulnerabilities vulnerabilities with fixes in the repository."
+          else
+            message="No vulnerabilities with fixes found in the repository."
+          fi
+
+          payload=$(jq -n --arg text "$message" '{text: $text}')
+
+          curl -X POST -H 'Content-type: application/json' --data "$payload" ${{ secrets.SLACK_WEBHOOK_URL }}
+
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
     runs-on: ubuntu-20.04
