@@ -59,6 +59,9 @@ jobs:
           vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL" or .Severity == "LOW" or .Severity == "MEDIUM") | select(.FixedVersion != null)] | length' trivy.json)
           echo "vulnerabilities=$vulnerabilities" >> $GITHUB_ENV
       
+      - name: Inspect environment
+        run: env
+      
       - name: Check for secret presence
         run: |
           if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
