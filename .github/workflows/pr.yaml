@@ -38,6 +38,8 @@ jobs:
   scan-source:
     name: Scan Source Code
     runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
       - name: Checkout code
@@ -59,12 +61,11 @@ jobs:
           echo "vulnerabilities=$vulnerabilities" >> $GITHUB_ENV
 
       - name: Send Slack Notification
+        uses: ravsamhq/notify-slack-action@v1
+        with:
+          status: ${{ job.status }}
         if: always()
-        run: |
-          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Generating Trivy Report\"}" ${{ secrets.SLACK_WEBHOOK_URL}}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
