@@ -38,8 +38,7 @@ jobs:
   scan-source:
     name: Scan Source Code
     runs-on: ubuntu-latest
-    env:
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
 
     steps:
       - name: Checkout code
