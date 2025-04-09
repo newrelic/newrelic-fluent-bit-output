@@ -76,7 +76,7 @@ jobs:
 
       - name: Send Slack notification for high and critical vulnerabilities
         uses: ravsamhq/notify-slack-action@v2
-        if: ${{ steps.check_high_critical.outputs.vulnerabilities_count != '0' }}
+        if: ${{ env.high_critical_vulnerabilities != '0' }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
         with:
