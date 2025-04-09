@@ -82,9 +82,9 @@ jobs:
         with:
           status: ${{ job.status }}
           format: table
-          output: trivy_high_critical.json
-          message: |
+          message_format: |
             We have found ${{ steps.check_high_critical.outputs.high_critical_vulnerabilities }} high or critical vulnerabilities in the repository. Please review.
+          exit-code: 1
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
