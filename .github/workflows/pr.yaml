@@ -43,29 +43,42 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Run Trivy vulnerability scanner in repo mode
+      
+      - name: Run Trivy vulnerability scanner for source code
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: "fs"
           ignore-unfixed: true
           format: json
-          severity: "HIGH,CRITICAL,MEDIUM,LOW"
-          output: trivy.json
+          severity: "MEDIUM,LOW"
+          output: trivy_medium_low.json
 
-      - name: Check for vulnerabilities with fixes
-        id: check_vulnerabilities
+      - name: Run Trivy vulnerability scanner for high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: json
+          severity: "HIGH,CRITICAL"
+          output: trivy_high_critical.json
+
+      - name: Check for high and critical vulnerabilities with fixes
+        id: check_high_critical
         run: |
-          vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL" or .Severity == "LOW" or .Severity == "MEDIUM") | select(.FixedVersion != null)] | length' trivy.json)
-          echo "vulnerabilities=$vulnerabilities" >> $GITHUB_ENV
-  
-      - name: Send failure notification to Slack
+          high_critical_vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL") | select(.FixedVersion != null)] | length' trivy_high_critical.json)
+          echo "high_critical_vulnerabilities=$high_critical_vulnerabilities" >> $GITHUB_ENV
+
+      - name: Send Slack notification for high and critical vulnerabilities
         uses: ravsamhq/notify-slack-action@v2
-        if: always()
+        if: ${{ steps.check_high_critical.outputs.high_critical_vulnerabilities != '0' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
         with:
           status: ${{ job.status }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL}}
+          format: table
+          output: trivy_high_critical.json
+          message: |
+            We have found ${{ steps.check_high_critical.outputs.high_critical_vulnerabilities }} high or critical vulnerabilities in the repository. Please review.
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
