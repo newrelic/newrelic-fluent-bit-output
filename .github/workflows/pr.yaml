@@ -57,7 +57,7 @@ jobs:
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: "fs"
-          ignore-unfixed: true
+          ignore-unfixed: false
           format: json
           severity: "HIGH,CRITICAL"
           output: trivy_high_critical.json
