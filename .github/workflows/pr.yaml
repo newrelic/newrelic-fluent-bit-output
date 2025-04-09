@@ -59,7 +59,7 @@ jobs:
           scan-type: "fs"
           ignore-unfixed: false
           format: json
-          severity: "HIGH,CRITICAL"
+          severity: "HIGH,CRITICAL,MEDIUM,LOW"
           output: trivy_high_critical.json
 
       - name: Check for high and critical vulnerabilities with fixes
