@@ -65,10 +65,14 @@ jobs:
       - name: Check for high and critical vulnerabilities with fixes
         id: check_high_critical
         run: |
-          high_critical_vulnerabilities=$(jq '[.Results[].Vulnerabilities[] | select(.Severity == "HIGH" or .Severity == "CRITICAL" or .Severity == "MEDIUM" or .Severity == "LOW") | length' trivy_high_critical.json)
-          echo "high_critical_vulnerabilities=$high_critical_vulnerabilities" >> $GITHUB_ENV
-          echo "Number of high and critical vulnerabilities found: $vulnerabilities_count"
-
+          vulnerabilities_count=$(jq '[.Results[].Vulnerabilities[]] | length' trivy_high_critical.json)
+          echo "vulnerabilities_count=$vulnerabilities_count" >> $GITHUB_ENV
+          echo "Number of vulnerabilities found: $vulnerabilities_count"
+          if [ "$vulnerabilities_count" -gt 0 ]; then
+            echo "high_critical_vulnerabilities=$vulnerabilities_count" >> $GITHUB_ENV
+          else
+            echo "high_critical_vulnerabilities=0" >> $GITHUB_ENV
+          fi
 
       - name: Send Slack notification for high and critical vulnerabilities
         uses: ravsamhq/notify-slack-action@v2
