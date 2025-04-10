@@ -50,39 +50,40 @@ jobs:
           scan-type: "fs"
           ignore-unfixed: true
           format: table
-          severity: "MEDIUM,LOW"
+          severity: "HIGH,CRITICAL"
 
       - name: Run Trivy vulnerability scanner for high and critical vulnerabilities
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: "fs"
           ignore-unfixed: true
-          format: table
+          format: json
           severity: "HIGH,CRITICAL"
+          output: trivy_high_critical.json
 
-      # - name: Check for high and critical vulnerabilities with fixes
-      #   id: check_high_critical
-      #   run: |
-      #     vulnerabilities_count=$(jq '[.Results[].Vulnerabilities[]] | length' trivy_high_critical.json)
-      #     echo "vulnerabilities_count=$vulnerabilities_count" >> $GITHUB_ENV
-      #     echo "Number of vulnerabilities found: $vulnerabilities_count"
-      #     if [ "$vulnerabilities_count" -gt 0 ]; then
-      #       echo "high_critical_vulnerabilities=$vulnerabilities_count" >> $GITHUB_ENV
-      #     else
-      #       echo "high_critical_vulnerabilities=0" >> $GITHUB_ENV
-      #     fi
+      - name: Check for high and critical vulnerabilities with fixes
+        id: check_high_critical
+        run: |
+          vulnerabilities_count=$(jq '[.Results[].Vulnerabilities[]] | length' trivy_high_critical.json)
+          echo "vulnerabilities_count=$vulnerabilities_count" >> $GITHUB_ENV
+          echo "Number of vulnerabilities found: $vulnerabilities_count"
+          if [ "$vulnerabilities_count" -gt 0 ]; then
+            echo "high_critical_vulnerabilities=$vulnerabilities_count" >> $GITHUB_ENV
+          else
+            echo "high_critical_vulnerabilities=0" >> $GITHUB_ENV
+          fi
 
-      # - name: Send Slack notification for high and critical vulnerabilities
-      #   uses: ravsamhq/notify-slack-action@v2
-      #   if: ${{ env.high_critical_vulnerabilities != '0' }}
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
-      #   with:
-      #     status: ${{ job.status }}
-      #     format: table
-      #     message_format: |
-      #       We have found ${{ steps.check_high_critical.outputs.high_critical_vulnerabilities }} high or critical vulnerabilities in the repository. Please review.
-      #     exit-code: 1
+      - name: Send Slack notification for high and critical vulnerabilities
+        uses: ravsamhq/notify-slack-action@v2
+        if: ${{ env.high_critical_vulnerabilities == '0' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
+        with:
+          status: ${{ job.status }}
+          format: table
+          # message_format: |
+          #   We have found ${{ steps.check_high_critical.outputs.high_critical_vulnerabilities }} high or critical vulnerabilities in the repository. Please review.
+          # exit-code: 1
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
