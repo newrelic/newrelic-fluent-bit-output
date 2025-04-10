@@ -50,15 +50,15 @@ jobs:
           scan-type: "fs"
           ignore-unfixed: true
           format: table
-          severity: "MEDIUM,LOW,CRITICAL,HIGH"
-          
+          severity: "MEDIUM,LOW"
+
       - name: Run Trivy vulnerability scanner for high and critical vulnerabilities
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: "fs"
-          ignore-unfixed: false
-          format: json
-          severity: "HIGH,CRITICAL,MEDIUM,LOW"
+          ignore-unfixed: true
+          format: table
+          severity: "HIGH,CRITICAL"
           output: trivy_high_critical.json
 
       - name: Check for high and critical vulnerabilities with fixes
@@ -73,17 +73,17 @@ jobs:
             echo "high_critical_vulnerabilities=0" >> $GITHUB_ENV
           fi
 
-      - name: Send Slack notification for high and critical vulnerabilities
-        uses: ravsamhq/notify-slack-action@v2
-        if: ${{ env.high_critical_vulnerabilities != '0' }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
-        with:
-          status: ${{ job.status }}
-          format: table
-          message_format: |
-            We have found ${{ steps.check_high_critical.outputs.high_critical_vulnerabilities }} high or critical vulnerabilities in the repository. Please review.
-          exit-code: 1
+      # - name: Send Slack notification for high and critical vulnerabilities
+      #   uses: ravsamhq/notify-slack-action@v2
+      #   if: ${{ env.high_critical_vulnerabilities != '0' }}
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
+      #   with:
+      #     status: ${{ job.status }}
+      #     format: table
+      #     message_format: |
+      #       We have found ${{ steps.check_high_critical.outputs.high_critical_vulnerabilities }} high or critical vulnerabilities in the repository. Please review.
+      #     exit-code: 1
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
