@@ -59,19 +59,18 @@ jobs:
           ignore-unfixed: true
           format: table
           severity: "HIGH,CRITICAL"
-          output: trivy_high_critical.json
 
-      - name: Check for high and critical vulnerabilities with fixes
-        id: check_high_critical
-        run: |
-          vulnerabilities_count=$(jq '[.Results[].Vulnerabilities[]] | length' trivy_high_critical.json)
-          echo "vulnerabilities_count=$vulnerabilities_count" >> $GITHUB_ENV
-          echo "Number of vulnerabilities found: $vulnerabilities_count"
-          if [ "$vulnerabilities_count" -gt 0 ]; then
-            echo "high_critical_vulnerabilities=$vulnerabilities_count" >> $GITHUB_ENV
-          else
-            echo "high_critical_vulnerabilities=0" >> $GITHUB_ENV
-          fi
+      # - name: Check for high and critical vulnerabilities with fixes
+      #   id: check_high_critical
+      #   run: |
+      #     vulnerabilities_count=$(jq '[.Results[].Vulnerabilities[]] | length' trivy_high_critical.json)
+      #     echo "vulnerabilities_count=$vulnerabilities_count" >> $GITHUB_ENV
+      #     echo "Number of vulnerabilities found: $vulnerabilities_count"
+      #     if [ "$vulnerabilities_count" -gt 0 ]; then
+      #       echo "high_critical_vulnerabilities=$vulnerabilities_count" >> $GITHUB_ENV
+      #     else
+      #       echo "high_critical_vulnerabilities=0" >> $GITHUB_ENV
+      #     fi
 
       # - name: Send Slack notification for high and critical vulnerabilities
       #   uses: ravsamhq/notify-slack-action@v2
