@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up Go 1.23.7
+      - name: Set up Go 1.23.6
         uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
         with:
-          go-version: '1.23.7'
+          go-version: '1.23.6'
 
       - name: Check go version
         run: go version
