@@ -183,7 +183,7 @@ jobs:
             
       - name: Upload Trivy Image scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: matrix.name != 'debug-image'
         with:
           sarif_file: 'trivy-image-scan-results.sarif'
 
