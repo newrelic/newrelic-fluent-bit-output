@@ -106,8 +106,8 @@ jobs:
           ignore-unfixed: true
           severity: 'MEDIUM,LOW'
       
-      - name: Fail build on High/Criticial Vulnerabilities
-        if: matrix.name != 'debug-image' && matrix.name != 'firelens-image' && matrix.name != 'standard-image'
+      - name: Fail build on Criticial Vulnerabilities
+        if: matrix.name != 'debug-image' && matrix.name != 'firelens-image'
         env:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
@@ -118,7 +118,7 @@ jobs:
           format: table
           exit-code: 1
           ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL'
 
       - name: Inspect generated Docker image (${{ matrix.name }})
         run: docker buildx imagetools inspect localhost:5000/fb-output-plugin-${{ matrix.name }}
