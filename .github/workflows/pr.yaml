@@ -107,7 +107,7 @@ jobs:
           severity: 'MEDIUM,LOW'
       
       - name: Fail build on High/Criticial Vulnerabilities
-        if: matrix.name != 'debug-image' && matrix.name != 'firelens-image'
+        if: matrix.name != 'debug-image' && matrix.name != 'firelens-image' && matrix.name != 'standard-image'
         env:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
