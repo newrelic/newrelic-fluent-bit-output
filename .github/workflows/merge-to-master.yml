@@ -8,7 +8,7 @@ on:
 jobs:
   cd:
     name: Continuous Delivery pipeline
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Set up Go 1.23.6
