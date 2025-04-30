@@ -6,14 +6,81 @@ on:
       - master
 
 jobs:
+
+  scan-source:
+    name: Scan Source Code
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner for source code
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: table
+          severity: "LOW,MEDIUM,HIGH,CRITICAL"
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
+
+      - name: Run Trivy vulnerability scanner for high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: json
+          severity: "HIGH,CRITICAL"
+          output: trivy_high_critical.json
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
+      
+      - name: Set the Count of high and critical vulnerabilities with fixesx
+        id: check_high_critical
+        run: |
+          vulnerabilities_count=$(jq '[.Results[].Vulnerabilities[]] | length' trivy_high_critical.json)
+          echo "vulnerabilities_count=$vulnerabilities_count" >> $GITHUB_ENV
+          echo "Number of vulnerabilities found: $vulnerabilities_count"
+
+      - name: Send Slack notification for high and critical vulnerabilities
+        uses: ravsamhq/notify-slack-action@v2
+        if: ${{ env.vulnerabilities_count != '0' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_LOGINT_WEBHOOK_URL }}
+        with:
+          status: ${{ job.status }}
+          message_format: |
+            Trivy Source Scan have found ${{ env.vulnerabilities_count }} high or critical vulnerabilities in the repository.
+
   cd:
     name: Continuous Delivery pipeline
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    strategy:
+      matrix:
+        include:
+          - name: standard-image
+            dockerfile: Dockerfile
+            platforms: linux/amd64, linux/arm64, linux/arm/v7
+          - name: debug-image
+            dockerfile: Dockerfile_debug
+            platforms: linux/amd64, linux/arm64
+          - name: firelens-image
+            dockerfile: Dockerfile_firelens
+            # Firelens image only available for amd64 and arm64 architectures
+            platforms: linux/amd64, linux/arm64
 
     steps:
       # We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
       - name: Set up Go 1.20.7
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5
         with:
           go-version: '1.20.7'
 
@@ -21,7 +88,7 @@ jobs:
         run: go version
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Run unit tests
         run: go test ./...
@@ -55,20 +122,63 @@ jobs:
 
       # The QEMU will include more platforms such as arm64 to docker buildx builder
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392
 
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@master
-
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
+        with:
+          # This option is required to avoid this problem https://github.com/docker/for-mac/issues/3611#issuecomment-479507361
+          # We need this option to be able to push to the local registry service used by the integration tests.
+          driver-opts: network=host
+      
       # Cache to be used by Docker Buildx
       - name: Set up Docker Buildx's cache
-        uses: actions/cache@v2
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: ${{ runner.os }}-buildx-
+
+      - name: Build Docker image (${{ matrix.name }})
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./${{ matrix.dockerfile }}
+          push: true
+          tags: localhost:5000/fb-output-plugin-${{ matrix.name }}
+          builder: ${{ steps.buildx.outputs.name }}
+          platforms: ${{ matrix.platforms }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          
+      - name: Run Trivy in table mode for (${{ matrix.name }})
+        if: matrix.name != 'debug-image'
+        env:
+          TRIVY_NON_SSL: true
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+        # Versions 0.26.0 and above are causing an issue where the image can't be fetched because the image name is not being resolved.
+        uses: aquasecurity/trivy-action@0.25.0
+        with:
+          image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
+          format: table
+          ignore-unfixed: true
+          severity: 'MEDIUM,LOW'
+      
+      - name: Fail build on High/Criticial Vulnerabilities
+        if: matrix.name != 'debug-image' && matrix.name != 'firelens-image'
+        env:
+          TRIVY_NON_SSL: true
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
+        uses: aquasecurity/trivy-action@0.25.0
+        with:
+          image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
