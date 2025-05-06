@@ -1,4 +1,3 @@
-# We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
 FROM golang:1.23.6-bullseye AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
@@ -18,7 +17,7 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-FROM fluent/fluent-bit:3.2.7
+FROM fluent/fluent-bit:3.2.10
 
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/

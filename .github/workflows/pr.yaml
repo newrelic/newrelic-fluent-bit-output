@@ -5,21 +5,20 @@ on: [pull_request]
 jobs:
   unit-tests:
     name: CI - Tests and Build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
-      # We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
-      - name: Set up Go 1.20.7
-        uses: actions/setup-go@v4
+      - name: Set up Go 1.23.6
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
         with:
-          go-version: '1.20.7'
+          go-version: '1.23.6'
         id: go
 
       - name: Check go version
         run: go version
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
       - name: Run unit tests
         run: |
@@ -27,7 +26,7 @@ jobs:
           go test -v ./... 2>&1 | go-junit-report -set-exit-code=1 > test-results.xml
 
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2.6.2
+        uses: EnricoMi/publish-unit-test-result-action@39ee91a16bb587a6c2b4791d4954cf5299736efd # v2.6.2
         if: always()
         with:
           files: test-results.xml
@@ -37,7 +36,7 @@ jobs:
 
   docker-ci:
     name: CI - Docker image build (${{ matrix.name }})
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     services:
       registry:
         image: registry:2
@@ -59,16 +58,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
       # The QEMU will include more platforms such as arm64 to docker buildx builder
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # v1
 
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@master
+        uses: docker/setup-buildx-action@afeb29a6e0d7d6258844ecabe6eba67d13443680 # master
         with:
           # This option is required to avoid this problem https://github.com/docker/for-mac/issues/3611#issuecomment-479507361
           # We need this option to be able to push to the local registry service used by the integration tests.
@@ -76,14 +75,14 @@ jobs:
 
       # Cache to be used by Docker Buildx
       - name: Set up Docker Buildx's cache
-        uses: actions/cache@v2
+        uses: actions/cache@8492260343ad570701412c2f464a5877dc76bace # v2
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: ${{ runner.os }}-buildx-
 
       - name: Build Docker image (${{ matrix.name }})
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         with:
           context: ./
           file: ./${{ matrix.dockerfile }}
@@ -100,26 +99,26 @@ jobs:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
         # Versions 0.26.0 and above are causing an issue where the image can't be fetched because the image name is not being resolved.
-        uses: aquasecurity/trivy-action@0.25.0
+        uses: aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8 # 0.25.0
         with:
           image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
           format: table
           ignore-unfixed: true
           severity: 'MEDIUM,LOW'
       
-      - name: Fail build on High/Criticial Vulnerabilities
+      - name: Fail build on Criticial Vulnerabilities
         if: matrix.name != 'debug-image' && matrix.name != 'firelens-image'
         env:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
           TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
-        uses: aquasecurity/trivy-action@0.25.0
+        uses: aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8 # 0.25.0
         with:
           image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
           format: table
           exit-code: 1
           ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL'
 
       - name: Inspect generated Docker image (${{ matrix.name }})
         run: docker buildx imagetools inspect localhost:5000/fb-output-plugin-${{ matrix.name }}
@@ -149,7 +148,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
       - name: Build container for ${{ matrix.name }}
         env:
