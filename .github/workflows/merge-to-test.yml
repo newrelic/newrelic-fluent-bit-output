@@ -159,7 +159,7 @@ jobs:
         uses: docker/build-push-action@v2
         env:                     
           ECR_REGISTRY_PUBLIC: public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}
+          IMAGE_TAG: 2.4.0-v1
         with:
           context: ./
           file: ./Dockerfile # Assuming you want to publish the main Dockerfile image to Public ECR
@@ -173,99 +173,99 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Inspect published Docker image on Public ECR
-        run: docker buildx imagetools inspect public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
+        run: docker buildx imagetools inspect public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output:${{ env.IMAGE_TAG }}
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.VERSION }}
-          release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
-          draft: false
-          prerelease: false
+  #     - name: Create Release
+  #       id: create_release
+  #       uses: actions/create-release@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         tag_name: v${{ env.VERSION }}
+  #         release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
+  #         draft: false
+  #         prerelease: false
 
-      - name: Include linux-amd64 artifact in release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-amd64-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-amd64-${{ env.VERSION }}.so
-          asset_content_type: application/octet-stream
+  #     - name: Include linux-amd64 artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-linux-amd64-${{ env.VERSION }}.so
+  #         asset_name: out_newrelic-linux-amd64-${{ env.VERSION }}.so
+  #         asset_content_type: application/octet-stream
 
-      - name: Include windows-amd64 artifact in release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
-          asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
-          asset_content_type: application/octet-stream
+  #     - name: Include windows-amd64 artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+  #         asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+  #         asset_content_type: application/octet-stream
 
-      - name: Include windows-386 artifact in release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
-          asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
-          asset_content_type: application/octet-stream
+  #     - name: Include windows-386 artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
+  #         asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
+  #         asset_content_type: application/octet-stream
 
-      - name: Include linux-arm64 artifact in release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
-          asset_content_type: application/octet-stream
+  #     - name: Include linux-arm64 artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
+  #         asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
+  #         asset_content_type: application/octet-stream
 
-      - name: Include linux-arm artifact in release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
-          asset_content_type: application/octet-stream
+  #     - name: Include linux-arm artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
+  #         asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
+  #         asset_content_type: application/octet-stream
 
-  windows-docker-images:
-    name: ${{ matrix.name }} Docker image generation and publishing
-    # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
-    # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
-    # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
-    # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
-    strategy:
-      matrix:
-        include:
-          - name: Windows Server 2019 (LTSC)
-            windowsImageTag: ltsc2019-amd64
-            imageTagSuffix: windows-ltsc-2019
-            runsOn: windows-2019
-          - name: Windows Server 2022 (LTSC)
-            windowsImageTag: ltsc2022-amd64
-            imageTagSuffix: windows-ltsc-2022
-            runsOn: windows-2022
+  # windows-docker-images:
+  #   name: ${{ matrix.name }} Docker image generation and publishing
+  #   # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
+  #   # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
+  #   # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
+  #   # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - name: Windows Server 2019 (LTSC)
+  #           windowsImageTag: ltsc2019-amd64
+  #           imageTagSuffix: windows-ltsc-2019
+  #           runsOn: windows-2019
+  #         - name: Windows Server 2022 (LTSC)
+  #           windowsImageTag: ltsc2022-amd64
+  #           imageTagSuffix: windows-ltsc-2022
+  #           runsOn: windows-2022
 
-    runs-on: ${{ matrix.runsOn }}
+  #   runs-on: ${{ matrix.runsOn }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
 
-      - name: Determine new plugin version
-        run: |
-          $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
-          echo "Determined version: $env:VERSION"
-          # After the following command, the VERSION variable is available via the "env" command in the GH action
-          Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
+  #     - name: Determine new plugin version
+  #       run: |
+  #         $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
+  #         echo "Determined version: $env:VERSION"
+  #         # After the following command, the VERSION variable is available via the "env" command in the GH action
+  #         Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
           
 
     #   - name: Login to Docker Hub
