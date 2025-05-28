@@ -8,20 +8,19 @@ on:
 jobs:
   cd:
     name: Continuous Delivery pipeline
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
-      # We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
-      - name: Set up Go 1.20.7
-        uses: actions/setup-go@v4
+      - name: Set up Go 1.23.6
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
         with:
-          go-version: '1.20.7'
+          go-version: '1.23.6'
 
       - name: Check go version
         run: go version
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
       - name: Run unit tests
         run: go test ./...
@@ -55,29 +54,29 @@ jobs:
 
       # The QEMU will include more platforms such as arm64 to docker buildx builder
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # v1
 
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@master
+        uses: docker/setup-buildx-action@afeb29a6e0d7d6258844ecabe6eba67d13443680 # master
 
       # Cache to be used by Docker Buildx
       - name: Set up Docker Buildx's cache
-        uses: actions/cache@v2
+        uses: actions/cache@8492260343ad570701412c2f464a5877dc76bace # v2
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: ${{ runner.os }}-buildx-
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build and Publish Docker image to Docker Hub
-        uses: docker/build-push-action@v2
+      - name: Build and Publish Docker image
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         env:
           DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
           IMAGE_TAG: ${{ env.VERSION }}
@@ -96,8 +95,8 @@ jobs:
       - name: Inspect published Docker image on Docker Hub
         run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
 
-      - name: Build and Publish Docker debug image to Docker Hub
-        uses: docker/build-push-action@v2
+      - name: Build and Publish Docker debug image
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         env:
           DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
           IMAGE_TAG: ${{ env.VERSION }}-debug
@@ -116,18 +115,18 @@ jobs:
         run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 # v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2
 
-      - name: Login to Amazon ECR (Private)
-        id: login-ecr-private
-        uses: aws-actions/amazon-ecr-login@v1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@2fc7aceee09e9e4a7105c0d060c656fad0b4f63d # v1
 
-      - name: Build and Publish Docker image for Firelens to Private ECR
-        uses: docker/build-push-action@v2
+      - name: Build and Publish Docker image for Firelens
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         env:
           ECR_REGISTRY_PRIVATE: 533243300146.dkr.ecr.us-east-2.amazonaws.com
           ECR_REPOSITORY_PRIVATE: newrelic/logging-firelens-fluentbit
@@ -176,7 +175,7 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -186,7 +185,7 @@ jobs:
           prerelease: false
 
       - name: Include linux-amd64 artifact in release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -196,7 +195,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Include windows-amd64 artifact in release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -206,7 +205,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Include windows-386 artifact in release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -216,7 +215,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Include linux-arm64 artifact in release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -226,7 +225,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Include linux-arm artifact in release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -257,7 +256,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
       - name: Determine new plugin version
         run: |
@@ -267,7 +266,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
