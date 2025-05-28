@@ -147,11 +147,21 @@ jobs:
       - name: Inspect published Docker Firelens image on Private ECR
         run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
 
+      # we can ONLY publish docker image to public ECR repo from us-east-1 region alone. 
+      #  https://github.com/aws-actions/amazon-ecr-login/issues/587#issuecomment-1938698756  
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 # v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
       - name: Login to Amazon ECR Public
         id: login-ecr-public
         uses: aws-actions/amazon-ecr-login@v1
         with:
           registry-type: public # Specify public registry type
+          registry: public.ecr.aws
 
       - name: Build and Publish Docker image to Public ECR
         uses: docker/build-push-action@v2

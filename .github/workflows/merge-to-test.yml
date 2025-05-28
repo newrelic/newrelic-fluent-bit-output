@@ -159,7 +159,7 @@ jobs:
         uses: docker/build-push-action@v2
         env:                     
           ECR_REGISTRY_PUBLIC: public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: 2.4.0-v1
+          IMAGE_TAG: ${{ env.VERSION }}
         with:
           context: ./
           file: ./Dockerfile # Assuming you want to publish the main Dockerfile image to Public ECR
@@ -173,7 +173,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Inspect published Docker image on Public ECR
-        run: docker buildx imagetools inspect public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output:${{ env.IMAGE_TAG }}
+        run: docker buildx imagetools inspect public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
 
   #     - name: Create Release
   #       id: create_release
