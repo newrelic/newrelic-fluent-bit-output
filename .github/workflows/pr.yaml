@@ -126,33 +126,33 @@ jobs:
       - name: Test Docker image (${{ matrix.name }})
         run: bash test.sh localhost:5000/fb-output-plugin-${{ matrix.name }}
 
-  # docker-windows-ci:
-  #   name:  CI - Docker image for ${{ matrix.name }}
-  #   # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
-  #   # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
-  #   # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
-  #   # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - name: Windows Server 2019 (LTSC)
-  #           windowsImageTag: ltsc2019-amd64
-  #           imageTagSuffix: windows-ltsc-2019
-  #           runsOn: windows-2019
-  #         - name: Windows Server 2022 (LTSC)
-  #           windowsImageTag: ltsc2022-amd64
-  #           imageTagSuffix: windows-ltsc-2022
-  #           runsOn: windows-2022
+  docker-windows-ci:
+    name:  CI - Docker image for ${{ matrix.name }}
+    # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
+    # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
+    # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
+    # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
+    strategy:
+      matrix:
+        include:
+          - name: Windows Server 2019 (LTSC)
+            windowsImageTag: ltsc2019-amd64
+            imageTagSuffix: windows-ltsc-2019
+            runsOn: windows-2019
+          - name: Windows Server 2022 (LTSC)
+            windowsImageTag: ltsc2022-amd64
+            imageTagSuffix: windows-ltsc-2022
+            runsOn: windows-2022
 
-  #   runs-on: ${{ matrix.runsOn }}
+    runs-on: ${{ matrix.runsOn }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
-  #     - name: Build container for ${{ matrix.name }}
-  #       env:
-  #         DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-  #         IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
-  #       run: |
-  #         docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
+      - name: Build container for ${{ matrix.name }}
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
+        run: |
+          docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
