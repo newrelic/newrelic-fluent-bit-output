@@ -63,7 +63,7 @@ jobs:
 
       # Cache to be used by Docker Buildx
       - name: Set up Docker Buildx's cache
-        uses: actions/cache@8492260343ad570701412c2f464a5877dc76bace # v2
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
@@ -92,7 +92,7 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Inspect published Docker image
+      - name: Inspect published Docker image on Docker Hub
         run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
 
       - name: Build and Publish Docker debug image
@@ -111,7 +111,7 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Inspect published Docker debug image
+      - name: Inspect published Docker debug image on Docker Hub
         run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
 
       - name: Configure AWS credentials
@@ -128,24 +128,60 @@ jobs:
       - name: Build and Publish Docker image for Firelens
         uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         env:
-          ECR_REGISTRY: 533243300146.dkr.ecr.us-east-2.amazonaws.com
-          ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
+          ECR_REGISTRY_PRIVATE: 533243300146.dkr.ecr.us-east-2.amazonaws.com
+          ECR_REPOSITORY_PRIVATE: newrelic/logging-firelens-fluentbit
           IMAGE_TAG: ${{ env.VERSION }}
         with:
           context: ./
           file: ./Dockerfile_firelens
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY_PRIVATE }}/${{ env.ECR_REPOSITORY_PRIVATE }}:latest
+            ${{ env.ECR_REGISTRY_PRIVATE }}/${{ env.ECR_REPOSITORY_PRIVATE }}:${{ env.IMAGE_TAG }}
           builder: ${{ steps.buildx.outputs.name }}
           # Firelens image only available for amd64 and arm64 architectures
           platforms: linux/amd64, linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Inspect published Docker Firelens image
+      - name: Inspect published Docker Firelens image on Private ECR
         run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
+
+      # we can ONLY publish docker image to public ECR repo from us-east-1 region alone. 
+      #  https://github.com/aws-actions/amazon-ecr-login/issues/587#issuecomment-1938698756  
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 # v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR Public
+        id: login-ecr-public
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-type: public # Specify public registry type
+          registry: public.ecr.aws
+
+      - name: Build and Publish Docker image to Public ECR
+        uses: docker/build-push-action@v2
+        env:                     
+          ECR_REGISTRY_PUBLIC: public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: ${{ env.VERSION }}
+        with:
+          context: ./
+          file: ./Dockerfile # Assuming you want to publish the main Dockerfile image to Public ECR
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY_PUBLIC }}:latest
+            ${{ env.ECR_REGISTRY_PUBLIC }}:${{ env.IMAGE_TAG }}
+          builder: ${{ steps.buildx.outputs.name }}
+          platforms: linux/amd64, linux/arm64, linux/arm/v7
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Inspect published Docker image on Public ECR
+        run: docker buildx imagetools inspect public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
 
       - name: Create Release
         id: create_release
@@ -209,7 +245,7 @@ jobs:
           asset_content_type: application/octet-stream
 
   windows-docker-images:
-    name:  ${{ matrix.name }} Docker image generation and publishing
+    name: ${{ matrix.name }} Docker image generation and publishing
     # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
     # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
     # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
@@ -245,7 +281,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build and Publish Docker image for ${{ matrix.name }}
+      - name: Build and Publish Docker image for ${{ matrix.name }} to Docker Hub
         env:
           DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
           IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
