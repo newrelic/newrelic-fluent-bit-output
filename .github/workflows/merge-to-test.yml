@@ -1,0 +1,283 @@
+name: New Relic Fluent Bit Output Plugin - Merge to master
+
+on:
+  push:
+    branches:
+      - NR-342362-v1
+
+jobs:
+  cd:
+    name: Continuous Delivery pipeline
+    runs-on: ubuntu-24.04
+
+    steps:
+      # We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
+      - name: Set up Go 1.20.7
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20.7'
+
+      - name: Check go version
+        run: go version
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run unit tests
+        run: go test ./...
+
+      - name: Determine new plugin version
+        run: |
+          VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
+          echo "Determined version: $VERSION"
+          # After the following command, the VERSION variable is available via the "env" command
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install mingw, arm32 and arm64 compilers
+        run: |
+          sudo apt update
+          sudo apt install mingw-w64 g++-arm-linux-gnueabihf g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+
+      - name: Build project (Linux amd64)
+        run: env make linux/amd64
+
+      - name: Build project (Windows 386)
+        run: env make windows/386
+
+      - name: Build project (Windows amd64)
+        run: env make windows/amd64
+
+      - name: Build project (Linux arm)
+        run: env make linux/arm/v7
+
+      - name: Build project (Linux arm64)
+        run: env make linux/arm64
+
+      # The QEMU will include more platforms such as arm64 to docker buildx builder
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      # The Docker Buildx builder will be used later to leverage from the cache while building the image
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      # Cache to be used by Docker Buildx
+      - name: Set up Docker Buildx's cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-buildx-
+
+    #   - name: Login to Docker Hub
+    #     uses: docker/login-action@v1
+    #     with:
+    #       username: ${{ secrets.DOCKER_HUB_USERNAME }}
+    #       password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+    #   - name: Build and Publish Docker image to Docker Hub
+    #     uses: docker/build-push-action@v2
+    #     env:
+    #       DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+    #       IMAGE_TAG: ${{ env.VERSION }}
+    #     with:
+    #       context: ./
+    #       file: ./Dockerfile
+    #       push: true
+    #       tags: |
+    #         ${{ env.DOCKERHUB_REPOSITORY }}:latest
+    #         ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+    #       builder: ${{ steps.buildx.outputs.name }}
+    #       platforms: linux/amd64, linux/arm64, linux/arm/v7
+    #       cache-from: type=local,src=/tmp/.buildx-cache
+    #       cache-to: type=local,dest=/tmp/.buildx-cache
+
+    #   - name: Inspect published Docker image on Docker Hub
+    #     run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
+
+    #   - name: Build and Publish Docker debug image to Docker Hub
+    #     uses: docker/build-push-action@v2
+    #     env:
+    #       DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+    #       IMAGE_TAG: ${{ env.VERSION }}-debug
+    #     with:
+    #       context: ./
+    #       file: ./Dockerfile_debug
+    #       push: true
+    #       tags: |
+    #         ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+    #       builder: ${{ steps.buildx.outputs.name }}
+    #       platforms: linux/amd64, linux/arm64
+    #       cache-from: type=local,src=/tmp/.buildx-cache
+    #       cache-to: type=local,dest=/tmp/.buildx-cache
+
+    #   - name: Inspect published Docker debug image on Docker Hub
+    #     run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+    #   - name: Login to Amazon ECR (Private)
+    #     id: login-ecr-private
+    #     uses: aws-actions/amazon-ecr-login@v1
+
+    #   - name: Build and Publish Docker image for Firelens to Private ECR
+    #     uses: docker/build-push-action@v2
+    #     env:
+    #       ECR_REGISTRY_PRIVATE: 533243300146.dkr.ecr.us-east-2.amazonaws.com
+    #       ECR_REPOSITORY_PRIVATE: newrelic/logging-firelens-fluentbit
+    #       IMAGE_TAG: ${{ env.VERSION }}
+    #     with:
+    #       context: ./
+    #       file: ./Dockerfile_firelens
+    #       push: true
+    #       tags: |
+    #         ${{ env.ECR_REGISTRY_PRIVATE }}/${{ env.ECR_REPOSITORY_PRIVATE }}:latest
+    #         ${{ env.ECR_REGISTRY_PRIVATE }}/${{ env.ECR_REPOSITORY_PRIVATE }}:${{ env.IMAGE_TAG }}
+    #       builder: ${{ steps.buildx.outputs.name }}
+    #       # Firelens image only available for amd64 and arm64 architectures
+    #       platforms: linux/amd64, linux/arm64
+    #       cache-from: type=local,src=/tmp/.buildx-cache
+    #       cache-to: type=local,dest=/tmp/.buildx-cache
+
+    #   - name: Inspect published Docker Firelens image on Private ECR
+    #     run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
+
+      - name: Login to Amazon ECR Public
+        id: login-ecr-public
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-type: public # Specify public registry type
+          registry: public.ecr.aws
+
+      - name: Build and Publish Docker image to Public ECR
+        uses: docker/build-push-action@v2
+        env:                     
+          ECR_REGISTRY_PUBLIC: public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: ${{ env.VERSION }}
+        with:
+          context: ./
+          file: ./Dockerfile # Assuming you want to publish the main Dockerfile image to Public ECR
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY_PUBLIC }}:latest
+            ${{ env.ECR_REGISTRY_PUBLIC }}:${{ env.IMAGE_TAG }}
+          builder: ${{ steps.buildx.outputs.name }}
+          platforms: linux/amd64, linux/arm64, linux/arm/v7
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Inspect published Docker image on Public ECR
+        run: docker buildx imagetools inspect public.ecr.aws/i4s1f1k2/newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
+
+  #     - name: Create Release
+  #       id: create_release
+  #       uses: actions/create-release@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         tag_name: v${{ env.VERSION }}
+  #         release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
+  #         draft: false
+  #         prerelease: false
+
+  #     - name: Include linux-amd64 artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-linux-amd64-${{ env.VERSION }}.so
+  #         asset_name: out_newrelic-linux-amd64-${{ env.VERSION }}.so
+  #         asset_content_type: application/octet-stream
+
+  #     - name: Include windows-amd64 artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+  #         asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+  #         asset_content_type: application/octet-stream
+
+  #     - name: Include windows-386 artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
+  #         asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
+  #         asset_content_type: application/octet-stream
+
+  #     - name: Include linux-arm64 artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
+  #         asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
+  #         asset_content_type: application/octet-stream
+
+  #     - name: Include linux-arm artifact in release
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
+  #         asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
+  #         asset_content_type: application/octet-stream
+
+  # windows-docker-images:
+  #   name: ${{ matrix.name }} Docker image generation and publishing
+  #   # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
+  #   # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
+  #   # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
+  #   # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - name: Windows Server 2019 (LTSC)
+  #           windowsImageTag: ltsc2019-amd64
+  #           imageTagSuffix: windows-ltsc-2019
+  #           runsOn: windows-2019
+  #         - name: Windows Server 2022 (LTSC)
+  #           windowsImageTag: ltsc2022-amd64
+  #           imageTagSuffix: windows-ltsc-2022
+  #           runsOn: windows-2022
+
+  #   runs-on: ${{ matrix.runsOn }}
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+
+  #     - name: Determine new plugin version
+  #       run: |
+  #         $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
+  #         echo "Determined version: $env:VERSION"
+  #         # After the following command, the VERSION variable is available via the "env" command in the GH action
+  #         Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
+          
+
+    #   - name: Login to Docker Hub
+    #     uses: docker/login-action@v1
+    #     with:
+    #       username: ${{ secrets.DOCKER_HUB_USERNAME }}
+    #       password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+    #   - name: Build and Publish Docker image for ${{ matrix.name }} to Docker Hub
+    #     env:
+    #       DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+    #       IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
+    #     run: |
+    #       docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
+    #       docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
