@@ -5,6 +5,7 @@ on:
     branches:
       - NR-342362
 
+      
 jobs:
   cd:
     name: Continuous Delivery pipeline
