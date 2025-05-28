@@ -3,7 +3,7 @@ name: New Relic Fluent Bit Output Plugin - Merge to master
 on:
   push:
     branches:
-      - NR-342362
+      - NR-342362-v1
 
 jobs:
   cd:
