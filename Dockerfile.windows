@@ -182,6 +182,7 @@ RUN New-Item -Path  /fluent-bit/etc/ -ItemType "directory"; `
 FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as runtime
 
 ARG FLUENTBIT_VERSION
+ENV FBVERSION=${FLUENTBIT_VERSION}
 ARG IMAGE_CREATE_DATE
 ARG IMAGE_SOURCE_REVISION
 
