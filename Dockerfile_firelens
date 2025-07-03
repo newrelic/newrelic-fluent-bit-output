@@ -23,7 +23,7 @@ RUN make ${TARGETPLATFORM}
 FROM amazon/aws-for-fluent-bit:2.32.5
 
 # Expose this env variable so that the version can be used in the helm chart
-ENV FBVERSION=2.32.5
+ENV FBVERSION=1.9.10
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 
