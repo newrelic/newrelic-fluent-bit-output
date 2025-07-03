@@ -18,6 +18,8 @@ RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
 FROM fluent/fluent-bit:3.2.10
+# Expose this env variable so that the version can be used in the helm chart
+ENV FBVERSION=3.2.10
 
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
