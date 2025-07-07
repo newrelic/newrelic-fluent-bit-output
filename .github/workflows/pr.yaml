@@ -81,6 +81,17 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: ${{ runner.os }}-buildx-
 
+      - name: Determine new plugin version
+        run: |
+          VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
+          echo "Determined version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Checking the beta version  
+        if: ${{ contains(env.VERSION, 'beta') }}
+        run: |
+          echo "*** Beta version is being released: $VERSION ***"
+
       - name: Build Docker image (${{ matrix.name }})
         uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         with:
