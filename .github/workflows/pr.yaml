@@ -135,11 +135,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: Windows Server 2019 (LTSC)
-            windowsImageTag: ltsc2019-amd64
-            imageTagSuffix: windows-ltsc-2019
-            runsOn: windows-2019
-          - name: Windows Server 2022 (LTSC)
+          #Removed Windows Server 2016 (LTSC) as it is no longer supported (https://github.com/actions/runner-images/issues/12045#issue-2997151424)
+          # - name: Windows Server 2019 (LTSC)
+          #   windowsImageTag: ltsc2019-amd64
+          #   imageTagSuffix: windows-ltsc-2019
+          #   runsOn: windows-2019
+          - name: 2 (LTSC)
             windowsImageTag: ltsc2022-amd64
             imageTagSuffix: windows-ltsc-2022
             runsOn: windows-2022
@@ -156,4 +157,3 @@ jobs:
           IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
         run: |
           docker build -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
-          
