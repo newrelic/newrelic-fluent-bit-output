@@ -1,7 +1,7 @@
 # escape=`
 
-ARG FLUENTBIT_VERSION=4.0.1
-ARG WINDOWS_VERSION=ltsc2022 # Using ltsc2022 as per your successful run, you can keep ltsc2019 if needed.
+ARG FLUENTBIT_VERSION=4.0.3
+ARG WINDOWS_VERSION=ltsc2019
 
 #################################################
 # Build New Relic Fluent Bit Output Plugin
@@ -36,7 +36,6 @@ RUN choco install --yes --no-progress golang --version=1.23.6
 RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
 
 # Compile the newrelic-fluent-bit-output plugin
-# Only copy the necessary files for YOUR plugin
 COPY Makefile go.* *.go ./
 COPY config/ ./config
 COPY metrics/ ./metrics
@@ -59,11 +58,15 @@ RUN go build -buildmode=c-shared -o out_newrelic.dll .
 # Build Fluent Bit and include the newrelic-fluent-bit-output plugin to the resulting image
 ############################################################################################
 
-# Fluent Bit Builder Image - Windows Server Core
-# Renamed from 'builder' to 'fluentbit_builder' for clarity
-FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as fluentbit_builder
+# **NOTE**: Fluent Bit currently does not publish a Docker image variant for Windows. They do
+# provide a Dockerfile.windows (https://github.com/fluent/fluent-bit/blob/master/dockerfiles/Dockerfile.windows)
+# which we mostly reuse below to build our own image containing Fluent Bit for Windows + New Relic Fluent Bit plugin
+
+# Builder Image - Windows Server Core (copied from Fluent Bit's official Dockerfile.windows file)
+FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as builder
 
 ARG FLUENTBIT_VERSION
+
 # This line was added because chocolatey version 2.0 was released and it depends on .NET 4.8
 # We can update this with the approach that fluent-bit takes but at the moment of doing this change
 # the fluent-bit image is not updated (and not working anymore)
@@ -85,8 +88,7 @@ RUN choco install --yes --no-progress git
 
 # FluentBit's Dockerfile.windows is based on the assumption that the pipeline building it does
 # a clone of the source repository previously to the build.
-# CLONE FLUENT BIT INTO A SEPARATE, DEDICATED DIRECTORY
-RUN git clone -b v%FLUENTBIT_VERSION% https://github.com/fluent/fluent-bit /fluent-bit-src
+RUN git clone -b v%FLUENTBIT_VERSION% https://github.com/fluent/fluent-bit /src
 RUN echo Cloned branch v%FLUENTBIT_VERSION%
 
 # -------------------------------------------------------------------------------------------------------------#
@@ -94,7 +96,7 @@ RUN echo Cloned branch v%FLUENTBIT_VERSION%
 # The following contents are copied from the original Fluent Bit repository, except:                           #
 #   - The FROM for the builder is specified above, so we can install Git and download                          #
 #     the source code prior to the build.                                                                      #
-#   - IMPORTANT: Removed the 'COPY . /src/' line as it was overwriting the Fluent Bit source.                  #
+#   - Comment out the COPY as in the official Fluent Bit pipeline the source code is cloned externally         #
 #   - At the very last step, we build and copy the New Relic plugin inside the resulting runtime image         #
 # -------------------------------------------------------------------------------------------------------------#
 
@@ -125,8 +127,6 @@ RUN Expand-Archive /local/win_flex_bison.zip -Destination /WinFlexBison; `
 WORKDIR /local
 ADD https://aka.ms/vs/15/release/vc_redist.x64.exe /local/vc_redist.x64.exe
 
-# Note: The /fluent-bit/bin/ path for Copy-Item here is for the intermediate step, not the final Fluent Bit structure.
-# It's copying the redistributable DLLs to a temporary location before the final assembly.
 WORKDIR /fluent-bit/bin/
 RUN Start-Process /local/vc_redist.x64.exe -ArgumentList '/install', '/quiet', '/norestart' -NoNewWindow -Wait; `
   Copy-Item -Path /Windows/System32/msvcp140.dll -Destination /fluent-bit/bin/; `
@@ -149,28 +149,33 @@ RUN `
 RUN vcpkg install --recurse openssl --triplet x64-windows-static; `
     vcpkg install --recurse libyaml --triplet x64-windows-static;
 
+
+
+# Install Chocolatey and OpenSSL: https://github.com/StefanScherer/dockerfiles-windows/blob/main/openssl/Dockerfile
+ENV chocolateyUseWindowsCompression=false
+RUN iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1')); `
+  choco feature disable --name showDownloadProgress ; 
+  # choco install -y openssl;
+  
 # Build Fluent Bit from source - context must be the root of the Git repo
-# IMPORTANT: Now operating within the /fluent-bit-src directory
-WORKDIR /fluent-bit-src/build
-# REMOVED: COPY . /src/  <-- This was the problematic line
+WORKDIR /src/build
+COPY . /src/
 
 RUN cmake -G "'Visual Studio 16 2019'" -DOPENSSL_ROOT_DIR='C:\dev\vcpkg\packages\openssl_x64-windows-static' -DFLB_LIBYAML_DIR='C:\dev\vcpkg\packages\libyaml_x64-windows-static' -DCMAKE_BUILD_TYPE=Release ../;`
     cmake --build . --config Release;
 
 # Set up config files and binaries in single /fluent-bit hierarchy for easy copy in later stage
-# IMPORTANT: Use /fluent-bit-src for paths to the Fluent Bit source tree
 RUN New-Item -Path  /fluent-bit/etc/ -ItemType "directory"; `
-  Copy-Item -Path /fluent-bit-src/conf/fluent-bit-win32.conf /fluent-bit/etc/fluent-bit.conf; `
-  Copy-Item -Path /fluent-bit-src/conf/parsers.conf /fluent-bit/etc/; `
-  Copy-Item -Path /fluent-bit-src/conf/parsers_ambassador.conf /fluent-bit/etc/; `
-  Copy-Item -Path /fluent-bit-src/conf/parsers_java.conf /fluent-bit/etc/; `
-  Copy-Item -Path /fluent-bit-src/conf/parsers_extra.conf /fluent-bit/etc/; `
-  Copy-Item -Path /fluent-bit-src/conf/parsers_openstack.conf /fluent-bit/etc/; `
-  Copy-Item -Path /fluent-bit-src/conf/parsers_cinder.conf /fluent-bit/etc/; `
-  Copy-Item -Path /fluent-bit-src/conf/plugins.conf /fluent-bit/etc/; `
-  Copy-Item -Path /fluent-bit-src/build/bin/Release/fluent-bit.exe /fluent-bit/bin/; `
-  Copy-Item -Path /fluent-bit-src/build/bin/Release/fluent-bit.dll /fluent-bit/bin/;
-
+  Copy-Item -Path /src/conf/fluent-bit-win32.conf /fluent-bit/etc/fluent-bit.conf; `
+  Copy-Item -Path /src/conf/parsers.conf /fluent-bit/etc/; `
+  Copy-Item -Path /src/conf/parsers_ambassador.conf /fluent-bit/etc/; `
+  Copy-Item -Path /src/conf/parsers_java.conf /fluent-bit/etc/; `
+  Copy-Item -Path /src/conf/parsers_extra.conf /fluent-bit/etc/; `
+  Copy-Item -Path /src/conf/parsers_openstack.conf /fluent-bit/etc/; `
+  Copy-Item -Path /src/conf/parsers_cinder.conf /fluent-bit/etc/; `
+  Copy-Item -Path /src/conf/plugins.conf /fluent-bit/etc/; `
+  Copy-Item -Path /src/build/bin/Release/fluent-bit.exe /fluent-bit/bin/; `
+  Copy-Item -Path /src/build/bin/Release/fluent-bit.dll /fluent-bit/bin/;
 #
 # Runtime Image - Windows Server Core
 #
@@ -178,7 +183,7 @@ FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as runtime
 
 ARG FLUENTBIT_VERSION
 # Expose this env variable so that the version can be used in the helm chart
-ENV FBVERSION=4.0.1
+ENV FBVERSION=4.0.3
 ARG IMAGE_CREATE_DATE
 ARG IMAGE_SOURCE_REVISION
 
@@ -196,14 +201,12 @@ LABEL org.opencontainers.image.title="Fluent Bit" `
   org.opencontainers.image.source="https://github.com/fluent/fluent-bit" `
   org.opencontainers.image.revision=$IMAGE_SOURCE_REVISION
 
-# Copy built Fluent Bit binaries and config from the fluentbit_builder stage
-COPY --from=fluentbit_builder /fluent-bit /fluent-bit
+COPY --from=builder /fluent-bit /fluent-bit
 
 RUN setx /M PATH "%PATH%;C:\fluent-bit\bin"
 
 ENTRYPOINT [ "fluent-bit.exe" ]
 
-# Copy your built New Relic plugin DLL from the nrBuilder stage
 COPY --from=nrBuilder /build/out_newrelic.dll /fluent-bit/bin/out_newrelic.dll
 
 CMD ["fluent-bit.exe", "-i", "dummy", "-o", "stdout", "-e", "/fluent-bit/bin/out_newrelic.dll"]
