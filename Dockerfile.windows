@@ -1,7 +1,7 @@
 # escape=`
 
 ARG FLUENTBIT_VERSION=4.0.3
-ARG WINDOWS_VERSION=ltsc2019 # Or '2022' if you want a newer base, check Docker Hub tags
+ARG WINDOWS_VERSION=2022 # Or '2022' if you want a newer base, check Docker Hub tags
 
 #################################################
 # Build New Relic Fluent Bit Output Plugin
