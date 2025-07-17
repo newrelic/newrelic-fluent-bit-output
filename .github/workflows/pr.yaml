@@ -135,7 +135,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: windoews 2022 (LTSC)
+          - name: windows 2022 (LTSC)
             windowsImageTag: ltsc2022-amd64
             imageTagSuffix: windows-ltsc-2022
             runsOn: windows-2022
