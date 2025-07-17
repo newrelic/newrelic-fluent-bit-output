@@ -135,12 +135,7 @@ jobs:
     strategy:
       matrix:
         include:
-          #Removed Windows Server 2019 (LTSC) as it is no longer supported (htps://github.com/actions/runner-images/issues/12045#issue-2997151424)
-          # - name: Windows Server 2019 (LTSC)
-          #   windowsImageTag: ltsc2019-amd64
-          #   imageTagSuffix: windows-ltsc-2019
-          #   runsOn: windows-2019
-          - name: 2 (LTSC)
+          - name: windoews 2022 (LTSC)
             windowsImageTag: ltsc2022-amd64
             imageTagSuffix: windows-ltsc-2022
             runsOn: windows-2022
