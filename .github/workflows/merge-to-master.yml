@@ -76,6 +76,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Build and Publish Docker image
+        if: ${{ !contains(env.VERSION, 'beta') }}
         uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
         env:
           DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
@@ -92,6 +93,23 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
+      - name: Build and Publish Docker beta image
+        if: ${{ contains(env.VERSION, 'beta') }}
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: ${{ env.VERSION }}
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          builder: ${{ steps.buildx.outputs.name }}
+          platforms: linux/amd64, linux/arm64, linux/arm/v7
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          
       - name: Inspect published Docker image
         run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
 
