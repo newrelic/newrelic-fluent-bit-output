@@ -53,8 +53,10 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 	packaging_start := time.Now()
 	payloads, err := record.PackageRecords(logRecords, nrClient.config.Compression)
 	packaging_time := time.Since(packaging_start)
+	compression := nrClient.config.Compression.String()
 	dimensions := map[string]interface{}{
-		"hasError": err != nil,
+		"hasError":    err != nil,
+		"compression": compression,
 	}
 	nrClient.metricsClient.SendSummaryDuration(metrics.PackagingTime, dimensions, packaging_time)
 	if err != nil {
@@ -70,8 +72,9 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 		sendTime := time.Since(sendStart)
 
 		dimensions := map[string]interface{}{
-			"statusCode": statusCode,
-			"hasError":   err != nil,
+			"statusCode":  statusCode,
+			"compression": compression,
+			"hasError":    err != nil,
 		}
 		nrClient.metricsClient.SendSummaryValue(metrics.PayloadSize, dimensions, float64(payloadSize))
 		nrClient.metricsClient.SendSummaryDuration(metrics.PayloadSendTime, dimensions, sendTime)
@@ -87,8 +90,11 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 		}
 	}
 	payloadSendTime := time.Since(payloadSendStart)
-	nrClient.metricsClient.SendSummaryDuration(metrics.TotalSendTime, nil, payloadSendTime)
-	nrClient.metricsClient.SendSummaryValue(metrics.PayloadCountPerChunk, nil, float64(len(payloads)))
+	dimensions = map[string]interface{}{
+		"compression": compression,
+	}
+	nrClient.metricsClient.SendSummaryDuration(metrics.TotalSendTime, dimensions, payloadSendTime)
+	nrClient.metricsClient.SendSummaryValue(metrics.PayloadCountPerChunk, dimensions, float64(len(payloads)))
 
 	return false, nil
 }

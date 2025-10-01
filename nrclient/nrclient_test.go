@@ -306,8 +306,9 @@ var _ = Describe("NR Client", func() {
 		Expect(server.ReceivedRequests()).To(HaveLen(0))
 
 		expectedPayloadSendDimensions := map[string]interface{}{
-			"statusCode": 0, // no status code
-			"hasError":   true,
+			"statusCode":  0, // no status code
+			"compression": "gzip",
+			"hasError":    true,
 		}
 		testingT := GinkgoT()
 		mockMetricsClient.AssertCalled(testingT,
@@ -334,24 +335,26 @@ var _ = Describe("NR Client", func() {
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 
 		expectedPayloadSendDimensions := map[string]interface{}{
-			"statusCode": 202,
-			"hasError":   false,
+			"statusCode":  202,
+			"compression": "gzip",
+			"hasError":    false,
 		}
 		expectedPackagingDimensions := map[string]interface{}{
-			"hasError": false,
+			"hasError":    false,
+			"compression": "gzip",
 		}
-		// This is a nil map! Note that doing this would result in an empty map, not a nil map value:
-		// emptyDimensions := map[string]interface{}{}
-		var emptyDimensions map[string]interface{}
+		expectedOverallDimensions := map[string]interface{}{
+			"compression": "gzip",
+		}
 		testingT := GinkgoT()
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryDuration", "logs.fb.packaging.time", expectedPackagingDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryDuration", "logs.fb.payload.send.time", expectedPayloadSendDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
-			"SendSummaryDuration", "logs.fb.total.send.time", emptyDimensions, mock.AnythingOfType("time.Duration"))
+			"SendSummaryDuration", "logs.fb.total.send.time", expectedOverallDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
-			"SendSummaryValue", "logs.fb.payload.count", emptyDimensions, mock.AnythingOfType("float64"))
+			"SendSummaryValue", "logs.fb.payload.count", expectedOverallDimensions, mock.AnythingOfType("float64"))
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryValue", "logs.fb.payload.size", expectedPayloadSendDimensions, mock.AnythingOfType("float64"))
 	})
