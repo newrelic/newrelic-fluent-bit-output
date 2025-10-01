@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/klauspost/compress/zstd"
 	"github.com/newrelic/newrelic-fluent-bit-output/config"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -114,12 +115,19 @@ func resolveTimestamp(outputRecord LogRecord, inputTimestamp interface{}) (inter
 //
 //	INPUT: [shortRecord, longRecord, shortRecord2, shortRecord3]
 //	OUTPUT: [GZIP(JSON(shortRecord)), GZIP(JSON(shortRecord2, shortRecord3))]
-func PackageRecords(records []LogRecord) ([]PackagedRecords, error) {
+func PackageRecords(records []LogRecord, compressionType config.CompressionType) (ret []PackagedRecords, err error) {
 	if len(records) == 0 {
 		return []PackagedRecords{}, nil
 	}
 
-	compressedData, err := asGzippedJson(records)
+	var compressedData *bytes.Buffer
+	if compressionType == config.Gzip {
+		compressedData, err = asGzipCompressedJson(records)
+	} else if compressionType == config.Zstd {
+		compressedData, err = asZstdCompressedJson(records)
+	} else {
+		err = fmt.Errorf("unknown compression method")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -130,11 +138,11 @@ func PackageRecords(records []LogRecord) ([]PackagedRecords, error) {
 		return []PackagedRecords{}, nil
 	} else if compressedSize >= maxPacketSize && len(records) > 1 {
 		log.Debug("Records were too big, splitting in half and retrying compression again.")
-		firstHalf, err := PackageRecords(records[:len(records)/2])
+		firstHalf, err := PackageRecords(records[:len(records)/2], compressionType)
 		if err != nil {
 			return nil, err
 		}
-		secondHalf, err := PackageRecords(records[len(records)/2:])
+		secondHalf, err := PackageRecords(records[len(records)/2:], compressionType)
 		if err != nil {
 			return nil, err
 		}
@@ -145,9 +153,9 @@ func PackageRecords(records []LogRecord) ([]PackagedRecords, error) {
 	}
 }
 
-// asGzippedJson takes an array of LogRecords, encodes them as a JSON array and
+// asGzipCompressedJson takes an array of LogRecords, encodes them as a JSON array and
 // compresses them into a byte buffer using the GZip compression algorithm.
-func asGzippedJson(records []LogRecord) (*bytes.Buffer, error) {
+func asGzipCompressedJson(records []LogRecord) (*bytes.Buffer, error) {
 	buff := new(bytes.Buffer)
 	data, err := json.Marshal(records)
 	if err != nil {
@@ -161,6 +169,28 @@ func asGzippedJson(records []LogRecord) (*bytes.Buffer, error) {
 		return nil, err
 	}
 	if err = g.Close(); err != nil {
+		return nil, err
+	}
+	return buff, nil
+}
+
+// asZstdCompressedJson takes an array of LogRecords, encodes them as a JSON array and
+// compresses them into a byte buffer using the Zstd compression algorithm.
+func asZstdCompressedJson(records []LogRecord) (*bytes.Buffer, error) {
+	buff := new(bytes.Buffer)
+	data, err := json.Marshal(records)
+	if err != nil {
+		return nil, err
+	}
+	compressor, err := zstd.NewWriter(buff)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := compressor.Write(data); err != nil {
+		return nil, err
+	}
+	// Close already takes care of flushing the final output
+	if err = compressor.Close(); err != nil {
 		return nil, err
 	}
 	return buff, nil

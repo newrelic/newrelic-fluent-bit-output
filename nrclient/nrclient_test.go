@@ -69,6 +69,7 @@ var _ = Describe("NR Client", func() {
 			// in the Fluent Bit code that we can't unit test
 			UseApiKey:      true,
 			TimeoutSeconds: 2,
+			Compression:    config.Gzip,
 		}
 
 		licenseKeyConfig = config.NRClientConfig{
@@ -78,6 +79,7 @@ var _ = Describe("NR Client", func() {
 			// in the Fluent Bit code that we can't unit test
 			UseApiKey:      false,
 			TimeoutSeconds: 2,
+			Compression:    config.Gzip,
 		}
 
 		mockMetricsClient = newMockMetricsAggregatorProvider()
@@ -254,7 +256,8 @@ var _ = Describe("NR Client", func() {
 			LicenseKey: licenseKey,
 			// Ideally we shouldn't have to set this separately from licenseKey, but where this is set is
 			// in the Fluent Bit code that we can't unit test
-			UseApiKey: false,
+			UseApiKey:   false,
+			Compression: config.Gzip,
 		}
 
 		nrClient, err := NewNRClient(configWithWrongEndpoint, noProxy, mockMetricsClient)
@@ -284,7 +287,8 @@ var _ = Describe("NR Client", func() {
 			LicenseKey: licenseKey,
 			// Ideally we shouldn't have to set this separately from licenseKey, but where this is set is
 			// in the Fluent Bit code that we can't unit test
-			UseApiKey: false,
+			UseApiKey:   false,
+			Compression: config.Gzip,
 		}
 
 		nrClient, err := NewNRClient(configWithWrongEndpoint, noProxy, mockMetricsClient)
@@ -350,5 +354,32 @@ var _ = Describe("NR Client", func() {
 			"SendSummaryValue", "logs.fb.payload.count", emptyDimensions, mock.AnythingOfType("float64"))
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryValue", "logs.fb.payload.size", expectedPayloadSendDimensions, mock.AnythingOfType("float64"))
+	})
+
+	It("Uses the appropriate compression header when using Zstd", func() {
+		// Given
+		server.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.RespondWithJSONEncodedPtr(&httpSuccessCode, ""),
+				ghttp.VerifyRequest("POST", "/v1/logs"),
+				ghttp.VerifyHeader(http.Header{
+					"X-Insert-Key":     []string{insertKey},
+					"Content-Type":     []string{"application/json"},
+					"Content-Encoding": []string{"zstd"},
+				})))
+
+		insertKeyConfig.Compression = config.Zstd
+		nrClient, err := NewNRClient(insertKeyConfig, noProxy, mockMetricsClient)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
+
+		// When
+		shouldRetry, err := nrClient.Send(logRecords)
+
+		// Then
+		Expect(shouldRetry).To(BeFalse())
+		Expect(err).To(BeNil())
+		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
 })

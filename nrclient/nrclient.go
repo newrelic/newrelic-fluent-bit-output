@@ -51,7 +51,7 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metrics
 
 func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err error) {
 	packaging_start := time.Now()
-	payloads, err := record.PackageRecords(logRecords)
+	payloads, err := record.PackageRecords(logRecords, nrClient.config.Compression)
 	packaging_time := time.Since(packaging_start)
 	dimensions := map[string]interface{}{
 		"hasError": err != nil,
@@ -66,7 +66,7 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 	for _, payload := range payloads {
 		payloadSize := payload.Len()
 		sendStart := time.Now()
-		statusCode, err := nrClient.sendPacket(payload)
+		statusCode, err := nrClient.sendPacket(payload, nrClient.config.Compression)
 		sendTime := time.Since(sendStart)
 
 		dimensions := map[string]interface{}{
@@ -93,7 +93,7 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 	return false, nil
 }
 
-func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err error) {
+func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer, compressionType config.CompressionType) (status int, err error) {
 	req, err := http.NewRequest("POST", nrClient.config.Endpoint, buffer)
 	if err != nil {
 		return 0, err
@@ -103,7 +103,7 @@ func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err erro
 	} else {
 		req.Header.Add("X-License-Key", nrClient.config.LicenseKey)
 	}
-	req.Header.Add("Content-Encoding", "gzip")
+	req.Header.Add("Content-Encoding", compressionType.String())
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := nrClient.client.Do(req)
 	if err != nil {
