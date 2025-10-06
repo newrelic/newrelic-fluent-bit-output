@@ -51,10 +51,12 @@ func NewNRClient(cfg config.NRClientConfig, proxyCfg config.ProxyConfig, metrics
 
 func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err error) {
 	packaging_start := time.Now()
-	payloads, err := record.PackageRecords(logRecords)
+	payloads, err := record.PackageRecords(logRecords, nrClient.config.Compression)
 	packaging_time := time.Since(packaging_start)
+	compression := nrClient.config.Compression.String()
 	dimensions := map[string]interface{}{
-		"hasError": err != nil,
+		"hasError":    err != nil,
+		"compression": compression,
 	}
 	nrClient.metricsClient.SendSummaryDuration(metrics.PackagingTime, dimensions, packaging_time)
 	if err != nil {
@@ -66,12 +68,13 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 	for _, payload := range payloads {
 		payloadSize := payload.Len()
 		sendStart := time.Now()
-		statusCode, err := nrClient.sendPacket(payload)
+		statusCode, err := nrClient.sendPacket(payload, nrClient.config.Compression)
 		sendTime := time.Since(sendStart)
 
 		dimensions := map[string]interface{}{
-			"statusCode": statusCode,
-			"hasError":   err != nil,
+			"statusCode":  statusCode,
+			"compression": compression,
+			"hasError":    err != nil,
 		}
 		nrClient.metricsClient.SendSummaryValue(metrics.PayloadSize, dimensions, float64(payloadSize))
 		nrClient.metricsClient.SendSummaryDuration(metrics.PayloadSendTime, dimensions, sendTime)
@@ -87,13 +90,16 @@ func (nrClient *NRClient) Send(logRecords []record.LogRecord) (retry bool, err e
 		}
 	}
 	payloadSendTime := time.Since(payloadSendStart)
-	nrClient.metricsClient.SendSummaryDuration(metrics.TotalSendTime, nil, payloadSendTime)
-	nrClient.metricsClient.SendSummaryValue(metrics.PayloadCountPerChunk, nil, float64(len(payloads)))
+	dimensions = map[string]interface{}{
+		"compression": compression,
+	}
+	nrClient.metricsClient.SendSummaryDuration(metrics.TotalSendTime, dimensions, payloadSendTime)
+	nrClient.metricsClient.SendSummaryValue(metrics.PayloadCountPerChunk, dimensions, float64(len(payloads)))
 
 	return false, nil
 }
 
-func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err error) {
+func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer, compressionType config.CompressionType) (status int, err error) {
 	req, err := http.NewRequest("POST", nrClient.config.Endpoint, buffer)
 	if err != nil {
 		return 0, err
@@ -103,7 +109,7 @@ func (nrClient *NRClient) sendPacket(buffer *bytes.Buffer) (status int, err erro
 	} else {
 		req.Header.Add("X-License-Key", nrClient.config.LicenseKey)
 	}
-	req.Header.Add("Content-Encoding", "gzip")
+	req.Header.Add("Content-Encoding", compressionType.String())
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := nrClient.client.Do(req)
 	if err != nil {

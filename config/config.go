@@ -14,6 +14,24 @@ type PluginConfig struct {
 	ProxyConfig      ProxyConfig
 }
 
+type CompressionType int64
+
+const (
+	Unknown CompressionType = iota
+	Gzip    CompressionType = iota
+	Zstd
+)
+
+func (s CompressionType) String() string {
+	switch s {
+	case Gzip:
+		return "gzip"
+	case Zstd:
+		return "zstd"
+	}
+	return "unknown"
+}
+
 type NRClientConfig struct {
 	Endpoint       string
 	ApiKey         string
@@ -21,6 +39,7 @@ type NRClientConfig struct {
 	UseApiKey      bool
 	TimeoutSeconds int
 	SendMetrics    bool
+	Compression    CompressionType
 }
 
 type DataFormatConfig struct {
@@ -33,6 +52,17 @@ type ProxyConfig struct {
 	CABundleFile      string
 	CABundleDir       string
 	ValidateCerts     bool
+}
+
+func parseCompressionType(str string) (CompressionType, error) {
+	switch str {
+	case "gzip", "" /* default to gzip if unspecified */ :
+		return Gzip, nil
+	case "zstd":
+		return Zstd, nil
+	default:
+		return Unknown, fmt.Errorf("unknown compression type: %s. Supported: \"gzip\" (default), \"zstd\"", str)
+	}
 }
 
 func (cfg NRClientConfig) GetNewRelicKey() string {
@@ -89,6 +119,8 @@ func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
 	cfg.TimeoutSeconds, err = optInt(ctx, "httpClientTimeout", 5)
 
 	cfg.SendMetrics, err = optBool(ctx, "sendMetrics", false)
+
+	cfg.Compression, err = parseCompressionType(output.FLBPluginConfigKey(ctx, "compression"))
 
 	return
 }

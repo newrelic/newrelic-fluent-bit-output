@@ -1,10 +1,10 @@
 module github.com/newrelic/newrelic-fluent-bit-output
 
-// We can't go past 1.20.X until this issue is solved: https://github.com/golang/go/issues/62130#issuecomment-1687335898
-go 1.20
+go 1.23
 
 require (
 	github.com/fluent/fluent-bit-go v0.0.0-20200729034236-b9c0d6a20853
+	github.com/klauspost/compress v1.18.0
 	github.com/newrelic/newrelic-telemetry-sdk-go v0.8.1
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0

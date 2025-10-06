@@ -69,6 +69,7 @@ var _ = Describe("NR Client", func() {
 			// in the Fluent Bit code that we can't unit test
 			UseApiKey:      true,
 			TimeoutSeconds: 2,
+			Compression:    config.Gzip,
 		}
 
 		licenseKeyConfig = config.NRClientConfig{
@@ -78,6 +79,7 @@ var _ = Describe("NR Client", func() {
 			// in the Fluent Bit code that we can't unit test
 			UseApiKey:      false,
 			TimeoutSeconds: 2,
+			Compression:    config.Gzip,
 		}
 
 		mockMetricsClient = newMockMetricsAggregatorProvider()
@@ -254,7 +256,8 @@ var _ = Describe("NR Client", func() {
 			LicenseKey: licenseKey,
 			// Ideally we shouldn't have to set this separately from licenseKey, but where this is set is
 			// in the Fluent Bit code that we can't unit test
-			UseApiKey: false,
+			UseApiKey:   false,
+			Compression: config.Gzip,
 		}
 
 		nrClient, err := NewNRClient(configWithWrongEndpoint, noProxy, mockMetricsClient)
@@ -284,7 +287,8 @@ var _ = Describe("NR Client", func() {
 			LicenseKey: licenseKey,
 			// Ideally we shouldn't have to set this separately from licenseKey, but where this is set is
 			// in the Fluent Bit code that we can't unit test
-			UseApiKey: false,
+			UseApiKey:   false,
+			Compression: config.Gzip,
 		}
 
 		nrClient, err := NewNRClient(configWithWrongEndpoint, noProxy, mockMetricsClient)
@@ -302,8 +306,9 @@ var _ = Describe("NR Client", func() {
 		Expect(server.ReceivedRequests()).To(HaveLen(0))
 
 		expectedPayloadSendDimensions := map[string]interface{}{
-			"statusCode": 0, // no status code
-			"hasError":   true,
+			"statusCode":  0, // no status code
+			"compression": "gzip",
+			"hasError":    true,
 		}
 		testingT := GinkgoT()
 		mockMetricsClient.AssertCalled(testingT,
@@ -330,25 +335,54 @@ var _ = Describe("NR Client", func() {
 		Expect(server.ReceivedRequests()).To(HaveLen(1))
 
 		expectedPayloadSendDimensions := map[string]interface{}{
-			"statusCode": 202,
-			"hasError":   false,
+			"statusCode":  202,
+			"compression": "gzip",
+			"hasError":    false,
 		}
 		expectedPackagingDimensions := map[string]interface{}{
-			"hasError": false,
+			"hasError":    false,
+			"compression": "gzip",
 		}
-		// This is a nil map! Note that doing this would result in an empty map, not a nil map value:
-		// emptyDimensions := map[string]interface{}{}
-		var emptyDimensions map[string]interface{}
+		expectedOverallDimensions := map[string]interface{}{
+			"compression": "gzip",
+		}
 		testingT := GinkgoT()
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryDuration", "logs.fb.packaging.time", expectedPackagingDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryDuration", "logs.fb.payload.send.time", expectedPayloadSendDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
-			"SendSummaryDuration", "logs.fb.total.send.time", emptyDimensions, mock.AnythingOfType("time.Duration"))
+			"SendSummaryDuration", "logs.fb.total.send.time", expectedOverallDimensions, mock.AnythingOfType("time.Duration"))
 		mockMetricsClient.AssertCalled(testingT,
-			"SendSummaryValue", "logs.fb.payload.count", emptyDimensions, mock.AnythingOfType("float64"))
+			"SendSummaryValue", "logs.fb.payload.count", expectedOverallDimensions, mock.AnythingOfType("float64"))
 		mockMetricsClient.AssertCalled(testingT,
 			"SendSummaryValue", "logs.fb.payload.size", expectedPayloadSendDimensions, mock.AnythingOfType("float64"))
+	})
+
+	It("Uses the appropriate compression header when using Zstd", func() {
+		// Given
+		server.AppendHandlers(
+			ghttp.CombineHandlers(
+				ghttp.RespondWithJSONEncodedPtr(&httpSuccessCode, ""),
+				ghttp.VerifyRequest("POST", "/v1/logs"),
+				ghttp.VerifyHeader(http.Header{
+					"X-Insert-Key":     []string{insertKey},
+					"Content-Type":     []string{"application/json"},
+					"Content-Encoding": []string{"zstd"},
+				})))
+
+		insertKeyConfig.Compression = config.Zstd
+		nrClient, err := NewNRClient(insertKeyConfig, noProxy, mockMetricsClient)
+		if err != nil {
+			Fail("Could not initialize the NRClient")
+		}
+
+		// When
+		shouldRetry, err := nrClient.Send(logRecords)
+
+		// Then
+		Expect(shouldRetry).To(BeFalse())
+		Expect(err).To(BeNil())
+		Expect(server.ReceivedRequests()).To(HaveLen(1))
 	})
 })

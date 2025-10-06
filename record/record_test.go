@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/klauspost/compress/zstd"
 	"io"
 	"math/rand"
 	"os"
@@ -227,7 +228,7 @@ var _ = Describe("Out New Relic", func() {
 
 		It("returns an empty array of packages if the provided slice is nil", func() {
 			// When
-			packagedRecords, err := PackageRecords(nil)
+			packagedRecords, err := PackageRecords(nil, config.Gzip)
 
 			// Then
 			Expect(err).To(BeNil())
@@ -237,7 +238,7 @@ var _ = Describe("Out New Relic", func() {
 
 		It("returns an empty array of packages if the provided slice is empty", func() {
 			// When
-			packagedRecords, err := PackageRecords([]LogRecord{})
+			packagedRecords, err := PackageRecords([]LogRecord{}, config.Gzip)
 
 			// Then
 			Expect(err).To(BeNil())
@@ -260,7 +261,7 @@ var _ = Describe("Out New Relic", func() {
 			expectedJson := `[{"message":"Some message 1","timestamp":1},{"message":"Some message 2","timestamp":2}]`
 
 			// When
-			packagedRecords, err := PackageRecords(logRecords)
+			packagedRecords, err := PackageRecords(logRecords, config.Gzip)
 
 			// Then
 			Expect(err).To(BeNil())
@@ -269,7 +270,7 @@ var _ = Describe("Out New Relic", func() {
 			Expect(packagedRecords).To(HaveLen(1))
 
 			// Decompress and validate record
-			uncompressedJson, err := uncompressRecord(packagedRecords[0])
+			uncompressedJson, err := uncompressRecord(packagedRecords[0], config.Gzip)
 			if err != nil {
 				Fail(fmt.Sprintf("Could not uncompress record 0: %v", err))
 			}
@@ -302,7 +303,7 @@ var _ = Describe("Out New Relic", func() {
 			expectedJson1 := `[{"message":"Short message 3","timestamp":3},{"message":"Short message 4","timestamp":4}]`
 
 			// When
-			packagedRecords, err := PackageRecords(logRecords)
+			packagedRecords, err := PackageRecords(logRecords, config.Gzip)
 
 			// Then
 			Expect(err).To(BeNil())
@@ -311,13 +312,13 @@ var _ = Describe("Out New Relic", func() {
 			Expect(packagedRecords).To(HaveLen(2))
 
 			// Decompress and validate records
-			uncompressedJson0, err := uncompressRecord(packagedRecords[0])
+			uncompressedJson0, err := uncompressRecord(packagedRecords[0], config.Gzip)
 			if err != nil {
 				Fail(fmt.Sprintf("Could not uncompress record 0: %v", err))
 			}
 			Expect(uncompressedJson0).To(Equal(expectedJson0))
 
-			uncompressedJson1, err := uncompressRecord(packagedRecords[1])
+			uncompressedJson1, err := uncompressRecord(packagedRecords[1], config.Gzip)
 			if err != nil {
 				Fail(fmt.Sprintf("Could not uncompress record 1: %v", err))
 			}
@@ -342,7 +343,7 @@ var _ = Describe("Out New Relic", func() {
 			}
 
 			// When
-			packagedRecords, err := PackageRecords(logRecords)
+			packagedRecords, err := PackageRecords(logRecords, config.Gzip)
 
 			// Then
 			Expect(err).To(BeNil())
@@ -359,7 +360,7 @@ var _ = Describe("Out New Relic", func() {
 			}
 			receivedRecords := make(map[int]struct{}) // set of ints in Go
 			for i, packagedRecord := range packagedRecords {
-				uncompressedJson, err := uncompressRecord(packagedRecord)
+				uncompressedJson, err := uncompressRecord(packagedRecord, config.Gzip)
 				if err != nil {
 					Fail(fmt.Sprintf("Could not uncompress record %d: %v. Record: %v", i, err, uncompressedJson))
 				}
@@ -383,30 +384,88 @@ var _ = Describe("Out New Relic", func() {
 			}
 		})
 	})
+
+	Describe("Compression", func() {
+		It("produces compressed Gzip payloads that can be correctly parsed", func() {
+			// Given
+			logRecords := []LogRecord{
+				{
+					"timestamp": 1,
+					"message":   "Some message 1",
+				},
+			}
+			expectedJson := `[{"message":"Some message 1","timestamp":1}]`
+
+			// When
+			packagedRecords, err := PackageRecords(logRecords, config.Gzip)
+
+			// Then
+			Expect(err).To(BeNil())
+			Expect(packagedRecords).To(Not(BeNil()))
+			// The two records are compressed into a single byte buffer, as they don't exceed 1MB
+			Expect(packagedRecords).To(HaveLen(1))
+
+			// Decompress and validate record
+			uncompressedJson, err := uncompressRecord(packagedRecords[0], config.Gzip)
+			if err != nil {
+				Fail(fmt.Sprintf("Could not uncompress record 0: %v", err))
+			}
+			Expect(uncompressedJson).To(Equal(expectedJson))
+		})
+
+		It("produces compressed Zstd payloads that can be correctly parsed", func() {
+			// Given
+			logRecords := []LogRecord{
+				{
+					"timestamp": 1,
+					"message":   "Some message 1",
+				},
+			}
+			expectedJson := `[{"message":"Some message 1","timestamp":1}]`
+
+			// When
+			packagedRecords, err := PackageRecords(logRecords, config.Zstd)
+
+			// Then
+			Expect(err).To(BeNil())
+			Expect(packagedRecords).To(Not(BeNil()))
+			// The two records are compressed into a single byte buffer, as they don't exceed 1MB
+			Expect(packagedRecords).To(HaveLen(1))
+
+			// Decompress and validate record
+			uncompressedJson, err := uncompressRecord(packagedRecords[0], config.Zstd)
+			if err != nil {
+				Fail(fmt.Sprintf("Could not uncompress record 0: %v", err))
+			}
+			Expect(uncompressedJson).To(Equal(expectedJson))
+		})
+	})
 })
 
-func uncompressRecord(packagedRecords PackagedRecords) (res string, err error) {
-	gzipRecord := bytes.Buffer(*packagedRecords)
-	reader, err := gzip.NewReader(&gzipRecord)
+func uncompressRecord(packagedRecords PackagedRecords, compressionType config.CompressionType) (string, error) {
+	compressedRecords := bytes.Buffer(*packagedRecords)
+	var reader io.ReadCloser
+	var err error
+	if compressionType == config.Gzip {
+		reader, err = gzip.NewReader(&compressedRecords)
+	} else if compressionType == config.Zstd {
+		decoder, e := zstd.NewReader(&compressedRecords)
+		reader, err = decoder.IOReadCloser(), e
+	} else {
+		return "", fmt.Errorf("Unsupported compression type: %v", compressionType)
+	}
+
 	if err != nil {
 		return "", err
 	}
-	buff := make([]byte, 1024)
-	for {
-		n, err := reader.Read(buff)
-		if err == io.EOF {
-			// Finished reading
-			break
-		}
-		if err != nil {
-			return "", err
-		}
-		res += string(buff[:n])
-	}
+	defer reader.Close()
+
+	var result bytes.Buffer
+	_, err = result.ReadFrom(reader)
 	if err != nil {
 		return "", err
 	}
-	return res, nil
+	return result.String(), nil
 }
 
 func longRandomMessage(sizeInMb int) string {
