@@ -118,7 +118,7 @@ func parseNRClientConfig(ctx unsafe.Pointer) (cfg NRClientConfig, err error) {
 
 	cfg.TimeoutSeconds, err = optInt(ctx, "httpClientTimeout", 5)
 
-	cfg.SendMetrics, err = optBool(ctx, "sendMetrics", false)
+	cfg.SendMetrics, err = optBool(ctx, "sendMetrics", true)
 
 	cfg.Compression, err = parseCompressionType(output.FLBPluginConfigKey(ctx, "compression"))
 
