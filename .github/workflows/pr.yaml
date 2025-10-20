@@ -138,7 +138,7 @@ jobs:
           - name: windows 2019 (LTSC)
             windowsImageTag: ltsc2019-amd64
             imageTagSuffix: windows-ltsc-2019
-            runsOn: windows-x64-8-core
+            runsOn: windows-2019
           # - name: windows 2022 (LTSC)
           #   windowsImageTag: ltsc2022-amd64
           #   imageTagSuffix: windows-ltsc-2022
