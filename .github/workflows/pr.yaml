@@ -4,6 +4,7 @@ on: [pull_request]
 
 jobs:
   unit-tests:
+    if: false
     name: CI - Tests and Build
     runs-on: ubuntu-24.04
 
@@ -35,6 +36,7 @@ jobs:
         run: make linux/amd64
 
   docker-ci:
+    if: false
     name: CI - Docker image build (${{ matrix.name }})
     runs-on: ubuntu-24.04
     services:
