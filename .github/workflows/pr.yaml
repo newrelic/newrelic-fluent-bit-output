@@ -137,22 +137,19 @@ jobs:
     strategy:
       matrix:
         include:
-          # - name: windows 2019 (LTSC)
-          #   windowsImageTag: ltsc2019-amd64
-          #   imageTagSuffix: windows-ltsc-2019
-          #   # Uses self-hosted runner which has Hyper-V virtualization support, since windows-2019 GH runner was deprecated
-          #   runsOn: windows-x64-8-core
-          #   # More info on isolation: https://learn.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/hyperv-container
-          #   isolation: hyperv
+          - name: windows 2019 (LTSC)
+            windowsVersion: 2019
+            windowsImageTag: ltsc2019-amd64
+            imageTagSuffix: windows-ltsc-2019
+            # Uses self-hosted runner which has Hyper-V virtualization support, since windows-2019 GH runner was deprecated
+            runsOn: windows-x64-8-core
+            # More info on isolation: https://learn.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/hyperv-container
+            isolation: hyperv
           - name: windows 2022 (LTSC)
+            windowsVersion: 2022
             windowsImageTag: ltsc2022-amd64
             imageTagSuffix: windows-ltsc-2022
             runsOn: windows-2022
-            isolation: process
-          - name: windows 2025 (LTSC)
-            windowsImageTag: ltsc2025-amd64
-            imageTagSuffix: windows-ltsc-2025
-            runsOn: windows-2025
             isolation: process
 
     runs-on: ${{ matrix.runsOn }}
@@ -166,4 +163,4 @@ jobs:
           DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
           IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
         run: |
-          docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsImageTag }} .
+          docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
