@@ -18,11 +18,11 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-# aws-for-fluent-bit 2.32.2.20240516 is based on Fluent Bit 1.9.10: https://github.com/aws/aws-for-fluent-bit/releases/tag/v2.32.2.20240516
-FROM amazon/aws-for-fluent-bit:2.32.5
+# aws-for-fluent-bit 2.32.2.20240516 is based on Fluent Bit 4.2.0: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.1.0
+FROM amazon/aws-for-fluent-bit:3.1.0
 
 # Expose this env variable so that the version can be used in the helm chart
-ENV FBVERSION=1.9.10
+ENV FBVERSION=4.2.0
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 
