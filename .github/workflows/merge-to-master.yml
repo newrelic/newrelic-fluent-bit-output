@@ -235,14 +235,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: Windows Server 2019 (LTSC)
-            windowsVersion: 2019
-            windowsImageTag: ltsc2019-amd64
-            imageTagSuffix: windows-ltsc-2019
-            # Uses self-hosted runner which has Hyper-V virtualization support, since windows-2019 GH runner was deprecated
-            runsOn: windows-x64-8-core
-            # More info on isolation: https://learn.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/hyperv-container
-            isolation: hyperv
           - name: Windows Server 2022 (LTSC)
             windowsVersion: 2022
             windowsImageTag: ltsc2022-amd64
@@ -278,7 +270,7 @@ jobs:
           docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
   windows-docker-images-from-source:
-    name:  ${{ matrix.name }} Docker image generation and publishing
+    name:  ${{ matrix.name }} Docker image generation and publishing CD
     # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
     # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
     # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore

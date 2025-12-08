@@ -135,14 +135,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: windows 2019 (LTSC)
-            windowsVersion: 2019
-            windowsImageTag: ltsc2019-amd64
-            imageTagSuffix: windows-ltsc-2019
-            # Uses self-hosted runner which has Hyper-V virtualization support, since windows-2019 GH runner was deprecated
-            runsOn: windows-x64-8-core
-            # More info on isolation: https://learn.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/hyperv-container
-            isolation: hyperv
           - name: windows 2022 (LTSC)
             windowsVersion: 2022
             windowsImageTag: ltsc2022-amd64
