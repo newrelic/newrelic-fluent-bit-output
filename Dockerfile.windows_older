@@ -3,6 +3,7 @@
 ARG FLUENTBIT_VERSION=4.0.3
 ARG WINDOWS_VERSION=2022
 
+# adding this file to build images for windows 2019 which doesn't have base images after fluent bit 4.0.3
 #################################################
 # Build New Relic Fluent Bit Output Plugin
 #################################################
