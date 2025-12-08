@@ -1,0 +1,65 @@
+# escape=`
+
+ARG FLUENTBIT_VERSION=4.0.3
+ARG WINDOWS_VERSION=2022
+
+#################################################
+# Build New Relic Fluent Bit Output Plugin
+#################################################
+
+FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}  AS nrBuilder
+
+WORKDIR /build
+
+USER ContainerAdministrator
+
+ENV chocolateyVersion 1.4.0
+
+# Install Chocolatey
+RUN powershell.exe Invoke-WebRequest `
+  -Uri https://chocolatey.org/install.ps1 `
+  -OutFile C:\chocolatey-install.ps1
+RUN powershell.exe `
+  -ExecutionPolicy bypass `
+  -InputFormat none `
+  -NoProfile `
+  C:\chocolatey-install.ps1
+RUN setx PATH "%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
+
+# Install Base Dependencies
+RUN choco install --yes --no-progress mingw git
+RUN choco install --yes --no-progress golang --version=1.23.6
+
+# Put the path before the other paths so that MinGW shadows Windows commands.
+RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
+
+# Compile the newrelic-fluent-bit-output plugin
+COPY Makefile go.* *.go ./
+COPY config/ ./config
+COPY metrics/ ./metrics
+COPY nrclient/ ./nrclient
+COPY record/ ./record
+COPY utils/ ./utils
+
+ENV SOURCE docker
+
+RUN setx CGO_ENABLED "1"
+RUN setx GOOS "windows"
+RUN setx GOARCH "amd64"
+RUN setx CC "x86_64-w64-mingw32-gcc"
+RUN setx CXX "x86_64-w64-mingw32-g++"
+
+RUN go build -buildmode=c-shared -o out_newrelic.dll .
+
+#######################################################
+# Runtime Image - Fluent Bit image + include our plugin
+#######################################################
+FROM fluent/fluent-bit:windows-${WINDOWS_VERSION}-${FLUENTBIT_VERSION} as runtime
+
+ARG FLUENTBIT_VERSION
+# Expose this env variable so that the version can be used in the helm chart
+ENV FBVERSION=${FLUENTBIT_VERSION}
+
+COPY --from=nrBuilder /build/out_newrelic.dll /fluent-bit/bin/out_newrelic.dll
+
+CMD ["fluent-bit.exe", "-i", "dummy", "-o", "stdout", "-e", "/fluent-bit/bin/out_newrelic.dll"]
