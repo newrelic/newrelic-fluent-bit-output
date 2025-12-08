@@ -7,7 +7,7 @@ ARG WINDOWS_VERSION=2022
 # Build New Relic Fluent Bit Output Plugin
 #################################################
 
-FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION  AS nrBuilder
+FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}  AS nrBuilder
 
 WORKDIR /build
 
@@ -61,7 +61,7 @@ RUN go build -buildmode=c-shared -o out_newrelic.dll .
 # which we mostly reuse below to build our own image containing Fluent Bit for Windows + New Relic Fluent Bit plugin
 
 # Builder Image - Windows Server Core (copied from Fluent Bit's official Dockerfile.windows file)
-FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as builder
+FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} as builder
 
 ARG FLUENTBIT_VERSION
 
@@ -177,7 +177,7 @@ RUN New-Item -Path  /fluent-bit/etc/ -ItemType "directory"; `
 #
 # Runtime Image - Windows Server Core
 #
-FROM mcr.microsoft.com/windows/servercore:$WINDOWS_VERSION as runtime
+FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} as runtime
 
 ARG FLUENTBIT_VERSION
 # Expose this env variable so that the version can be used in the helm chart
