@@ -1,4 +1,4 @@
-FROM golang:1.25.3-bullseye AS builder
+FROM golang:golang:1.25.5-bookworm AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
