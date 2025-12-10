@@ -1,4 +1,7 @@
-FROM golang:1.25.5-bookworm AS builder
+FROM golang:1.25.5-alpine3.23 AS builder
+
+# Install build dependencies
+RUN apk add --no-cache gcc musl-dev make
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
