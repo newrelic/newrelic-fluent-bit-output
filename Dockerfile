@@ -1,12 +1,13 @@
 FROM golang:1.25.5-bookworm AS builder
 
 # Install build dependencies and cross-compilation tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN dpkg --add-architecture arm64 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     make \
-    gcc-aarch64-linux-gnu \
-    g++-aarch64-linux-gnu \
+    crossbuild-essential-arm64 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
