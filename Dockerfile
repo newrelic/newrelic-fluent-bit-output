@@ -1,4 +1,6 @@
-FROM golang:1.23.6-bullseye AS builder
+# FROM golang:1.23.6-bullseye AS builder
+FROM golang:1.25.5-bookworm AS builder
+
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
@@ -10,6 +12,18 @@ COPY record/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/record
 COPY utils/ /go/src/github.com/newrelic/newrelic-fluent-bit-output/utils
 
 ENV SOURCE=docker
+
+# Install cross-compilation toolchains required by the Makefile for ARM builds.
+# The 'bookworm' base uses standard Debian naming conventions for these packages.
+RUN apt-get update && \
+    apt-get install -y \
+    gcc-aarch64-linux-gnu \
+    g++-aarch64-linux-gnu \
+    gcc-arm-linux-gnueabihf \
+    g++-arm-linux-gnueabihf \
+    # Add other necessary tools like 'make' if not already in the Golang image
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 
 # Not using default value here due to this: https://github.com/docker/buildx/issues/510
 ARG TARGETPLATFORM
