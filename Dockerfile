@@ -1,7 +1,13 @@
-FROM golang:1.25.5-alpine3.23 AS builder
+FROM golang:1.25.5-bookworm AS builder
 
-# Install build dependencies
-RUN apk add --no-cache gcc musl-dev make
+# Install build dependencies and cross-compilation tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    make \
+    gcc-aarch64-linux-gnu \
+    g++-aarch64-linux-gnu \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
