@@ -1,36 +1,29 @@
 # escape=`
 
 ARG FLUENTBIT_VERSION=4.2.0
-ARG WINDOWS_VERSION=2022
+ARG WINDOWS_VERSION=2019
 
-#################################################
+# =============================================================================
+# STAGE 1: nrBuilder
 # Build New Relic Fluent Bit Output Plugin
-#################################################
-
-FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}  AS nrBuilder
+# =============================================================================
+FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS nrBuilder
 
 WORKDIR /build
 
 USER ContainerAdministrator
 
-ENV chocolateyVersion 1.4.0
-
 # Install Chocolatey
-RUN powershell.exe Invoke-WebRequest `
-  -Uri https://chocolatey.org/install.ps1 `
-  -OutFile C:\chocolatey-install.ps1
-RUN powershell.exe `
-  -ExecutionPolicy bypass `
-  -InputFormat none `
-  -NoProfile `
-  C:\chocolatey-install.ps1
-RUN setx PATH "%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
+ENV chocolateyVersion=1.4.0
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-# Install Base Dependencies
-RUN choco install --yes --no-progress mingw git
-RUN choco install --yes --no-progress golang --version=1.23.6
+# Install Base Dependencies (Git, MinGW, Go)
+RUN choco install --yes --no-progress mingw git; `
+    choco install --yes --no-progress golang --version=1.23.6
 
-# Put the path before the other paths so that MinGW shadows Windows commands.
+# Set Path for MinGW
 RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
 
 # Compile the newrelic-fluent-bit-output plugin
@@ -51,15 +44,100 @@ RUN setx CXX "x86_64-w64-mingw32-g++"
 
 RUN go build -buildmode=c-shared -o out_newrelic.dll .
 
-#######################################################
-# Runtime Image - Fluent Bit image + include our plugin
-#######################################################
-FROM fluent/fluent-bit:windows-${WINDOWS_VERSION}-${FLUENTBIT_VERSION} as runtime
+# =============================================================================
+# STAGE 2: builder
+# Build Fluent Bit from Source
+# =============================================================================
+FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS builder
 
 ARG FLUENTBIT_VERSION
-# Expose this env variable so that the version can be used in the helm chart
-ENV FBVERSION=${FLUENTBIT_VERSION}
+ENV chocolateyVersion=1.4.0
 
+# Install Chocolatey
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# Install Build Dependencies via Chocolatey
+# - git: to clone source
+# - openssl: required for build (replaces vcpkg)
+# - winflexbison3: required for fluent-bit build
+RUN choco install --yes --no-progress git openssl winflexbison3
+
+# Clone Fluent Bit Source
+WORKDIR /src
+RUN git clone -b v%FLUENTBIT_VERSION% https://github.com/fluent/fluent-bit .
+
+# Setup Visual Studio Build Tools (VS 2019)
+# We use the official bootstrapper for VS 2019 Build Tools
+WORKDIR /local
+ADD https://aka.ms/vs/16/release/vs_buildtools.exe /local/vs_buildtools.exe
+ADD https://aka.ms/vs/16/release/channel /local/VisualStudio.chman
+
+RUN Start-Process /local/vs_buildtools.exe `
+    -ArgumentList '--quiet ', '--wait ', '--norestart ', '--nocache', `
+    '--installPath C:\BuildTools', `
+    '--channelUri C:\local\VisualStudio.chman', `
+    '--installChannelUri C:\local\VisualStudio.chman', `
+    '--add Microsoft.VisualStudio.Workload.VCTools', `
+    '--includeRecommended' -NoNewWindow -Wait;
+
+# Configure Environment for Build
+RUN setx /M PATH "%PATH%;C:\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;C:\ProgramData\chocolatey\bin"
+
+# Build Fluent Bit
+WORKDIR /src/build
+
+# CMake Configuration
+# - We point OPENSSL_ROOT_DIR to the Chocolatey install location
+# - We explicitly specify the generator for VS 2019
+RUN cmake -G "Visual Studio 16 2019" -A x64 `
+    -DOPENSSL_ROOT_DIR="C:\Program Files\OpenSSL-Win64" `
+    -DCMAKE_BUILD_TYPE=Release `
+    ../; `
+    cmake --build . --config Release;
+
+# Prepare Artifacts for Runtime Image
+WORKDIR /artifacts/bin
+RUN Copy-Item -Path /src/build/bin/Release/fluent-bit.exe -Destination .; `
+    Copy-Item -Path /src/build/bin/Release/fluent-bit.dll -Destination .; `
+    # Create configuration structure
+    New-Item -Path /artifacts/conf -ItemType Directory; `
+    Copy-Item /src/conf/fluent-bit-win32.conf /artifacts/conf/fluent-bit.conf; `
+    Copy-Item /src/conf/parsers*.conf /artifacts/conf/; `
+    Copy-Item /src/conf/plugins.conf /artifacts/conf/;
+
+# =============================================================================
+# STAGE 3: Runtime
+# Final Image
+# =============================================================================
+FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS runtime
+
+WORKDIR /fluent-bit/bin
+
+# 1. Copy Fluent Bit Binaries and Config from Builder
+COPY --from=builder /artifacts/bin /fluent-bit/bin
+COPY --from=builder /artifacts/conf /fluent-bit/conf
+
+# 2. Copy New Relic Plugin from nrBuilder
 COPY --from=nrBuilder /build/out_newrelic.dll /fluent-bit/bin/out_newrelic.dll
 
-CMD ["fluent-bit.exe", "-i", "dummy", "-o", "stdout", "-e", "/fluent-bit/bin/out_newrelic.dll"]
+# 3. Copy Visual C++ Redistributable DLLs (Required for OpenSSL/FluentBit)
+#    (Using the ones from the builder image's System32 to save downloading again)
+COPY --from=builder /Windows/System32/msvcp140.dll /fluent-bit/bin/
+COPY --from=builder /Windows/System32/vccorlib140.dll /fluent-bit/bin/
+COPY --from=builder /Windows/System32/vcruntime140.dll /fluent-bit/bin/
+
+# 4. Copy OpenSSL DLLs (CRITICAL FIX)
+#    These are required for Fluent Bit to load the New Relic plugin (HTTPS)
+#    We assume OpenSSL 3.x from Chocolatey.
+COPY --from=builder ["C:/Program Files/OpenSSL-Win64/bin/libssl-3-x64.dll", "."]
+COPY --from=builder ["C:/Program Files/OpenSSL-Win64/bin/libcrypto-3-x64.dll", "."]
+
+# Set Path
+RUN setx /M PATH "%PATH%;C:\fluent-bit\bin"
+
+EXPOSE 2020
+
+ENTRYPOINT [ "fluent-bit.exe" ]
+CMD ["fluent-bit.exe", "-c", "C:\\fluent-bit\\conf\\fluent-bit.conf"]
