@@ -29,7 +29,7 @@ RUN setx PATH "%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
 
 # Install Base Dependencies
 RUN choco install --yes --no-progress mingw git
-RUN choco install --yes --no-progress golang --version=1.24.9
+RUN choco install --yes --no-progress golang --version=1.24.11
 
 # Put the path before the other paths so that MinGW shadows Windows commands.
 RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
