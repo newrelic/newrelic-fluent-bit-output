@@ -80,11 +80,16 @@ RUN $env:PATH = $env:PATH + ';C:\BuildTools\Common7\IDE\CommonExtensions\Microso
 # 3. Clone Source (Light Step - Frequent Changes)
 ARG FLUENTBIT_VERSION=4.2.0
 WORKDIR /src
-# We patch multiple files now (nest.c, ml.c, ml_concat.c) to define __FLB_FILENAME__
+# We patch multiple files now (nest, multiline, modify) to define __FLB_FILENAME__
 # This resolves error C2065: '__FLB_FILENAME__': undeclared identifier
 RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
     git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .; `
-    $filesToPatch = @('plugins\filter_nest\nest.c', 'plugins\filter_multiline\ml.c', 'plugins\filter_multiline\ml_concat.c'); `
+    $filesToPatch = @( `
+        'plugins\filter_nest\nest.c', `
+        'plugins\filter_multiline\ml.c', `
+        'plugins\filter_multiline\ml_concat.c', `
+        'plugins\filter_modify\modify.c' `
+    ); `
     foreach ($file in $filesToPatch) { `
         if (Test-Path $file) { `
             Write-Host "Patching $file..."; `
