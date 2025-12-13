@@ -80,23 +80,18 @@ RUN $env:PATH = $env:PATH + ';C:\BuildTools\Common7\IDE\CommonExtensions\Microso
 # 3. Clone Source (Light Step - Frequent Changes)
 ARG FLUENTBIT_VERSION=4.2.0
 WORKDIR /src
-# We patch multiple files now to define __FLB_FILENAME__ which is missing in v4.2.0 Windows builds for some plugins
+# We apply a GLOBAL patch to all plugins to fix the missing __FLB_FILENAME__ definition.
+# This loop finds all .c files in plugins/ that use __FLB_FILENAME__ and prepends the definition if missing.
 RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
     git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .; `
-    $filesToPatch = @( `
-        'plugins\filter_nest\nest.c', `
-        'plugins\filter_multiline\ml.c', `
-        'plugins\filter_multiline\ml_concat.c', `
-        'plugins\filter_modify\modify.c', `
-        'plugins\filter_type_converter\type_converter.c' `
-    ); `
-    foreach ($file in $filesToPatch) { `
-        if (Test-Path $file) { `
-            Write-Host "Patching $file..."; `
-            $content = Get-Content $file -Raw; `
-            $n = [Environment]::NewLine; `
-            $header = '#ifndef __FLB_FILENAME__' + $n + '#define __FLB_FILENAME__ __FILE__' + $n + '#endif' + $n; `
-            Set-Content -Path $file -Value ($header + $content); `
+    $n = [Environment]::NewLine; `
+    $header = '#ifndef __FLB_FILENAME__' + $n + '#define __FLB_FILENAME__ __FILE__' + $n + '#endif' + $n; `
+    Write-Host "Applying global patch for __FLB_FILENAME__..."; `
+    Get-ChildItem -Path 'plugins' -Recurse -Filter '*.c' | ForEach-Object { `
+        $content = Get-Content $_.FullName -Raw; `
+        if ($content -match '__FLB_FILENAME__' -and $content -notmatch '#define __FLB_FILENAME__') { `
+            Write-Host "Patching $($_.FullName)..."; `
+            Set-Content -Path $_.FullName -Value ($header + $content); `
         } `
     }
 
