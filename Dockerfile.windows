@@ -9,6 +9,9 @@ ARG WINDOWS_VERSION=2019
 # =============================================================================
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS nrBuilder
 
+# SWITCH TO POWERSHELL
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
 WORKDIR /build
 
 USER ContainerAdministrator
@@ -23,8 +26,9 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
 RUN choco install --yes --no-progress mingw git; `
     choco install --yes --no-progress golang --version=1.23.6
 
-# Set Path for MinGW
-RUN setx PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;%PATH%"
+# Set Path for MinGW (PowerShell Syntax)
+RUN $env:PATH = 'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;' + $env:PATH; `
+    [Environment]::SetEnvironmentVariable('PATH', $env:PATH, [EnvironmentVariableTarget]::Machine)
 
 # Compile the newrelic-fluent-bit-output plugin
 COPY Makefile go.* *.go ./
@@ -34,13 +38,12 @@ COPY nrclient/ ./nrclient
 COPY record/ ./record
 COPY utils/ ./utils
 
-ENV SOURCE docker
-
-RUN setx CGO_ENABLED "1"
-RUN setx GOOS "windows"
-RUN setx GOARCH "amd64"
-RUN setx CC "x86_64-w64-mingw32-gcc"
-RUN setx CXX "x86_64-w64-mingw32-g++"
+ENV SOURCE=docker
+ENV CGO_ENABLED=1
+ENV GOOS=windows
+ENV GOARCH=amd64
+ENV CC=x86_64-w64-mingw32-gcc
+ENV CXX=x86_64-w64-mingw32-g++
 
 RUN go build -buildmode=c-shared -o out_newrelic.dll .
 
@@ -49,6 +52,9 @@ RUN go build -buildmode=c-shared -o out_newrelic.dll .
 # Build Fluent Bit from Source
 # =============================================================================
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS builder
+
+# SWITCH TO POWERSHELL
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 ARG FLUENTBIT_VERSION
 ENV chocolateyVersion=1.4.0
@@ -59,17 +65,13 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
     iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
 # Install Build Dependencies via Chocolatey
-# - git: to clone source
-# - openssl: required for build (replaces vcpkg)
-# - winflexbison3: required for fluent-bit build
 RUN choco install --yes --no-progress git openssl winflexbison3
 
 # Clone Fluent Bit Source
 WORKDIR /src
-RUN git clone -b v%FLUENTBIT_VERSION% https://github.com/fluent/fluent-bit .
+RUN git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .
 
 # Setup Visual Studio Build Tools (VS 2019)
-# We use the official bootstrapper for VS 2019 Build Tools
 WORKDIR /local
 ADD https://aka.ms/vs/16/release/vs_buildtools.exe /local/vs_buildtools.exe
 ADD https://aka.ms/vs/16/release/channel /local/VisualStudio.chman
@@ -82,17 +84,16 @@ RUN Start-Process /local/vs_buildtools.exe `
     '--add Microsoft.VisualStudio.Workload.VCTools', `
     '--includeRecommended' -NoNewWindow -Wait;
 
-# Configure Environment for Build
-RUN setx /M PATH "%PATH%;C:\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;C:\ProgramData\chocolatey\bin"
+# Configure Environment for Build (PowerShell Syntax)
+RUN $env:PATH = $env:PATH + ';C:\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;C:\ProgramData\chocolatey\bin'; `
+    [Environment]::SetEnvironmentVariable('PATH', $env:PATH, [EnvironmentVariableTarget]::Machine)
 
 # Build Fluent Bit
 WORKDIR /src/build
 
-# CMake Configuration
-# - We point OPENSSL_ROOT_DIR to the Chocolatey install location
-# - We explicitly specify the generator for VS 2019
-RUN cmake -G "Visual Studio 16 2019" -A x64 `
-    -DOPENSSL_ROOT_DIR="C:\Program Files\OpenSSL-Win64" `
+# FIX: Use single quotes for strings with spaces to prevent PowerShell parsing errors
+RUN cmake -G 'Visual Studio 16 2019' -A x64 `
+    -DOPENSSL_ROOT_DIR='C:\Program Files\OpenSSL-Win64' `
     -DCMAKE_BUILD_TYPE=Release `
     ../; `
     cmake --build . --config Release;
@@ -101,7 +102,6 @@ RUN cmake -G "Visual Studio 16 2019" -A x64 `
 WORKDIR /artifacts/bin
 RUN Copy-Item -Path /src/build/bin/Release/fluent-bit.exe -Destination .; `
     Copy-Item -Path /src/build/bin/Release/fluent-bit.dll -Destination .; `
-    # Create configuration structure
     New-Item -Path /artifacts/conf -ItemType Directory; `
     Copy-Item /src/conf/fluent-bit-win32.conf /artifacts/conf/fluent-bit.conf; `
     Copy-Item /src/conf/parsers*.conf /artifacts/conf/; `
@@ -113,6 +113,9 @@ RUN Copy-Item -Path /src/build/bin/Release/fluent-bit.exe -Destination .; `
 # =============================================================================
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS runtime
 
+# SWITCH TO POWERSHELL for consistency
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
 WORKDIR /fluent-bit/bin
 
 # 1. Copy Fluent Bit Binaries and Config from Builder
@@ -122,20 +125,18 @@ COPY --from=builder /artifacts/conf /fluent-bit/conf
 # 2. Copy New Relic Plugin from nrBuilder
 COPY --from=nrBuilder /build/out_newrelic.dll /fluent-bit/bin/out_newrelic.dll
 
-# 3. Copy Visual C++ Redistributable DLLs (Required for OpenSSL/FluentBit)
-#    (Using the ones from the builder image's System32 to save downloading again)
+# 3. Copy Visual C++ Redistributable DLLs
 COPY --from=builder /Windows/System32/msvcp140.dll /fluent-bit/bin/
 COPY --from=builder /Windows/System32/vccorlib140.dll /fluent-bit/bin/
 COPY --from=builder /Windows/System32/vcruntime140.dll /fluent-bit/bin/
 
-# 4. Copy OpenSSL DLLs (CRITICAL FIX)
-#    These are required for Fluent Bit to load the New Relic plugin (HTTPS)
-#    We assume OpenSSL 3.x from Chocolatey.
+# 4. Copy OpenSSL DLLs
 COPY --from=builder ["C:/Program Files/OpenSSL-Win64/bin/libssl-3-x64.dll", "."]
 COPY --from=builder ["C:/Program Files/OpenSSL-Win64/bin/libcrypto-3-x64.dll", "."]
 
-# Set Path
-RUN setx /M PATH "%PATH%;C:\fluent-bit\bin"
+# Set Path (PowerShell Syntax)
+RUN $env:PATH = $env:PATH + ';C:\fluent-bit\bin'; `
+    [Environment]::SetEnvironmentVariable('PATH', $env:PATH, [EnvironmentVariableTarget]::Machine)
 
 EXPOSE 2020
 
