@@ -52,8 +52,8 @@ SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPref
 
 ENV chocolateyVersion=1.4.0
 
-# 1. Install Dependencies & OpenSSL (Fast Step)
-# We move OpenSSL to C:\OpenSSL to completely eliminate "Space in Path" errors in CMake
+# 1. Install Dependencies & OpenSSL
+# We move OpenSSL to C:\OpenSSL to avoid space-in-path issues.
 RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
     iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')); `
@@ -85,40 +85,31 @@ RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
 
 # 4. Build
 WORKDIR /src/build
-# We manually find the libraries and pass them to CMake to avoid auto-discovery failures
+# FIX: Flatten the OpenSSL lib directory.
+# CMake often fails to find libraries if they are nested in C:\OpenSSL\lib\VC\x64\MD\...
+# We copy all .lib files to C:\OpenSSL\lib root so CMake finds them immediately.
 RUN $opensslRoot = 'C:\OpenSSL'; `
-    Write-Host "Finding OpenSSL libraries in $opensslRoot..."; `
-    $cryptoLib = Get-ChildItem -Path $opensslRoot -Recurse -Filter 'libcrypto*.lib' | Sort-Object Length -Descending | Select-Object -First 1; `
-    $sslLib = Get-ChildItem -Path $opensslRoot -Recurse -Filter 'libssl*.lib' | Sort-Object Length -Descending | Select-Object -First 1; `
-    if (-not $cryptoLib -or -not $sslLib) { `
-        Write-Error 'Could not find OpenSSL libraries inside C:\OpenSSL'; `
-        exit 1; `
-    } `
-    $cryptoLibPath = $cryptoLib.FullName -replace '\\', '/'; `
-    $sslLibPath = $sslLib.FullName -replace '\\', '/'; `
-    Write-Host "Found Crypto Lib: $cryptoLibPath"; `
-    Write-Host "Found SSL Lib:    $sslLibPath"; `
+    Write-Host "Flattening OpenSSL library structure in $opensslRoot..."; `
+    Get-ChildItem -Path "$opensslRoot\lib" -Recurse -Filter '*.lib' | Copy-Item -Destination "$opensslRoot\lib" -Force; `
     `
     cmake -G 'Visual Studio 16 2019' -A x64 `
     -DOPENSSL_ROOT_DIR=C:/OpenSSL `
     -DOPENSSL_INCLUDE_DIR=C:/OpenSSL/include `
-    "-DOPENSSL_CRYPTO_LIBRARY=$cryptoLibPath" `
-    "-DOPENSSL_SSL_LIBRARY=$sslLibPath" `
     -DOPENSSL_USE_STATIC_LIBS=OFF `
     -DCMAKE_BUILD_TYPE=Release `
     ..; `
     cmake --build . --config Release;
 
 # Prepare Artifacts
-# We also dynamically find the OpenSSL DLLs to copy to the artifacts bin
+# We dynamically find the OpenSSL DLLs (needed for runtime)
 WORKDIR /artifacts/bin
 RUN Copy-Item -Path /src/build/bin/Release/fluent-bit.exe -Destination .; `
     Copy-Item -Path /src/build/bin/Release/fluent-bit.dll -Destination .; `
     $opensslRoot = 'C:\OpenSSL'; `
     $cryptoDll = Get-ChildItem -Path $opensslRoot -Recurse -Filter 'libcrypto*.dll' | Sort-Object Length -Descending | Select-Object -First 1; `
     $sslDll = Get-ChildItem -Path $opensslRoot -Recurse -Filter 'libssl*.dll' | Sort-Object Length -Descending | Select-Object -First 1; `
-    Copy-Item -Path $cryptoDll.FullName -Destination .; `
-    Copy-Item -Path $sslDll.FullName -Destination .; `
+    if ($cryptoDll) { Copy-Item -Path $cryptoDll.FullName -Destination .; } `
+    if ($sslDll) { Copy-Item -Path $sslDll.FullName -Destination .; } `
     New-Item -Path /artifacts/conf -ItemType Directory; `
     Copy-Item /src/conf/fluent-bit-win32.conf /artifacts/conf/fluent-bit.conf; `
     Copy-Item /src/conf/parsers*.conf /artifacts/conf/; `
