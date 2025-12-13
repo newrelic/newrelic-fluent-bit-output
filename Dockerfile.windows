@@ -1,6 +1,5 @@
 # escape=`
 
-ARG FLUENTBIT_VERSION=4.2.0
 ARG WINDOWS_VERSION=2019
 
 # =============================================================================
@@ -9,28 +8,24 @@ ARG WINDOWS_VERSION=2019
 # =============================================================================
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS nrBuilder
 
-# SWITCH TO POWERSHELL
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 WORKDIR /build
-
 USER ContainerAdministrator
 
-# Install Chocolatey
+# Install Chocolatey & Deps
 ENV chocolateyVersion=1.4.0
 RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
-    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-
-# Install Base Dependencies (Git, MinGW, Go)
-RUN choco install --yes --no-progress mingw git; `
+    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')); `
+    choco install --yes --no-progress mingw git; `
     choco install --yes --no-progress golang --version=1.23.6
 
-# Set Path for MinGW (PowerShell Syntax)
+# Set Path for MinGW
 RUN $env:PATH = 'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw\bin;' + $env:PATH; `
     [Environment]::SetEnvironmentVariable('PATH', $env:PATH, [EnvironmentVariableTarget]::Machine)
 
-# Compile the newrelic-fluent-bit-output plugin
+# Compile Plugin
 COPY Makefile go.* *.go ./
 COPY config/ ./config
 COPY metrics/ ./metrics
@@ -53,25 +48,19 @@ RUN go build -buildmode=c-shared -o out_newrelic.dll .
 # =============================================================================
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS builder
 
-# SWITCH TO POWERSHELL
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-ARG FLUENTBIT_VERSION
 ENV chocolateyVersion=1.4.0
 
-# Install Chocolatey
+# 1. Install Dependencies & OpenSSL (Fast Step)
+# We move OpenSSL to C:\OpenSSL to completely eliminate "Space in Path" errors in CMake
 RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
-    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')); `
+    choco install --yes --no-progress git openssl winflexbison3; `
+    Move-Item -Path 'C:\Program Files\OpenSSL-Win64' -Destination 'C:\OpenSSL' -Force
 
-# Install Build Dependencies via Chocolatey
-RUN choco install --yes --no-progress git openssl winflexbison3
-
-# Clone Fluent Bit Source
-WORKDIR /src
-RUN git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .
-
-# Setup Visual Studio Build Tools (VS 2019)
+# 2. Setup Visual Studio Build Tools (Heavy Step - CACHED)
 WORKDIR /local
 ADD https://aka.ms/vs/16/release/vs_buildtools.exe /local/vs_buildtools.exe
 ADD https://aka.ms/vs/16/release/channel /local/VisualStudio.chman
@@ -84,24 +73,52 @@ RUN Start-Process /local/vs_buildtools.exe `
     '--add Microsoft.VisualStudio.Workload.VCTools', `
     '--includeRecommended' -NoNewWindow -Wait;
 
-# Configure Environment for Build (PowerShell Syntax)
+# Configure Environment
 RUN $env:PATH = $env:PATH + ';C:\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;C:\ProgramData\chocolatey\bin'; `
     [Environment]::SetEnvironmentVariable('PATH', $env:PATH, [EnvironmentVariableTarget]::Machine)
 
-# Build Fluent Bit
-WORKDIR /src/build
+# 3. Clone Source (Light Step - Frequent Changes)
+ARG FLUENTBIT_VERSION=4.2.0
+WORKDIR /src
+RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
+    git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .
 
-# FIX: Use single quotes for strings with spaces to prevent PowerShell parsing errors
-RUN cmake -G 'Visual Studio 16 2019' -A x64 `
-    -DOPENSSL_ROOT_DIR='C:\Program Files\OpenSSL-Win64' `
+# 4. Build
+WORKDIR /src/build
+# We manually find the libraries and pass them to CMake to avoid auto-discovery failures
+RUN $opensslRoot = 'C:\OpenSSL'; `
+    Write-Host "Finding OpenSSL libraries in $opensslRoot..."; `
+    $cryptoLib = Get-ChildItem -Path $opensslRoot -Recurse -Filter 'libcrypto*.lib' | Sort-Object Length -Descending | Select-Object -First 1; `
+    $sslLib = Get-ChildItem -Path $opensslRoot -Recurse -Filter 'libssl*.lib' | Sort-Object Length -Descending | Select-Object -First 1; `
+    if (-not $cryptoLib -or -not $sslLib) { `
+        Write-Error 'Could not find OpenSSL libraries inside C:\OpenSSL'; `
+        exit 1; `
+    } `
+    $cryptoLibPath = $cryptoLib.FullName -replace '\\', '/'; `
+    $sslLibPath = $sslLib.FullName -replace '\\', '/'; `
+    Write-Host "Found Crypto Lib: $cryptoLibPath"; `
+    Write-Host "Found SSL Lib:    $sslLibPath"; `
+    `
+    cmake -G 'Visual Studio 16 2019' -A x64 `
+    -DOPENSSL_ROOT_DIR=C:/OpenSSL `
+    -DOPENSSL_INCLUDE_DIR=C:/OpenSSL/include `
+    "-DOPENSSL_CRYPTO_LIBRARY=$cryptoLibPath" `
+    "-DOPENSSL_SSL_LIBRARY=$sslLibPath" `
+    -DOPENSSL_USE_STATIC_LIBS=OFF `
     -DCMAKE_BUILD_TYPE=Release `
-    ../; `
+    ..; `
     cmake --build . --config Release;
 
-# Prepare Artifacts for Runtime Image
+# Prepare Artifacts
+# We also dynamically find the OpenSSL DLLs to copy to the artifacts bin
 WORKDIR /artifacts/bin
 RUN Copy-Item -Path /src/build/bin/Release/fluent-bit.exe -Destination .; `
     Copy-Item -Path /src/build/bin/Release/fluent-bit.dll -Destination .; `
+    $opensslRoot = 'C:\OpenSSL'; `
+    $cryptoDll = Get-ChildItem -Path $opensslRoot -Recurse -Filter 'libcrypto*.dll' | Sort-Object Length -Descending | Select-Object -First 1; `
+    $sslDll = Get-ChildItem -Path $opensslRoot -Recurse -Filter 'libssl*.dll' | Sort-Object Length -Descending | Select-Object -First 1; `
+    Copy-Item -Path $cryptoDll.FullName -Destination .; `
+    Copy-Item -Path $sslDll.FullName -Destination .; `
     New-Item -Path /artifacts/conf -ItemType Directory; `
     Copy-Item /src/conf/fluent-bit-win32.conf /artifacts/conf/fluent-bit.conf; `
     Copy-Item /src/conf/parsers*.conf /artifacts/conf/; `
@@ -109,36 +126,26 @@ RUN Copy-Item -Path /src/build/bin/Release/fluent-bit.exe -Destination .; `
 
 # =============================================================================
 # STAGE 3: Runtime
-# Final Image
 # =============================================================================
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS runtime
 
-# SWITCH TO POWERSHELL for consistency
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 WORKDIR /fluent-bit/bin
 
-# 1. Copy Fluent Bit Binaries and Config from Builder
+# Copy everything (Fluent Bit + OpenSSL DLLs) from artifacts
 COPY --from=builder /artifacts/bin /fluent-bit/bin
 COPY --from=builder /artifacts/conf /fluent-bit/conf
-
-# 2. Copy New Relic Plugin from nrBuilder
 COPY --from=nrBuilder /build/out_newrelic.dll /fluent-bit/bin/out_newrelic.dll
 
-# 3. Copy Visual C++ Redistributable DLLs
+# Copy VS Redistributables
 COPY --from=builder /Windows/System32/msvcp140.dll /fluent-bit/bin/
 COPY --from=builder /Windows/System32/vccorlib140.dll /fluent-bit/bin/
 COPY --from=builder /Windows/System32/vcruntime140.dll /fluent-bit/bin/
 
-# 4. Copy OpenSSL DLLs
-COPY --from=builder ["C:/Program Files/OpenSSL-Win64/bin/libssl-3-x64.dll", "."]
-COPY --from=builder ["C:/Program Files/OpenSSL-Win64/bin/libcrypto-3-x64.dll", "."]
-
-# Set Path (PowerShell Syntax)
 RUN $env:PATH = $env:PATH + ';C:\fluent-bit\bin'; `
     [Environment]::SetEnvironmentVariable('PATH', $env:PATH, [EnvironmentVariableTarget]::Machine)
 
 EXPOSE 2020
-
 ENTRYPOINT [ "fluent-bit.exe" ]
 CMD ["fluent-bit.exe", "-c", "C:\\fluent-bit\\conf\\fluent-bit.conf"]
