@@ -81,7 +81,16 @@ RUN $env:PATH = $env:PATH + ';C:\BuildTools\Common7\IDE\CommonExtensions\Microso
 ARG FLUENTBIT_VERSION=4.2.0
 WORKDIR /src
 RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
-    git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .
+    git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .; `
+    # PATCH: Fix missing __FLB_FILENAME__ definition in filter_nest/nest.c
+    # This prevents error C2065 during compilation
+    $nestFile = 'plugins\filter_nest\nest.c'; `
+    if (Test-Path $nestFile) { `
+        Write-Host "Patching $nestFile..."; `
+        $content = Get-Content $nestFile -Raw; `
+        $header = "#ifndef __FLB_FILENAME__`r`n#define __FLB_FILENAME__ __FILE__`r`n#endif`r`n"; `
+        Set-Content -Path $nestFile -Value ($header + $content); `
+    }
 
 # 4. Build
 WORKDIR /src/build
