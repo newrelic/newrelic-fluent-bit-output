@@ -80,23 +80,24 @@ RUN $env:PATH = $env:PATH + ';C:\BuildTools\Common7\IDE\CommonExtensions\Microso
 # 3. Clone Source (Light Step - Frequent Changes)
 ARG FLUENTBIT_VERSION=4.2.0
 WORKDIR /src
-# We construct the header string using proper concatenation to avoid escape/quoting issues in Docker/PowerShell
+# We patch multiple files now (nest.c, ml.c, ml_concat.c) to define __FLB_FILENAME__
+# This resolves error C2065: '__FLB_FILENAME__': undeclared identifier
 RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
     git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .; `
-    $nestFile = 'plugins\filter_nest\nest.c'; `
-    if (Test-Path $nestFile) { `
-        Write-Host "Patching $nestFile..."; `
-        $content = Get-Content $nestFile -Raw; `
-        $n = [Environment]::NewLine; `
-        $header = '#ifndef __FLB_FILENAME__' + $n + '#define __FLB_FILENAME__ __FILE__' + $n + '#endif' + $n; `
-        Set-Content -Path $nestFile -Value ($header + $content); `
+    $filesToPatch = @('plugins\filter_nest\nest.c', 'plugins\filter_multiline\ml.c', 'plugins\filter_multiline\ml_concat.c'); `
+    foreach ($file in $filesToPatch) { `
+        if (Test-Path $file) { `
+            Write-Host "Patching $file..."; `
+            $content = Get-Content $file -Raw; `
+            $n = [Environment]::NewLine; `
+            $header = '#ifndef __FLB_FILENAME__' + $n + '#define __FLB_FILENAME__ __FILE__' + $n + '#endif' + $n; `
+            Set-Content -Path $file -Value ($header + $content); `
+        } `
     }
 
 # 4. Build
 WORKDIR /src/build
 # FIX: Flatten the OpenSSL lib directory.
-# CMake often fails to find libraries if they are nested in C:\OpenSSL\lib\VC\x64\MD\...
-# We copy all .lib files to C:\OpenSSL\lib root so CMake finds them immediately.
 RUN $opensslRoot = 'C:\OpenSSL'; `
     Write-Host "Flattening OpenSSL library structure in $opensslRoot..."; `
     Get-ChildItem -Path "$opensslRoot\lib" -Recurse -Filter '*.lib' | Copy-Item -Destination "$opensslRoot\lib" -Force; `
