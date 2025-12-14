@@ -80,13 +80,14 @@ RUN $env:PATH = $env:PATH + ';C:\BuildTools\Common7\IDE\CommonExtensions\Microso
 # 3. Clone Source (Light Step - Frequent Changes)
 ARG FLUENTBIT_VERSION=4.2.0
 WORKDIR /src
-# We apply a GLOBAL patch using System.IO.File for reliability.
-# This scans ALL plugins for __FLB_FILENAME__ and fixes them.
+# GLOBAL PATCH for __FLB_FILENAME__
+# We use System.IO.File for reliable reading/writing.
+# The $header string construction is now strictly valid PowerShell (no escaped quotes).
 RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
     git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .; `
     Write-Host "Applying global patch for __FLB_FILENAME__..."; `
     $files = Get-ChildItem -Path 'plugins' -Recurse -Filter '*.c'; `
-    $header = \"#ifndef __FLB_FILENAME__`r`n#define __FLB_FILENAME__ __FILE__`r`n#endif`r`n\"; `
+    $header = '#ifndef __FLB_FILENAME__' + [Environment]::NewLine + '#define __FLB_FILENAME__ __FILE__' + [Environment]::NewLine + '#endif' + [Environment]::NewLine; `
     foreach ($f in $files) { `
         $path = $f.FullName; `
         $content = [System.IO.File]::ReadAllText($path); `
