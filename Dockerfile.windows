@@ -81,8 +81,8 @@ RUN $env:PATH = $env:PATH + ';C:\BuildTools\Common7\IDE\CommonExtensions\Microso
 ARG FLUENTBIT_VERSION=4.2.0
 WORKDIR /src
 # GLOBAL PATCH for __FLB_FILENAME__
-# We use System.IO.File for reliable reading/writing.
-# The $header string construction is now strictly valid PowerShell (no escaped quotes).
+# FIX: We now patch ALL .c files in plugins/, not just ones explicitly containing the string.
+# This fixes plugins like nest.c that use macros implicitly requiring the definition.
 RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
     git clone -b v$env:FLUENTBIT_VERSION https://github.com/fluent/fluent-bit .; `
     Write-Host "Applying global patch for __FLB_FILENAME__..."; `
@@ -91,7 +91,7 @@ RUN Write-Host "Cloning Fluent Bit version: v$env:FLUENTBIT_VERSION"; `
     foreach ($f in $files) { `
         $path = $f.FullName; `
         $content = [System.IO.File]::ReadAllText($path); `
-        if ($content.Contains('__FLB_FILENAME__') -and -not $content.Contains('#define __FLB_FILENAME__')) { `
+        if (-not $content.Contains('#define __FLB_FILENAME__')) { `
             Write-Host "Patching $path"; `
             [System.IO.File]::WriteAllText($path, $header + $content); `
         } `
