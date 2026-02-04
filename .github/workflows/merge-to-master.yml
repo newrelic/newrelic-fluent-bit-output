@@ -12,6 +12,9 @@ jobs:
     # AlmaLinux 8 has GLIBC 2.28 (exact match for RHEL8) and is supported until May 2029
     # All builds happen inside the AlmaLinux 8 container, so host OS version doesn't affect GLIBC
     runs-on: ubuntu-24.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.set_version.outputs.version }}
     container:
       image: almalinux:8
       options: --user root
@@ -38,10 +41,12 @@ jobs:
         run: go test ./...
 
       - name: Determine new plugin version
+        id: set_version
         run: |
           VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
           echo "Determined version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Install mingw, arm32 and arm64 compilers
         run: |
@@ -238,12 +243,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
-      - name: Determine plugin version
-        run: |
-          VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
-          echo "Determined version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
       - name: Install ARM cross-compilers
         run: |
           sudo apt-get update
@@ -255,30 +254,14 @@ jobs:
       - name: Build project (Linux arm/v7)
         run: env make linux/arm/v7
 
-      - name: Get release upload URL
-        id: get_release
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const releases = await github.rest.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            const release = releases.data.find(r => r.tag_name === `v${process.env.VERSION}`);
-            if (!release) {
-              core.setFailed(`Release v${process.env.VERSION} not found`);
-              return;
-            }
-            core.setOutput('upload_url', release.upload_url);
-
       - name: Include linux-arm64 artifact in release
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm64-${{ needs.cd.outputs.version }}.so
+          asset_name: out_newrelic-linux-arm64-${{ needs.cd.outputs.version }}.so
           asset_content_type: application/octet-stream
 
       - name: Include linux-arm artifact in release
@@ -286,9 +269,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm-${{ needs.cd.outputs.version }}.so
+          asset_name: out_newrelic-linux-arm-${{ needs.cd.outputs.version }}.so
           asset_content_type: application/octet-stream
 
   windows-docker-images:
