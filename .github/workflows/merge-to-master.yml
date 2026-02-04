@@ -233,6 +233,8 @@ jobs:
     # ARM builds on Ubuntu 24.04 (GLIBC 2.39) - not RHEL8 compatible
     # Most ARM Linux systems use newer GLIBC anyway
     runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.cd.outputs.version }}
 
     steps:
       - name: Set up Go 1.25.6
