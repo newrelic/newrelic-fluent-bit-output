@@ -224,6 +224,7 @@ jobs:
 
   build-arm:
     name: Build ARM binaries
+    needs: cd  # Wait for main job to create release first
     # ARM builds on Ubuntu 24.04 (GLIBC 2.39) - not RHEL8 compatible
     # Most ARM Linux systems use newer GLIBC anyway
     runs-on: ubuntu-24.04
