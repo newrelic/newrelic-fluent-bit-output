@@ -41,7 +41,8 @@ jobs:
               yum install -y git make gcc gcc-c++ diffutils wget tar glibc-devel
               
               # Install EPEL and mingw compilers for Windows cross-compilation
-              yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+              # Amazon Linux 2 uses amazon-linux-extras for EPEL, not EPEL 7 RPM
+              amazon-linux-extras install epel -y
               yum install -y mingw64-gcc mingw32-gcc
               
               # Install Go 1.25.6
