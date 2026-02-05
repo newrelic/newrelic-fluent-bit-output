@@ -3,18 +3,34 @@ name: New Relic Fluent Bit Output Plugin - Merge to master
 on:
   push:
     branches:
-      - master
+      - NR-517619-rhel8-support
 
 jobs:
   cd:
     name: Continuous Delivery pipeline
+    # Using Ubuntu 24.04 with Amazon Linux 2 container to ensure GLIBC 2.26 compatibility
+    # Amazon Linux 2 has GLIBC 2.26, which works on both AL2 (2.26) and RHEL8 (2.28)
+    # Supported until June 2025, covers the oldest target system (Amazon Linux 2)
+    # All builds happen inside the Amazon Linux 2 container, so host OS version doesn't affect GLIBC
     runs-on: ubuntu-24.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.set_version.outputs.version }}
+    container:
+      image: amazonlinux:2
+      options: --user root
 
     steps:
-      - name: Set up Go 1.23.6
-        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
-        with:
-          go-version: '1.23.6'
+      - name: Install build dependencies
+        run: yum install -y git make gcc gcc-c++ diffutils wget tar glibc-devel
+
+      - name: Install Go 1.25.6
+        run: |
+          cd /tmp
+          wget -q https://go.dev/dl/go1.25.6.linux-amd64.tar.gz
+          tar -C /usr/local -xzf go1.25.6.linux-amd64.tar.gz
+          ln -sf /usr/local/go/bin/go /usr/bin/go
+          ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt
 
       - name: Check go version
         run: go version
@@ -26,16 +42,19 @@ jobs:
         run: go test ./...
 
       - name: Determine new plugin version
+        id: set_version
         run: |
           VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
           echo "Determined version: $VERSION"
-          # After the following command, the VERSION variable is available via the "env" command
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Install mingw, arm32 and arm64 compilers
+      - name: Install mingw compilers
         run: |
-          sudo apt update
-          sudo apt install mingw-w64 g++-arm-linux-gnueabihf g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+          yum install -y mingw64-gcc mingw32-gcc
+          # Note: ARM cross-compilers not readily available in Amazon Linux 2 repos
+          # ARM builds will be done separately on Ubuntu (see build-arm job below)
 
       - name: Build project (Linux amd64)
         run: env make linux/amd64
@@ -46,124 +65,126 @@ jobs:
       - name: Build project (Windows amd64)
         run: env make windows/amd64
 
-      - name: Build project (Linux arm)
-        run: env make linux/arm/v7
+      # ARM cross-compilers not available in Amazon Linux 2 container
+      # ARM builds are done in separate job below on Ubuntu with cross-compilers
+      # - name: Build project (Linux arm)
+      #   run: env make linux/arm/v7
 
-      - name: Build project (Linux arm64)
-        run: env make linux/arm64
+      # - name: Build project (Linux arm64)
+      #   run: env make linux/arm64
 
       # The QEMU will include more platforms such as arm64 to docker buildx builder
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # v1
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # v1
 
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@afeb29a6e0d7d6258844ecabe6eba67d13443680 # master
+      # - name: Set up Docker Buildx
+      #   id: buildx
+      #   uses: docker/setup-buildx-action@afeb29a6e0d7d6258844ecabe6eba67d13443680 # master
 
       # Cache to be used by Docker Buildx
-      - name: Set up Docker Buildx's cache
-        uses: actions/cache@8492260343ad570701412c2f464a5877dc76bace # v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-buildx-
+      # - name: Set up Docker Buildx's cache
+      #   uses: actions/cache@8492260343ad570701412c2f464a5877dc76bace # v2
+      #   with:
+      #     path: /tmp/.buildx-cache
+      #     key: ${{ runner.os }}-buildx-${{ github.sha }}
+      #     restore-keys: ${{ runner.os }}-buildx-
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1
-        with:
-          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1
+      #   with:
+      #     username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
+      #     password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build and Publish Docker image
-        if: ${{ !contains(env.VERSION, 'beta') }}
-        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
-        env:
-          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}
-        with:
-          context: ./
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_REPOSITORY }}:latest
-            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          builder: ${{ steps.buildx.outputs.name }}
-          platforms: linux/amd64, linux/arm64, linux/arm/v7
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+      # - name: Build and Publish Docker image
+      #   if: ${{ !contains(env.VERSION, 'beta') }}
+      #   uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
+      #   env:
+      #     DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+      #     IMAGE_TAG: ${{ env.VERSION }}
+      #   with:
+      #     context: ./
+      #     file: ./Dockerfile
+      #     push: true
+      #     tags: |
+      #       ${{ env.DOCKERHUB_REPOSITORY }}:latest
+      #       ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+      #     builder: ${{ steps.buildx.outputs.name }}
+      #     platforms: linux/amd64, linux/arm64, linux/arm/v7
+      #     cache-from: type=local,src=/tmp/.buildx-cache
+      #     cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Build and Publish Docker beta image
-        if: ${{ contains(env.VERSION, 'beta') }}
-        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
-        env:
-          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}
-        with:
-          context: ./
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          builder: ${{ steps.buildx.outputs.name }}
-          platforms: linux/amd64, linux/arm64, linux/arm/v7
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+      # - name: Build and Publish Docker beta image
+      #   if: ${{ contains(env.VERSION, 'beta') }}
+      #   uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
+      #   env:
+      #     DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+      #     IMAGE_TAG: ${{ env.VERSION }}
+      #   with:
+      #     context: ./
+      #     file: ./Dockerfile
+      #     push: true
+      #     tags: |
+      #       ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+      #     builder: ${{ steps.buildx.outputs.name }}
+      #     platforms: linux/amd64, linux/arm64, linux/arm/v7
+      #     cache-from: type=local,src=/tmp/.buildx-cache
+      #     cache-to: type=local,dest=/tmp/.buildx-cache
           
-      - name: Inspect published Docker image
-        run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
+      # - name: Inspect published Docker image
+      #   run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
 
-      - name: Build and Publish Docker debug image
-        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
-        env:
-          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}-debug
-        with:
-          context: ./
-          file: ./Dockerfile_debug
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          builder: ${{ steps.buildx.outputs.name }}
-          platforms: linux/amd64, linux/arm64
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+      # - name: Build and Publish Docker debug image
+      #   uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
+      #   env:
+      #     DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+      #     IMAGE_TAG: ${{ env.VERSION }}-debug
+      #   with:
+      #     context: ./
+      #     file: ./Dockerfile_debug
+      #     push: true
+      #     tags: |
+      #       ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+      #     builder: ${{ steps.buildx.outputs.name }}
+      #     platforms: linux/amd64, linux/arm64
+      #     cache-from: type=local,src=/tmp/.buildx-cache
+      #     cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Inspect published Docker debug image
-        run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
+      # - name: Inspect published Docker debug image
+      #   run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 # v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 # v1
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-2
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@2fc7aceee09e9e4a7105c0d060c656fad0b4f63d # v1
+      # - name: Login to Amazon ECR
+      #   id: login-ecr
+      #   uses: aws-actions/amazon-ecr-login@2fc7aceee09e9e4a7105c0d060c656fad0b4f63d # v1
 
-      - name: Build and Publish Docker image for Firelens
-        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
-        env:
-          ECR_REGISTRY: 533243300146.dkr.ecr.us-east-2.amazonaws.com
-          ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
-          IMAGE_TAG: ${{ env.VERSION }}
-        with:
-          context: ./
-          file: ./Dockerfile_firelens
-          push: true
-          tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          builder: ${{ steps.buildx.outputs.name }}
-          # Firelens image only available for amd64 and arm64 architectures
-          platforms: linux/amd64, linux/arm64
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+      # - name: Build and Publish Docker image for Firelens
+      #   uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a # v2
+      #   env:
+      #     ECR_REGISTRY: 533243300146.dkr.ecr.us-east-2.amazonaws.com
+      #     ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
+      #     IMAGE_TAG: ${{ env.VERSION }}
+      #   with:
+      #     context: ./
+      #     file: ./Dockerfile_firelens
+      #     push: true
+      #     tags: |
+      #       ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+      #       ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+      #     builder: ${{ steps.buildx.outputs.name }}
+      #     # Firelens image only available for amd64 and arm64 architectures
+      #     platforms: linux/amd64, linux/arm64
+      #     cache-from: type=local,src=/tmp/.buildx-cache
+      #     cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Inspect published Docker Firelens image
-        run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
+      # - name: Inspect published Docker Firelens image
+      #   run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
 
       - name: Create Release
         id: create_release
@@ -173,7 +194,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
-          draft: false
+          draft: true
           prerelease: false
 
       - name: Include linux-amd64 artifact in release
@@ -206,14 +227,43 @@ jobs:
           asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
           asset_content_type: application/octet-stream
 
+  build-arm:
+    name: Build ARM binaries 
+    needs: cd  # Wait for main job to create release first
+    # ARM builds on Ubuntu 24.04 (GLIBC 2.39) - not AL2/RHEL8 compatible
+    # Most ARM Linux systems use newer GLIBC anyway, separate builds acceptable
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.cd.outputs.version }}
+
+    steps:
+      - name: Set up Go 1.25.6
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
+        with:
+          go-version: '1.25.6'
+
+      - name: Checkout code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+
+      - name: Install ARM cross-compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+
+      - name: Build project (Linux arm64)
+        run: env make linux/arm64
+
+      - name: Build project (Linux arm/v7)
+        run: env make linux/arm/v7
+
       - name: Include linux-arm64 artifact in release
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm64-${{ needs.cd.outputs.version }}.so
+          asset_name: out_newrelic-linux-arm64-${{ needs.cd.outputs.version }}.so
           asset_content_type: application/octet-stream
 
       - name: Include linux-arm artifact in release
@@ -221,9 +271,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm-${{ needs.cd.outputs.version }}.so
+          asset_name: out_newrelic-linux-arm-${{ needs.cd.outputs.version }}.so
           asset_content_type: application/octet-stream
 
   windows-docker-images:
