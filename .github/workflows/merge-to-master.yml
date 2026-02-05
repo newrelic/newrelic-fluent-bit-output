@@ -28,7 +28,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build in Amazon Linux 2 container (Linux amd64, Windows)
+      - name: Build in Amazon Linux 2 container (Linux amd64 only)
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
@@ -39,11 +39,6 @@ jobs:
               set -e
               # Install build dependencies
               yum install -y git make gcc gcc-c++ diffutils wget tar glibc-devel
-              
-              # Install EPEL and mingw compilers for Windows cross-compilation
-              # Amazon Linux 2 uses amazon-linux-extras for EPEL, not EPEL 7 RPM
-              amazon-linux-extras install epel -y
-              yum install -y mingw64-gcc mingw32-gcc
               
               # Install Go 1.25.6
               cd /tmp
@@ -63,10 +58,6 @@ jobs:
               # Build Linux amd64 (GLIBC 2.26 compatible)
               make linux/amd64
               
-              # Build Windows binaries
-              make windows/386
-              make windows/amd64
-              
               # Fix permissions (Docker creates files as root)
               chown -R $(id -u):$(id -g) .
             "
@@ -74,7 +65,6 @@ jobs:
       - name: Verify build artifacts
         run: |
           ls -lh out_newrelic-linux-amd64-${{ env.VERSION }}.so
-          ls -lh out_newrelic-windows-*-${{ env.VERSION }}.dll
 
       # ARM cross-compilers not available in Amazon Linux 2 container
       # ARM builds are done in separate job below on Ubuntu with cross-compilers
@@ -218,14 +208,42 @@ jobs:
           asset_name: out_newrelic-linux-amd64-${{ env.VERSION }}.so
           asset_content_type: application/octet-stream
 
+  build-windows:
+    name: Build Windows binaries
+    needs: cd  # Wait for main job to create release first
+    # Windows cross-compilation on Ubuntu with mingw
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.cd.outputs.version }}
+
+    steps:
+      - name: Set up Go 1.25.6
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
+        with:
+          go-version: '1.25.6'
+
+      - name: Checkout code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+
+      - name: Install mingw cross-compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 gcc-mingw-w64-i686 g++-mingw-w64-i686
+
+      - name: Build project (Windows amd64)
+        run: env make windows/amd64
+
+      - name: Build project (Windows 386)
+        run: env make windows/386
+
       - name: Include windows-amd64 artifact in release
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
-          asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-windows-amd64-${{ needs.cd.outputs.version }}.dll
+          asset_name: out_newrelic-windows-amd64-${{ needs.cd.outputs.version }}.dll
           asset_content_type: application/octet-stream
 
       - name: Include windows-386 artifact in release
@@ -233,9 +251,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
-          asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-windows-386-${{ needs.cd.outputs.version }}.dll
+          asset_name: out_newrelic-windows-386-${{ needs.cd.outputs.version }}.dll
           asset_content_type: application/octet-stream
 
   build-arm:
