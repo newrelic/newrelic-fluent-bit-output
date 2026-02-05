@@ -8,38 +8,17 @@ on:
 jobs:
   cd:
     name: Continuous Delivery pipeline
-    # Using Ubuntu 24.04 with Amazon Linux 2 container to ensure GLIBC 2.26 compatibility
+    # Using Ubuntu 24.04 as runner, builds happen in Amazon Linux 2 Docker container
     # Amazon Linux 2 has GLIBC 2.26, which works on both AL2 (2.26) and RHEL8 (2.28)
     # Supported until June 2025, covers the oldest target system (Amazon Linux 2)
-    # All builds happen inside the Amazon Linux 2 container, so host OS version doesn't affect GLIBC
     runs-on: ubuntu-24.04
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.set_version.outputs.version }}
-    container:
-      image: amazonlinux:2
-      options: --user root
 
     steps:
-      - name: Install build dependencies
-        run: yum install -y git make gcc gcc-c++ diffutils wget tar glibc-devel
-
-      - name: Install Go 1.25.6
-        run: |
-          cd /tmp
-          wget -q https://go.dev/dl/go1.25.6.linux-amd64.tar.gz
-          tar -C /usr/local -xzf go1.25.6.linux-amd64.tar.gz
-          ln -sf /usr/local/go/bin/go /usr/bin/go
-          ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt
-
-      - name: Check go version
-        run: go version
-
       - name: Checkout code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
-
-      - name: Run unit tests
-        run: go test ./...
 
       - name: Determine new plugin version
         id: set_version
@@ -49,21 +28,52 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Install mingw compilers
+      - name: Build in Amazon Linux 2 container (Linux amd64, Windows)
         run: |
-          yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-          yum install -y mingw64-gcc mingw32-gcc
-          # Note: ARM cross-compilers not readily available in Amazon Linux 2 repos
-          # ARM builds will be done separately on Ubuntu (see build-arm job below)
-
-      - name: Build project (Linux amd64)
-        run: env make linux/amd64
-
-      - name: Build project (Windows 386)
-        run: env make windows/386
-
-      - name: Build project (Windows amd64)
-        run: env make windows/amd64
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e VERSION=${{ env.VERSION }} \
+            amazonlinux:2 \
+            bash -c "
+              set -e
+              # Install build dependencies
+              yum install -y git make gcc gcc-c++ diffutils wget tar glibc-devel
+              
+              # Install EPEL and mingw compilers for Windows cross-compilation
+              yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+              yum install -y mingw64-gcc mingw32-gcc
+              
+              # Install Go 1.25.6
+              cd /tmp
+              wget -q https://go.dev/dl/go1.25.6.linux-amd64.tar.gz
+              tar -C /usr/local -xzf go1.25.6.linux-amd64.tar.gz
+              export PATH=/usr/local/go/bin:\$PATH
+              
+              # Verify Go version
+              go version
+              
+              # Go back to workspace
+              cd /workspace
+              
+              # Run tests
+              go test ./...
+              
+              # Build Linux amd64 (GLIBC 2.26 compatible)
+              make linux/amd64
+              
+              # Build Windows binaries
+              make windows/386
+              make windows/amd64
+              
+              # Fix permissions (Docker creates files as root)
+              chown -R $(id -u):$(id -g) .
+            "
+      
+      - name: Verify build artifacts
+        run: |
+          ls -lh out_newrelic-linux-amd64-${{ env.VERSION }}.so
+          ls -lh out_newrelic-windows-*-${{ env.VERSION }}.dll
 
       # ARM cross-compilers not available in Amazon Linux 2 container
       # ARM builds are done in separate job below on Ubuntu with cross-compilers
