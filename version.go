@@ -1,3 +1,5 @@
 package main
 
-const VERSION = "3.3.0"
+// Version follows semantic versioning
+// Use -beta suffix for testing releases before production
+const VERSION = "3.4.0"
