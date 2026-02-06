@@ -223,7 +223,7 @@ jobs:
 
       - name: Include linux-arm64 artifact in release
         uses: actions/upload-release-asset@v1
-        env:
+        env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
