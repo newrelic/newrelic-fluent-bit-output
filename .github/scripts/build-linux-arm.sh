@@ -47,7 +47,7 @@ $TIMEOUT_CMD docker run --rm \
     # Install build dependencies
     echo "Installing build dependencies..."
     echo "sslverify=0" >> /etc/yum.conf
-    yum install -y git make gcc gcc-c++ diffutils wget tar glibc-devel && yum clean all
+    yum install -y git make gcc gcc-c++ diffutils wget tar glibc-devel file binutils && yum clean all
     
     # Install Go for arm64
     echo "Installing Go $GO_VERSION for arm64..."
@@ -108,7 +108,7 @@ $TIMEOUT_CMD docker run --rm \
     # Install build dependencies
     echo "Installing build dependencies..."
     apt-get update
-    apt-get install -y git make gcc g++ wget tar ca-certificates
+    apt-get install -y git make gcc g++ wget tar ca-certificates file binutils
     apt-get clean
     
     # Install Go for arm
