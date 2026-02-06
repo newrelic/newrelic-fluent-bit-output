@@ -32,38 +32,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build in Amazon Linux 2 container (Linux amd64 only)
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/workspace \
-            -w /workspace \
-            -e VERSION=${{ env.VERSION }} \
-            amazonlinux:2 \
-            bash -c "
-              set -e
-              # Install build dependencies
-              yum install -y git make gcc gcc-c++ diffutils wget tar glibc-devel
-              
-              # Install Go 1.25.6
-              cd /tmp
-              wget -q https://go.dev/dl/go1.25.6.linux-amd64.tar.gz
-              tar -C /usr/local -xzf go1.25.6.linux-amd64.tar.gz
-              export PATH=/usr/local/go/bin:\$PATH
-              
-              # Verify Go version
-              go version
-              
-              # Go back to workspace
-              cd /workspace
-              
-              # Run tests
-              go test ./...
-              
-              # Build Linux amd64 (GLIBC 2.26 compatible)
-              make linux/amd64
-              
-              # Fix permissions (Docker creates files as root)
-              chown -R $(id -u):$(id -g) .
-            "
+        run: ./.github/scripts/build-linux-amd64.sh "${{ github.workspace }}" "${{ env.VERSION }}" "1.25.6"
       
       - name: Verify build artifacts
         run: |
@@ -258,31 +227,28 @@ jobs:
   build-arm:
     name: Build ARM binaries 
     needs: cd  # Wait for main job to create release first
-    # ARM builds on Ubuntu 24.04 (GLIBC 2.39) - not AL2/RHEL8 compatible
-    # Most ARM Linux systems use newer GLIBC anyway, separate builds acceptable
+    # ARM builds use QEMU emulation to build natively in older containers:
+    # - arm64: Amazon Linux 2 (GLIBC 2.26) - compatible with AL2, RHEL8, CentOS 7/8, Debian Bullseye
+    # - arm/v7: Debian Buster (GLIBC 2.28) - compatible with RHEL8 and newer
     runs-on: ubuntu-24.04
     env:
       VERSION: ${{ needs.cd.outputs.version }}
 
     steps:
-      - name: Set up Go 1.25.6
-        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
-        with:
-          go-version: '1.25.6'
-
       - name: Checkout code
         uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
-      - name: Install ARM cross-compilers
+      # Set up QEMU for arm64/arm emulation
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # v1
+
+      - name: Build ARM binaries in native containers
+        run: ./.github/scripts/build-linux-arm.sh "${{ github.workspace }}" "${{ env.VERSION }}" "1.25.6"
+
+      - name: Verify build artifacts
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-
-      - name: Build project (Linux arm64)
-        run: env make linux/arm64
-
-      - name: Build project (Linux arm/v7)
-        run: env make linux/arm/v7
+          ls -lh out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          ls -lh out_newrelic-linux-arm-${{ env.VERSION }}.so
 
       - name: Include linux-arm64 artifact in release
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
