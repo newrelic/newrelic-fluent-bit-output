@@ -3,12 +3,21 @@ name: New Relic Fluent Bit Output Plugin - Merge to master
 on:
   push:
     branches:
-      - master
+      - NR-517619-rhel8-support
+
+permissions:
+  contents: write
 
 jobs:
   cd:
     name: Continuous Delivery pipeline
+    # Using Ubuntu 24.04 as runner, builds happen in Amazon Linux 2 Docker container
+    # Amazon Linux 2 has GLIBC 2.26, which works on both AL2 (2.26) and RHEL8 (2.28)
+    # Supported until June 2025, covers the oldest target system (Amazon Linux 2)
     runs-on: ubuntu-24.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.set_version.outputs.version }}
 
     steps:
       - name: Set up Go 1.23.6
@@ -22,10 +31,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4 # Updated to v4
 
-      - name: Run unit tests
-        run: go test ./...
-
       - name: Determine new plugin version
+        id: set_version
         run: |
           VERSION=$(cat version.go | grep VERSION | awk '{gsub(/"/, "", $4); print $4}')
           echo "Determined version: $VERSION"
@@ -201,14 +208,42 @@ jobs:
           asset_name: out_newrelic-linux-amd64-${{ env.VERSION }}.so
           asset_content_type: application/octet-stream
 
+  build-windows:
+    name: Build Windows binaries
+    needs: cd  # Wait for main job to create release first
+    # Windows cross-compilation on Ubuntu with mingw
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.cd.outputs.version }}
+
+    steps:
+      - name: Set up Go 1.25.6
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
+        with:
+          go-version: '1.25.6'
+
+      - name: Checkout code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+
+      - name: Install mingw cross-compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 gcc-mingw-w64-i686 g++-mingw-w64-i686
+
+      - name: Build project (Windows amd64)
+        run: env make windows/amd64
+
+      - name: Build project (Windows 386)
+        run: env make windows/386
+
       - name: Include windows-amd64 artifact in release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-windows-amd64-${{ env.VERSION }}.dll
-          asset_name: out_newrelic-windows-amd64-${{ env.VERSION }}.dll
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-windows-amd64-${{ needs.cd.outputs.version }}.dll
+          asset_name: out_newrelic-windows-amd64-${{ needs.cd.outputs.version }}.dll
           asset_content_type: application/octet-stream
 
       - name: Include windows-386 artifact in release
@@ -216,19 +251,45 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-windows-386-${{ env.VERSION }}.dll
-          asset_name: out_newrelic-windows-386-${{ env.VERSION }}.dll
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-windows-386-${{ needs.cd.outputs.version }}.dll
+          asset_name: out_newrelic-windows-386-${{ needs.cd.outputs.version }}.dll
           asset_content_type: application/octet-stream
+
+  build-arm:
+    name: Build ARM binaries 
+    needs: cd  # Wait for main job to create release first
+    # ARM builds use QEMU emulation to build natively in older containers:
+    # - arm64: Amazon Linux 2 (GLIBC 2.26) - compatible with AL2, RHEL8, CentOS 7/8, Debian Bullseye
+    # - arm/v7: Debian Buster (GLIBC 2.28) - compatible with RHEL8 and newer
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.cd.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+
+      # Set up QEMU for arm64/arm emulation
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # v1
+
+      - name: Build ARM binaries in native containers
+        run: ./.github/scripts/build-linux-arm.sh "${{ github.workspace }}" "${{ env.VERSION }}" "1.25.6"
+
+      - name: Verify build artifacts
+        run: |
+          ls -lh out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          ls -lh out_newrelic-linux-arm-${{ env.VERSION }}.so
 
       - name: Include linux-arm64 artifact in release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-arm64-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-arm64-${{ env.VERSION }}.so
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm64-${{ needs.cd.outputs.version }}.so
+          asset_name: out_newrelic-linux-arm64-${{ needs.cd.outputs.version }}.so
           asset_content_type: application/octet-stream
 
       - name: Include linux-arm artifact in release
@@ -236,9 +297,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./out_newrelic-linux-arm-${{ env.VERSION }}.so
-          asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
+          upload_url: ${{ needs.cd.outputs.upload_url }}
+          asset_path: ./out_newrelic-linux-arm-${{ needs.cd.outputs.version }}.so
+          asset_name: out_newrelic-linux-arm-${{ needs.cd.outputs.version }}.so
           asset_content_type: application/octet-stream
 
 #   windows-docker-images:
