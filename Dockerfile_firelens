@@ -23,6 +23,14 @@ FROM amazon/aws-for-fluent-bit:3.2.1
 
 # Expose this env variable so that the version can be used in the helm chart
 ENV FBVERSION=4.2.2
+
+# Fix CVE-2025-15467 (OpenSSL) - apply security update
+USER root
+RUN yum update -y openssl && \
+    yum clean all && \
+    rm -rf /var/cache/yum
+USER fluent-bit
+
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 
