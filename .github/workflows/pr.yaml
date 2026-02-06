@@ -106,8 +106,6 @@ jobs:
           ignore-unfixed: true
           severity: 'MEDIUM,LOW'
       
-      # Commented out to allow builds with known CVE-2025-15467 in fluent-bit base image
-      # Waiting for upstream fluent-bit to release patched version
       - name: Fail build on Criticial Vulnerabilities
         if: matrix.name != 'debug-image' && matrix.name != 'firelens-image'
         env:
