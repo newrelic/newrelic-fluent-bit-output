@@ -107,6 +107,14 @@ $TIMEOUT_CMD docker run --rm \
     
     # Install build dependencies
     echo "Installing build dependencies..."
+    
+    # Debian Buster has been archived - update sources to use archive.debian.org
+    echo "Configuring Debian archive repositories..."
+    cat > /etc/apt/sources.list << EOF
+deb http://archive.debian.org/debian buster main
+deb http://archive.debian.org/debian-security buster/updates main
+EOF
+    
     apt-get update
     apt-get install -y git make gcc g++ wget tar ca-certificates file binutils
     apt-get clean
