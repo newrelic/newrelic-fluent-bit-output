@@ -3,7 +3,7 @@ name: New Relic Fluent Bit Output Plugin - Merge to master
 on:
   push:
     branches:
-      - master
+      - NR-517619-rhel8-support
 
 jobs:
   cd:
@@ -58,11 +58,11 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: ${{ runner.os }}-buildx-
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # git ls-remote https://github.com/docker/login-action v3.3.0
-        with:
-          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # git ls-remote https://github.com/docker/login-action v3.3.0
+      #   with:
+      #     username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
+      #     password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Build and Publish Docker image
         if: ${{ !contains(env.VERSION, 'beta') }}
@@ -121,16 +121,16 @@ jobs:
       - name: Inspect published Docker debug image
         run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@5579c002bb4778aa43395ef1df492868a9a1c83f # git ls-remote https://github.com/aws-actions/configure-aws-credentials v4.0.2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@5579c002bb4778aa43395ef1df492868a9a1c83f # git ls-remote https://github.com/aws-actions/configure-aws-credentials v4.0.2
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-2
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@4625ce35226a7557230889aae2f52eb50ec3dcda # git ls-remote https://github.com/aws-actions/amazon-ecr-login v2.0.1
+      # - name: Login to Amazon ECR
+      #   id: login-ecr
+      #   uses: aws-actions/amazon-ecr-login@4625ce35226a7557230889aae2f52eb50ec3dcda # git ls-remote https://github.com/aws-actions/amazon-ecr-login v2.0.1
 
       - name: Build and Publish Docker image for Firelens
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
@@ -162,7 +162,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
-          draft: false
+          draft: true
           prerelease: false
 
       - name: Include linux-amd64 artifact in release
@@ -252,11 +252,11 @@ jobs:
           # After the following command, the VERSION variable is available via the "env" command in the GH action
           Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #git ls-remote https://github.com/docker/login-action v3.3.0
-        with:
-          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #git ls-remote https://github.com/docker/login-action v3.3.0
+      #   with:
+      #     username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
+      #     password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Build and Publish Docker image for ${{ matrix.name }}
         env:
@@ -264,7 +264,7 @@ jobs:
           IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
         run: |
           docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
-          docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+      # docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
   windows-docker-images-older-version:
     name:  ${{ matrix.name }} Docker image generation and publishing
@@ -298,11 +298,11 @@ jobs:
           # After the following command, the VERSION variable is available via the "env" command in the GH action
           Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #git ls-remote https://github.com/docker/login-action v3.3.0
-        with:
-          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #git ls-remote https://github.com/docker/login-action v3.3.0
+      #   with:
+      #     username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
+      #     password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Build and Publish Docker image for ${{ matrix.name }}
         env:
@@ -310,4 +310,4 @@ jobs:
           IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
         run: |
           docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows_older -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
-          docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+      # docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
