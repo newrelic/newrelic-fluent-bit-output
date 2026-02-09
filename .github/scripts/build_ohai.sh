@@ -11,7 +11,7 @@ echo "Starting Cross-Compilation with Zig..."
 echo "Target Version: $VERSION"
 
 # Parametrize glibc version for Linux targets
-GLIBC_VERSION="2.26"
+GLIBC_VERSION="2.17"
 
 # Array of targets: "GOOS GOARCH ZIG_TARGET OUTPUT_PREFIX EXTENSION"
 # We use a specific glibc version for Linux to ensure compatibility with Amazon Linux 2
