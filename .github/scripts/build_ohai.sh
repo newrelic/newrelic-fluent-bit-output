@@ -49,14 +49,26 @@ done
 
 # Wait for all background processes and check exit status
 failed=0
-for pid in "${pids[@]}"; do
+for i in "${!pids[@]}"; do
+  pid="${pids[$i]}"
+  # Retrieve the original target string using the same index
+  target_info="${targets[$i]}"
+  
+  # Parse just the OS/Arch for cleaner logging
+  read -r goos goarch _ <<< "$target_info"
+  
+  # Wait for the PID. If it fails, capture the error.
   if ! wait "$pid"; then
+    status=$?
+    echo " ERROR: Build failed for $goos/$goarch"
+    echo "   Details: PID $pid exited with code $status"
+    echo "   Target config: $target_info"
     failed=1
   fi
 done
 
 if [ "$failed" -ne 0 ]; then
-  echo "Error: One or more builds failed."
+  echo "Build Summary: One or more builds failed."
   exit 1
 fi
 

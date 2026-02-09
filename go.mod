@@ -1,6 +1,6 @@
 module github.com/newrelic/newrelic-fluent-bit-output
 
-go 1.25
+go 1.25.6
 
 require (
 	github.com/fluent/fluent-bit-go v0.0.0-20230731091245-a7a013e2473c
