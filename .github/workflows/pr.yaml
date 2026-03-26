@@ -98,10 +98,9 @@ jobs:
         env:
           TRIVY_NON_SSL: true
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
-        # Versions 0.26.0 and above are causing an issue where the image can't be fetched because the image name is not being resolved.
-        uses: aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8 # 0.25.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
-          image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
+          image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
           format: table
           ignore-unfixed: true
           severity: 'MEDIUM,LOW'
@@ -114,9 +113,9 @@ jobs:
       #     TRIVY_NON_SSL: true
       #     TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
       #     TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
-      #   uses: aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8 # 0.25.0
+      #   uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
       #   with:
-      #     image-ref: registry:5000/fb-output-plugin-${{ matrix.name }}
+      #     image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
       #     format: table
       #     exit-code: 1
       #     ignore-unfixed: true
