@@ -3,7 +3,7 @@ name: New Relic Fluent Bit Output Plugin - Merge to master
 on:
   push:
     branches:
-      - master
+      - NR-535861-release-non-vulnerable-version-support-test
 
 jobs:
   cd:
@@ -11,10 +11,21 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Set up Go 1.25.7
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # git ls-remote https://github.com/actions/setup-go v5
-        with:
-          go-version: '1.25.7'
+      - name: Install build dependencies
+        run: dnf install -y git make gcc gcc-c++ diffutils wget tar glibc-devel
+
+      - name: Install Go 1.25.8
+        run: |
+            cd /tmp
+            wget -q https://go.dev/dl/go1.25.8.linux-amd64.tar.gz
+            tar -C /usr/local -xzf go1.25.8.linux-amd64.tar.gz
+            ln -sf /usr/local/go/bin/go /usr/bin/go
+            ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt
+
+#      - name: Set up Go 1.25.7
+#        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # git ls-remote https://github.com/actions/setup-go v5
+#        with:
+#          go-version: '1.25.7'
 
       - name: Check go version
         run: go version
@@ -51,108 +62,108 @@ jobs:
         uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # git ls-remote https://github.com/docker/setup-buildx-action v3.8.0
 
       # Cache to be used by Docker Buildx
-      - name: Set up Docker Buildx's cache
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # git ls-remote https://github.com/actions/cache v4.2.0
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-buildx-
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # git ls-remote https://github.com/docker/login-action v3.3.0
-        with:
-          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Build and Publish Docker image
-        if: ${{ !contains(env.VERSION, 'beta') }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
-        env:
-          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}
-        with:
-          context: ./
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_REPOSITORY }}:latest
-            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          builder: ${{ steps.buildx.outputs.name }}
-          platforms: linux/amd64, linux/arm64, linux/arm/v7
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-
-      - name: Build and Publish Docker beta image
-        if: ${{ contains(env.VERSION, 'beta') }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
-        env:
-          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}
-        with:
-          context: ./
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          builder: ${{ steps.buildx.outputs.name }}
-          platforms: linux/amd64, linux/arm64, linux/arm/v7
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+#      - name: Set up Docker Buildx's cache
+#        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # git ls-remote https://github.com/actions/cache v4.2.0
+#        with:
+#          path: /tmp/.buildx-cache
+#          key: ${{ runner.os }}-buildx-${{ github.sha }}
+#          restore-keys: ${{ runner.os }}-buildx-
+#
+#      - name: Login to Docker Hub
+#        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # git ls-remote https://github.com/docker/login-action v3.3.0
+#        with:
+#          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
+#          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
+#
+#      - name: Build and Publish Docker image
+#        if: ${{ !contains(env.VERSION, 'beta') }}
+#        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
+#        env:
+#          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+#          IMAGE_TAG: ${{ env.VERSION }}
+#        with:
+#          context: ./
+#          file: ./Dockerfile
+#          push: true
+#          tags: |
+#            ${{ env.DOCKERHUB_REPOSITORY }}:latest
+#            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+#          builder: ${{ steps.buildx.outputs.name }}
+#          platforms: linux/amd64, linux/arm64, linux/arm/v7
+#          cache-from: type=local,src=/tmp/.buildx-cache
+#          cache-to: type=local,dest=/tmp/.buildx-cache
+#
+#      - name: Build and Publish Docker beta image
+#        if: ${{ contains(env.VERSION, 'beta') }}
+#        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
+#        env:
+#          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+#          IMAGE_TAG: ${{ env.VERSION }}
+#        with:
+#          context: ./
+#          file: ./Dockerfile
+#          push: true
+#          tags: |
+#            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+#          builder: ${{ steps.buildx.outputs.name }}
+#          platforms: linux/amd64, linux/arm64, linux/arm/v7
+#          cache-from: type=local,src=/tmp/.buildx-cache
+#          cache-to: type=local,dest=/tmp/.buildx-cache
           
-      - name: Inspect published Docker image
-        run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
-
-      - name: Build and Publish Docker debug image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
-        env:
-          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}-debug
-        with:
-          context: ./
-          file: ./Dockerfile_debug
-          push: true
-          tags: |
-            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          builder: ${{ steps.buildx.outputs.name }}
-          platforms: linux/amd64, linux/arm64
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-
-      - name: Inspect published Docker debug image
-        run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@5579c002bb4778aa43395ef1df492868a9a1c83f # git ls-remote https://github.com/aws-actions/configure-aws-credentials v4.0.2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@4625ce35226a7557230889aae2f52eb50ec3dcda # git ls-remote https://github.com/aws-actions/amazon-ecr-login v2.0.1
-
-      - name: Build and Publish Docker image for Firelens
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
-        env:
-          ECR_REGISTRY: 533243300146.dkr.ecr.us-east-2.amazonaws.com
-          ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
-          IMAGE_TAG: ${{ env.VERSION }}
-        with:
-          context: ./
-          file: ./Dockerfile_firelens
-          push: true
-          tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          builder: ${{ steps.buildx.outputs.name }}
-          # Firelens image only available for amd64 and arm64 architectures
-          platforms: linux/amd64, linux/arm64
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-
-      - name: Inspect published Docker Firelens image
-        run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
+#      - name: Inspect published Docker image
+#        run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}
+#
+#      - name: Build and Publish Docker debug image
+#        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
+#        env:
+#          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+#          IMAGE_TAG: ${{ env.VERSION }}-debug
+#        with:
+#          context: ./
+#          file: ./Dockerfile_debug
+#          push: true
+#          tags: |
+#            ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+#          builder: ${{ steps.buildx.outputs.name }}
+#          platforms: linux/amd64, linux/arm64
+#          cache-from: type=local,src=/tmp/.buildx-cache
+#          cache-to: type=local,dest=/tmp/.buildx-cache
+#
+#      - name: Inspect published Docker debug image
+#        run: docker buildx imagetools inspect newrelic/newrelic-fluentbit-output:${{ env.VERSION }}-debug
+#
+#      - name: Configure AWS credentials
+#        uses: aws-actions/configure-aws-credentials@5579c002bb4778aa43395ef1df492868a9a1c83f # git ls-remote https://github.com/aws-actions/configure-aws-credentials v4.0.2
+#        with:
+#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          aws-region: us-east-2
+#
+#      - name: Login to Amazon ECR
+#        id: login-ecr
+#        uses: aws-actions/amazon-ecr-login@4625ce35226a7557230889aae2f52eb50ec3dcda # git ls-remote https://github.com/aws-actions/amazon-ecr-login v2.0.1
+#
+#      - name: Build and Publish Docker image for Firelens
+#        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # git ls-remote https://github.com/docker/build-push-action v6
+#        env:
+#          ECR_REGISTRY: 533243300146.dkr.ecr.us-east-2.amazonaws.com
+#          ECR_REPOSITORY: newrelic/logging-firelens-fluentbit
+#          IMAGE_TAG: ${{ env.VERSION }}
+#        with:
+#          context: ./
+#          file: ./Dockerfile_firelens
+#          push: true
+#          tags: |
+#            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+#            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+#          builder: ${{ steps.buildx.outputs.name }}
+#          # Firelens image only available for amd64 and arm64 architectures
+#          platforms: linux/amd64, linux/arm64
+#          cache-from: type=local,src=/tmp/.buildx-cache
+#          cache-to: type=local,dest=/tmp/.buildx-cache
+#
+#      - name: Inspect published Docker Firelens image
+#        run: docker buildx imagetools inspect 533243300146.dkr.ecr.us-east-2.amazonaws.com/newrelic/logging-firelens-fluentbit:${{ env.VERSION }}
 
       - name: Create Release
         id: create_release
@@ -163,7 +174,7 @@ jobs:
           tag_name: v${{ env.VERSION }}
           release_name: newrelic-fluent-bit-output-${{ env.VERSION }}
           draft: false
-          prerelease: false
+          prerelease: true
 
       - name: Include linux-amd64 artifact in release
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # git ls-remote https://github.com/actions/upload-release-asset v1.0.2
