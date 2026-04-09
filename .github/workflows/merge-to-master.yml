@@ -11,21 +11,10 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Install build dependencies
-        run: dnf install -y git make gcc gcc-c++ diffutils wget tar glibc-devel
-
-      - name: Install Go 1.25.8
-        run: |
-            cd /tmp
-            wget -q https://go.dev/dl/go1.25.8.linux-amd64.tar.gz
-            tar -C /usr/local -xzf go1.25.8.linux-amd64.tar.gz
-            ln -sf /usr/local/go/bin/go /usr/bin/go
-            ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt
-
-#      - name: Set up Go 1.25.7
-#        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # git ls-remote https://github.com/actions/setup-go v5
-#        with:
-#          go-version: '1.25.7'
+      - name: Set up Go 1.25.8
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # git ls-remote https://github.com/actions/setup-go v5
+        with:
+          go-version: '1.25.8'
 
       - name: Check go version
         run: go version
@@ -57,9 +46,9 @@ jobs:
         uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # git ls-remote https://github.com/docker/setup-qemu-action v3.2.0
 
       # The Docker Buildx builder will be used later to leverage from the cache while building the image
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # git ls-remote https://github.com/docker/setup-buildx-action v3.8.0
+#      - name: Set up Docker Buildx
+#        id: buildx
+#        uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # git ls-remote https://github.com/docker/setup-buildx-action v3.8.0
 
       # Cache to be used by Docker Buildx
 #      - name: Set up Docker Buildx's cache
@@ -226,15 +215,67 @@ jobs:
           asset_name: out_newrelic-linux-arm-${{ env.VERSION }}.so
           asset_content_type: application/octet-stream
 
-  windows-docker-images:
-    name:  ${{ matrix.name }} Docker image generation and publishing
-    # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
-    # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
-    # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
-    # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
-    strategy:
-      matrix:
-        include:
+#  windows-docker-images:
+#    name:  ${{ matrix.name }} Docker image generation and publishing
+#    # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
+#    # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
+#    # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
+#    # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
+#    strategy:
+#      matrix:
+#        include:
+##          - name: Windows Server 2019 (LTSC)
+##            windowsVersion: 2019
+##            windowsImageTag: ltsc2019-amd64
+##            imageTagSuffix: windows-ltsc-2019
+##            # Uses self-hosted runner which has Hyper-V virtualization support, since windows-2019 GH runner was deprecated
+##            runsOn: windows-x64-8-core
+##            # More info on isolation: https://learn.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/hyperv-container
+##            isolation: hyperv
+#          - name: Windows Server 2022 (LTSC)
+#            windowsVersion: 2022
+#            windowsImageTag: ltsc2022-amd64
+#            imageTagSuffix: windows-ltsc-2022
+#            runsOn: windows-2022
+#            isolation: process
+#
+#    runs-on: ${{ matrix.runsOn }}
+#
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #git ls-remote https://github.com/actions/checkout v4.2.2
+#
+#      - name: Determine new plugin version
+#        run: |
+#          $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
+#          echo "Determined version: $env:VERSION"
+#          # After the following command, the VERSION variable is available via the "env" command in the GH action
+#          Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
+#
+#      - name: Login to Docker Hub
+#        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #git ls-remote https://github.com/docker/login-action v3.3.0
+#        with:
+#          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
+#          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
+#
+#      - name: Build and Publish Docker image for ${{ matrix.name }}
+#        env:
+#          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+#          IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
+#        run: |
+#          docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
+#          docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+#
+#  windows-docker-images-older-version:
+#    name:  ${{ matrix.name }} Docker image generation and publishing
+#    # Windows 2019 needs to run older version of fluent bit as base images are not being published after fluent bit 4.0.3
+#    # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
+#    # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
+#    # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
+#    # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
+#    strategy:
+#      matrix:
+#        include:
 #          - name: Windows Server 2019 (LTSC)
 #            windowsVersion: 2019
 #            windowsImageTag: ltsc2019-amd64
@@ -243,82 +284,30 @@ jobs:
 #            runsOn: windows-x64-8-core
 #            # More info on isolation: https://learn.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/hyperv-container
 #            isolation: hyperv
-          - name: Windows Server 2022 (LTSC)
-            windowsVersion: 2022
-            windowsImageTag: ltsc2022-amd64
-            imageTagSuffix: windows-ltsc-2022
-            runsOn: windows-2022
-            isolation: process
-
-    runs-on: ${{ matrix.runsOn }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #git ls-remote https://github.com/actions/checkout v4.2.2
-
-      - name: Determine new plugin version
-        run: |
-          $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
-          echo "Determined version: $env:VERSION"
-          # After the following command, the VERSION variable is available via the "env" command in the GH action
-          Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #git ls-remote https://github.com/docker/login-action v3.3.0
-        with:
-          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Build and Publish Docker image for ${{ matrix.name }}
-        env:
-          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
-        run: |
-          docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
-          docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
-
-  windows-docker-images-older-version:
-    name:  ${{ matrix.name }} Docker image generation and publishing
-    # Windows 2019 needs to run older version of fluent bit as base images are not being published after fluent bit 4.0.3
-    # We aim to support https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#windows-os-version-support
-    # More info: https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster-windows#choose_your_windows_server_node_image
-    # Tag reference: https://hub.docker.com/_/microsoft-windows-servercore
-    # Compatibility matrix: https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/version-compatibility
-    strategy:
-      matrix:
-        include:
-          - name: Windows Server 2019 (LTSC)
-            windowsVersion: 2019
-            windowsImageTag: ltsc2019-amd64
-            imageTagSuffix: windows-ltsc-2019
-            # Uses self-hosted runner which has Hyper-V virtualization support, since windows-2019 GH runner was deprecated
-            runsOn: windows-x64-8-core
-            # More info on isolation: https://learn.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/hyperv-container
-            isolation: hyperv
-
-    runs-on: ${{ matrix.runsOn }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #git ls-remote https://github.com/actions/checkout v4.2.2
-
-      - name: Determine new plugin version
-        run: |
-          $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
-          echo "Determined version: $env:VERSION"
-          # After the following command, the VERSION variable is available via the "env" command in the GH action
-          Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #git ls-remote https://github.com/docker/login-action v3.3.0
-        with:
-          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Build and Publish Docker image for ${{ matrix.name }}
-        env:
-          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
-          IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
-        run: |
-          docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows_older -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
-          docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+#
+#    runs-on: ${{ matrix.runsOn }}
+#
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #git ls-remote https://github.com/actions/checkout v4.2.2
+#
+#      - name: Determine new plugin version
+#        run: |
+#          $env:VERSION=(Select-String -Path version.go -Pattern 'const VERSION = "(.*)"').Matches.Groups[1].Value
+#          echo "Determined version: $env:VERSION"
+#          # After the following command, the VERSION variable is available via the "env" command in the GH action
+#          Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$env:VERSION"
+#
+#      - name: Login to Docker Hub
+#        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #git ls-remote https://github.com/docker/login-action v3.3.0
+#        with:
+#          username: ${{ secrets.SVC_DOCKER_HUB_USERNAME }}
+#          password: ${{ secrets.SVC_DOCKER_HUB_ACCESS_TOKEN }}
+#
+#      - name: Build and Publish Docker image for ${{ matrix.name }}
+#        env:
+#          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+#          IMAGE_TAG: ${{ env.VERSION }}-${{ matrix.imageTagSuffix }}
+#        run: |
+#          docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows_older -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
+#          docker push ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}
