@@ -1,4 +1,4 @@
-FROM golang:1.25.7-bookworm AS builder
+FROM golang:1.25.8-bookworm AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
@@ -17,9 +17,9 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-FROM fluent/fluent-bit:4.2.2
+FROM fluent/fluent-bit:4.2.4
 # Expose this env variable so that the version can be used in the helm chart
-ENV FBVERSION=4.2.2
+ENV FBVERSION=4.2.4
 # Note: Base image has CVE-2025-15467 (OpenSSL). Waiting for fluent-bit upstream to release patched version.
 
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
