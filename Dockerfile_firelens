@@ -18,8 +18,8 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-    # aws-for-fluent-bit 3.3.2 is based on Fluent Bit 5.0.3: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.3.2
-FROM amazon/aws-for-fluent-bit:3.3.2
+    # aws-for-fluent-bit 3.4.0 is based on Fluent Bit 5.0.5: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.4.0
+FROM amazon/aws-for-fluent-bit:3.4.0
 
 # Expose this env variable so that the version can be used in the helm chart
 ENV FBVERSION=5.0.6
