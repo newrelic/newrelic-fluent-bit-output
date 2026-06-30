@@ -1,4 +1,4 @@
-FROM golang:1.25.9-bookworm AS builder
+FROM golang:1.26.4-bookworm AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
@@ -17,9 +17,9 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-FROM fluent/fluent-bit:5.0.6
+FROM fluent/fluent-bit:5.0.8
 # Expose this env variable so that the version can be used in the helm chart
-ENV FBVERSION=5.0.6
+ENV FBVERSION=5.0.8
 
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
