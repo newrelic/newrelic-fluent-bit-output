@@ -1,6 +1,6 @@
 # escape=`
 
-ARG FLUENTBIT_VERSION=5.0.8
+ARG FLUENTBIT_VERSION=5.0.7
 ARG WINDOWS_VERSION=2022
 
 #################################################
