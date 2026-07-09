@@ -7,8 +7,10 @@ import (
 	. "github.com/onsi/gomega"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 )
 
 var _ = Describe("HTTP Proxy", func() {
@@ -110,6 +112,46 @@ var _ = Describe("HTTP Proxy", func() {
 
 		Expect(proxyURL).To(Not(BeNil()))
 		Expect(*proxyURL).To(Equal(configuredProxyURL))
+	})
+})
+
+var _ = Describe("Proxy TLS verification fallback (validateProxyCerts)", func() {
+
+	// httptest.NewTLSServer presents its own self-signed (untrusted) certificate, so dialing it
+	// triggers the "unknown authority" path in fallbackDialer without any manual cert setup.
+	// Regression guard: since Go 1.20 these TLS errors are wrapped (e.g. in
+	// *tls.CertificateVerificationError), so fallbackDialer must match them with errors.As. If it
+	// ever reverts to a bare `switch err.(type)`, the skip case below fails and the connection breaks.
+
+	It("skips verification and connects when validateProxyCerts is false (skipVerify=true)", func() {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+		defer server.Close()
+		addr := strings.TrimPrefix(server.URL, "https://")
+
+		transport := &http.Transport{}
+		conn, err := fallbackDialer(transport, true)("tcp", addr)
+
+		Expect(err).To(BeNil())
+		Expect(transport.TLSClientConfig).ToNot(BeNil())
+		Expect(transport.TLSClientConfig.InsecureSkipVerify).To(BeTrue())
+		if err == nil && conn != nil {
+			conn.Close()
+		}
+	})
+
+	It("keeps verification and rejects an untrusted cert when validateProxyCerts is true (skipVerify=false)", func() {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+		defer server.Close()
+		addr := strings.TrimPrefix(server.URL, "https://")
+
+		transport := &http.Transport{}
+		conn, err := fallbackDialer(transport, false)("tcp", addr)
+
+		Expect(err).ToNot(BeNil())
+		Expect(transport.TLSClientConfig.InsecureSkipVerify).To(BeFalse())
+		if err == nil && conn != nil {
+			conn.Close()
+		}
 	})
 })
 
