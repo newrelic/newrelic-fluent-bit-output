@@ -123,13 +123,13 @@ var _ = Describe("Proxy TLS verification fallback (validateProxyCerts)", func() 
 	// *tls.CertificateVerificationError), so fallbackDialer must match them with errors.As. If it
 	// ever reverts to a bare `switch err.(type)`, the skip case below fails and the connection breaks.
 
-	It("skips verification and connects when validateProxyCerts is false (skipVerify=true)", func() {
+	It("skips verification and connects when validateProxyCerts is false", func() {
 		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 		defer server.Close()
 		addr := strings.TrimPrefix(server.URL, "https://")
 
 		transport := &http.Transport{}
-		conn, err := fallbackDialer(transport, true)("tcp", addr)
+		conn, err := fallbackDialer(transport, false)("tcp", addr) // validateCerts=false
 
 		Expect(err).To(BeNil())
 		Expect(transport.TLSClientConfig).ToNot(BeNil())
@@ -139,13 +139,13 @@ var _ = Describe("Proxy TLS verification fallback (validateProxyCerts)", func() 
 		}
 	})
 
-	It("keeps verification and rejects an untrusted cert when validateProxyCerts is true (skipVerify=false)", func() {
+	It("keeps verification and rejects an untrusted cert when validateProxyCerts is true", func() {
 		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 		defer server.Close()
 		addr := strings.TrimPrefix(server.URL, "https://")
 
 		transport := &http.Transport{}
-		conn, err := fallbackDialer(transport, false)("tcp", addr)
+		conn, err := fallbackDialer(transport, true)("tcp", addr) // validateCerts=true
 
 		Expect(err).ToNot(BeNil())
 		Expect(transport.TLSClientConfig.InsecureSkipVerify).To(BeFalse())
