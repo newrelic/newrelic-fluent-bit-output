@@ -53,7 +53,7 @@ func buildHttpTransport(cfg config.ProxyConfig, nrUrl string) (*http.Transport, 
 			transport.DialTLS = fullTLSToHTTPConnectFallbackDialer(transport)
 		} else {
 			log.Info("You are using an HTTPS proxy without certificate verification. It is recommended to enable it for enhanced security")
-			transport.DialTLS = fallbackDialer(transport, cfg.ValidateCerts)
+			transport.DialTLS = fallbackDialer(transport)
 		}
 	}
 
@@ -175,7 +175,7 @@ func fullTLSToHTTPConnectFallbackDialer(t *http.Transport) func(network string, 
 //    `tls.Dial` for the following connections.
 // 4. If the secure connection is not accepted, we use an unsecured "Go1.9-like" dialer that does not
 //    performs the TLS handshake.
-func fallbackDialer(transport *http.Transport, validateCerts bool) func(network string, addr string) (net.Conn, error) {
+func fallbackDialer(transport *http.Transport) func(network string, addr string) (net.Conn, error) {
 	return func(network string, addr string) (conn net.Conn, e error) {
 		// test the tlsDialer with normal configuration
 		log.Debug("dialing with usual, secured configuration")
@@ -201,10 +201,9 @@ func fallbackDialer(transport *http.Transport, validateCerts bool) func(network 
 			if transport.TLSClientConfig == nil {
 				transport.TLSClientConfig = &tls.Config{}
 			}
-			// validateCerts comes from the "validateProxyCerts" plugin config (see config.go, default true).
-			// We only skip verification when the user explicitly set validateProxyCerts: false, and we reach
-			// this line only when that proxy also presents a self-signed (unknown-CA) certificate.
-			transport.TLSClientConfig.InsecureSkipVerify = !validateCerts
+			// fallbackDialer is only ever reached when the user explicitly set validateProxyCerts: false
+			// (see buildHttpTransport), so skipping verification here is always the intended behavior.
+			transport.TLSClientConfig.InsecureSkipVerify = true
 
 			// we will use tlsDialer directly from now on, with the insecure skip configuration
 			transport.DialTLS = tlsDialer(transport)

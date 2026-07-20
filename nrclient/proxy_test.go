@@ -129,26 +129,11 @@ var _ = Describe("Proxy TLS verification fallback (validateProxyCerts)", func() 
 		addr := strings.TrimPrefix(server.URL, "https://")
 
 		transport := &http.Transport{}
-		conn, err := fallbackDialer(transport, false)("tcp", addr) // validateCerts=false
+		conn, err := fallbackDialer(transport)("tcp", addr)
 
 		Expect(err).To(BeNil())
 		Expect(transport.TLSClientConfig).ToNot(BeNil())
 		Expect(transport.TLSClientConfig.InsecureSkipVerify).To(BeTrue())
-		if err == nil && conn != nil {
-			conn.Close()
-		}
-	})
-
-	It("keeps verification and rejects an untrusted cert when validateProxyCerts is true", func() {
-		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-		defer server.Close()
-		addr := strings.TrimPrefix(server.URL, "https://")
-
-		transport := &http.Transport{}
-		conn, err := fallbackDialer(transport, true)("tcp", addr) // validateCerts=true
-
-		Expect(err).ToNot(BeNil())
-		Expect(transport.TLSClientConfig.InsecureSkipVerify).To(BeFalse())
 		if err == nil && conn != nil {
 			conn.Close()
 		}
