@@ -52,14 +52,19 @@ RUN setx CXX "x86_64-w64-mingw32-g++"
 RUN go build -buildmode=c-shared -o out_newrelic.dll .
 
 #######################################################
-# Runtime Image - Fluent Bit image + include our plugin
+# Runtime Image - Fresh Windows base + Fluent Bit binaries + our plugin
 #######################################################
-FROM fluent/fluent-bit:windows-${WINDOWS_VERSION}-${FLUENTBIT_VERSION} as runtime
+FROM fluent/fluent-bit:windows-${WINDOWS_VERSION}-${FLUENTBIT_VERSION} AS fluentbit
+
+FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS runtime
 
 ARG FLUENTBIT_VERSION
 # Expose this env variable so that the version can be used in the helm chart
 ENV FBVERSION=${FLUENTBIT_VERSION}
 
+COPY --from=fluentbit /fluent-bit /fluent-bit
 COPY --from=nrBuilder /build/out_newrelic.dll /fluent-bit/bin/out_newrelic.dll
+
+RUN setx /M PATH "%PATH%;C:\fluent-bit\bin"
 
 CMD ["fluent-bit.exe", "-i", "dummy", "-o", "stdout", "-e", "/fluent-bit/bin/out_newrelic.dll"]
