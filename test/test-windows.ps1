@@ -160,10 +160,15 @@ try {
     New-Item -ItemType File -Force -Path $logFile | Out-Null
 
     Write-Step "Starting the newrelic-fluent-bit-output Windows container"
-    $confPath = Join-Path $TestDir "fluent-bit.windows.conf"
+    # Windows containers only support directory-level bind mounts (single-file mounts fail with
+    # "invalid mount config for type bind: source path must be a directory"), so stage the conf
+    # in its own directory rather than mounting test/fluent-bit.windows.conf directly.
+    $confDir = Join-Path $WorkDir "etc"
+    New-Item -ItemType Directory -Force -Path $confDir | Out-Null
+    Copy-Item -Path (Join-Path $TestDir "fluent-bit.windows.conf") -Destination (Join-Path $confDir "fluent-bit.conf") -Force
     docker run -d --name $ContainerName --network $NetworkName `
         -v "${TestDataDir}:C:\testdata" `
-        -v "${confPath}:C:\fluent-bit\etc\fluent-bit.conf" `
+        -v "${confDir}:C:\fluent-bit\etc" `
         -e "FILE_PATH=C:\testdata\fbtest.log" `
         -e "API_KEY=some-insert-key" `
         -e "ENDPOINT=$endpoint" `
