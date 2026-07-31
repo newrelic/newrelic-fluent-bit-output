@@ -164,12 +164,8 @@ jobs:
         run: |
           docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
 
-      # Non-blocking for now: container-to-host networking (via the Docker NAT gateway) and
-      # Windows Firewall behavior on this runner are unproven. See test/test-windows.ps1 for
-      # what this checks and Claude_hrai.md for context. Once proven reliable, drop
-      # continue-on-error to make this a real gate.
+      # Run time test for windows
       - name: Functional test for ${{ matrix.name }} (non-blocking)
-        continue-on-error: true
         shell: pwsh
         env:
           DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output

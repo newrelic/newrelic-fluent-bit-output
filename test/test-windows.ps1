@@ -29,6 +29,8 @@ $NetworkName = "wintest-net"
 $ContainerName = "fb-windows-test"
 $FirewallRuleName = "newrelic-fb-mockserver-test-1080"
 $MockServerPort = 1080
+$HealthPort = 2020
+$DbFileName = "flb.db"
 
 $mockServerProcess = $null
 $mockServerOutLog = Join-Path $WorkDir "mockserver-out.log"
@@ -56,6 +58,28 @@ function Test-LogsDelivered {
         $resp = Invoke-WebRequest -Method PUT -Uri "http://localhost:$MockServerPort/mockserver/verify" `
             -Body $VerifyBody -ContentType "application/json" -UseBasicParsing -TimeoutSec 5
         return $resp.StatusCode -eq 202
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-ContainerRunning {
+    param([string]$Name)
+    try {
+        $status = docker inspect -f "{{.State.Running}}" $Name 2>$null
+        return ($LASTEXITCODE -eq 0) -and ($status.Trim() -eq "true")
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-FluentBitHealthy {
+    param([int]$Port)
+    try {
+        $resp = Invoke-WebRequest -Method GET -Uri "http://localhost:$Port/api/v1/health" -UseBasicParsing -TimeoutSec 5
+        return $resp.StatusCode -eq 200
     }
     catch {
         return $false
@@ -167,6 +191,7 @@ try {
     New-Item -ItemType Directory -Force -Path $confDir | Out-Null
     Copy-Item -Path (Join-Path $TestDir "fluent-bit.windows.conf") -Destination (Join-Path $confDir "fluent-bit.conf") -Force
     docker run -d --name $ContainerName --network $NetworkName `
+        -p "${HealthPort}:${HealthPort}" `
         -v "${TestDataDir}:C:\testdata" `
         -v "${confDir}:C:\fluent-bit\etc" `
         -e "FILE_PATH=C:\testdata\fbtest.log" `
@@ -194,8 +219,40 @@ try {
         if (Test-Path $mockServerErrLog) { Get-Content $mockServerErrLog }
         throw "Functional test failed: logs never reached the mock New Relic endpoint"
     }
+    Write-Step "Logs reached the mock New Relic endpoint."
 
-    Write-Step "Success! Logs reached the mock New Relic endpoint."
+    # Regression check for https://github.com/fluent/fluent-bit/issues/11904: Fluent Bit crashed
+    # on Windows ("[BUG !] Bug found in _mk_event_del()") when HTTP_Server + Health_Check were
+    # enabled. HTTP_Server/Health_Check are already on in fluent-bit.windows.conf, so watch the
+    # container over a window to confirm it doesn't crash and the health endpoint responds.
+    Write-Step "Watching for a regression of fluent/fluent-bit#11904 (HTTP_Server crash) for 60s"
+    $crashCheckIterations = 12
+    $crashCheckDelaySeconds = 5
+    $sawHealthyResponse = $false
+    for ($i = 0; $i -lt $crashCheckIterations; $i++) {
+        if (-not (Test-ContainerRunning -Name $ContainerName)) {
+            Write-Host "--- Container exited. Logs: ---"
+            docker logs $ContainerName
+            throw "Container exited while HTTP_Server was enabled - possible regression of fluent/fluent-bit#11904"
+        }
+        if (Test-FluentBitHealthy -Port $HealthPort) {
+            $sawHealthyResponse = $true
+        }
+        Start-Sleep -Seconds $crashCheckDelaySeconds
+    }
+    if (-not $sawHealthyResponse) {
+        throw "Health endpoint at port $HealthPort never responded with 200 - HTTP_Server may not have started correctly"
+    }
+    Write-Step "No crash after $($crashCheckIterations * $crashCheckDelaySeconds)s with HTTP_Server + Health_Check enabled"
+
+    Write-Step "Checking DB persistence file was created (mirrors fluentBit.windowsDb in the Helm chart)"
+    $dbFile = Join-Path $TestDataDir $DbFileName
+    if (-not (Test-Path $dbFile)) {
+        throw "Expected DB persistence file was not created at $dbFile"
+    }
+    Write-Step "DB persistence file confirmed at $dbFile"
+
+    Write-Step "Success! Logs delivered, no HTTP_Server crash, DB persistence confirmed."
     exit 0
 }
 catch {
