@@ -27,6 +27,8 @@ $WorkDir = Join-Path $TestDir ".windows-test-work"
 $TestDataDir = Join-Path $TestDir "testdata-windows"
 $NetworkName = "wintest-net"
 $ContainerName = "fb-windows-test"
+$ComposeProject = "fbwintest"
+$ComposeFile = Join-Path $PSScriptRoot "docker-compose.windows.yml"
 $FirewallRuleName = "newrelic-fb-mockserver-test-1080"
 $MockServerPort = 1080
 $HealthPort = 2020
@@ -104,6 +106,8 @@ function Wait-Until {
 }
 
 function Remove-PreviousRunLeftovers {
+    # Env vars for docker-compose.windows.yml aren't set yet this early, so fall back to a plain
+    # container removal rather than `docker compose down` (which would warn about unset variables).
     docker rm -f $ContainerName 2>$null | Out-Null
     docker network rm $NetworkName 2>$null | Out-Null
     if (Test-Path $TestDataDir) { Remove-Item -Recurse -Force $TestDataDir -ErrorAction SilentlyContinue }
@@ -114,6 +118,7 @@ function Remove-PreviousRunLeftovers {
 function Invoke-Cleanup {
     Write-Step "Cleaning up"
 
+    docker compose -f $ComposeFile -p $ComposeProject down --remove-orphans 2>$null | Out-Null
     docker rm -f $ContainerName 2>$null | Out-Null
     docker network rm $NetworkName 2>$null | Out-Null
 
@@ -183,24 +188,30 @@ try {
     $logFile = Join-Path $TestDataDir "fbtest.log"
     New-Item -ItemType File -Force -Path $logFile | Out-Null
 
-    Write-Step "Starting the newrelic-fluent-bit-output Windows container"
+    Write-Step "Starting the newrelic-fluent-bit-output Windows container (via docker-compose.windows.yml)"
     # Windows containers only support directory-level bind mounts (single-file mounts fail with
     # "invalid mount config for type bind: source path must be a directory"), so stage the conf
     # in its own directory rather than mounting test/fluent-bit.windows.conf directly.
     $confDir = Join-Path $WorkDir "etc"
     New-Item -ItemType Directory -Force -Path $confDir | Out-Null
     Copy-Item -Path (Join-Path $TestDir "fluent-bit.windows.conf") -Destination (Join-Path $confDir "fluent-bit.conf") -Force
-    docker run -d --name $ContainerName --network $NetworkName `
-        -p "${HealthPort}:${HealthPort}" `
-        -v "${TestDataDir}:C:\testdata" `
-        -v "${confDir}:C:\fluent-bit\etc" `
-        -e "FILE_PATH=C:\testdata\fbtest.log" `
-        -e "API_KEY=some-insert-key" `
-        -e "ENDPOINT=$endpoint" `
-        $Image `
-        fluent-bit.exe -c C:\fluent-bit\etc\fluent-bit.conf -e C:\fluent-bit\bin\out_newrelic.dll | Out-Null
+
+    # docker-compose.windows.yml only defines the plugin container, not MockServer - MockServer
+    # isn't a container here (no Windows-container image exists for it), so unlike test.sh's
+    # docker-compose.yml this can't be a symmetric two-service file. It attaches to the NAT
+    # network created above via `external: true`, since ENDPOINT (derived from that network's
+    # gateway IP) must be known before the container starts.
+    $env:NR_FB_IMAGE = $Image
+    $env:CONTAINER_NAME = $ContainerName
+    $env:NETWORK_NAME = $NetworkName
+    $env:HEALTH_PORT = "$HealthPort"
+    $env:TESTDATA_DIR = $TestDataDir
+    $env:CONF_DIR = $confDir
+    $env:ENDPOINT = $endpoint
+
+    docker compose -f $ComposeFile -p $ComposeProject up -d
     if ($LASTEXITCODE -ne 0) {
-        throw "Failed to start container $ContainerName from image $Image"
+        throw "Failed to start container $ContainerName from image $Image via docker-compose"
     }
 
     Write-Step "Sending test log lines"
