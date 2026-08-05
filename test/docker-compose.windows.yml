@@ -1,0 +1,19 @@
+services:
+  newrelic-fluent-bit-output:
+    image: "${NR_FB_IMAGE}"
+    container_name: "${CONTAINER_NAME}"
+    ports:
+      - "${HEALTH_PORT}:${HEALTH_PORT}"
+    volumes:
+      - "${TESTDATA_DIR}:C:\\testdata"
+      - "${CONF_DIR}:C:\\fluent-bit\\etc"
+    environment:
+      FILE_PATH: "C:\\testdata\\fbtest.log"
+      API_KEY: "some-insert-key"
+      ENDPOINT: "${ENDPOINT}"
+    command: ["fluent-bit.exe", "-c", "C:\\fluent-bit\\etc\\fluent-bit.conf", "-e", "C:\\fluent-bit\\bin\\out_newrelic.dll"]
+
+networks:
+  default:
+    name: "${NETWORK_NAME}"
+    external: true

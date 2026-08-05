@@ -164,6 +164,14 @@ jobs:
         run: |
           docker build --platform windows/amd64 --isolation=${{ matrix.isolation }} -f Dockerfile.windows -t ${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }} --build-arg WINDOWS_VERSION=${{ matrix.windowsVersion }} .
 
+      # Run time test for windows
+      - name: Functional test for ${{ matrix.name }} (non-blocking)
+        shell: pwsh
+        env:
+          DOCKERHUB_REPOSITORY: newrelic/newrelic-fluentbit-output
+          IMAGE_TAG: development-${{ matrix.imageTagSuffix }}
+        run: |
+          ./test/test-windows.ps1 -Image "${{ env.DOCKERHUB_REPOSITORY }}:${{ env.IMAGE_TAG }}"
 
   docker-windows-ci-older-version:
     name:  CI - Docker image for ${{ matrix.name }}
