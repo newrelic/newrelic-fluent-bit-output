@@ -8,6 +8,10 @@ name: New Relic Fluent Bit Output Plugin - Repolinter Action
 # filtered in the "Test Default Branch" step.
 on: [push, workflow_dispatch]
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   repolint:
     name: Run Repolinter
