@@ -5,10 +5,15 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   cd:
     name: Continuous Delivery pipeline
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
 
     steps:
       - name: Set up Go 1.26.4
