@@ -1,0 +1,141 @@
+name: Security Scan
+
+on:
+  pull_request:
+    branches: [master, main]
+  pull_request_target:
+    types: [opened, reopened]
+  schedule:
+    # Every day at 11:30 AM IST (6:00 AM UTC)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Trivy security scan
+    if: github.event_name != 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: fs
+          scanners: 'vuln'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '1'
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Notify Slack on scheduled scan failure
+        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":rotating_light: Trivy detected HIGH/CRITICAL CVEs on master in ${{ github.repository }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\nFindings: ${{ github.server_url }}/${{ github.repository }}/security/code-scanning?query=is%3Aopen+tool%3ATrivy"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TRIVY_WEBHOOK_URL }}
+
+  trivy-image:
+    name: Trivy Docker image scan (${{ matrix.name }})
+    if: github.event_name != 'pull_request_target'
+    runs-on: ${{ matrix.runsOn }}
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        include:
+          - name: standard-image
+            image-tag: newrelic-fluent-bit-output:scan
+            dockerfile: Dockerfile
+            platformArgs: ""
+            buildArgs: ""
+            runsOn: ubuntu-latest
+          - name: firelens-image
+            image-tag: newrelic-fluent-bit-output-firelens:scan
+            dockerfile: Dockerfile_firelens
+            platformArgs: ""
+            buildArgs: ""
+            runsOn: ubuntu-latest
+          - name: windows-ltsc-2022
+            image-tag: newrelic-fluent-bit-output:scan-windows-ltsc-2022
+            dockerfile: Dockerfile.windows
+            platformArgs: "--platform windows/amd64 --isolation=process"
+            buildArgs: "--build-arg WINDOWS_VERSION=2022"
+            runsOn: windows-2022
+          - name: windows-ltsc-2019
+            image-tag: newrelic-fluent-bit-output:scan-windows-ltsc-2019
+            dockerfile: Dockerfile.windows_older
+            platformArgs: "--platform windows/amd64 --isolation=hyperv"
+            buildArgs: "--build-arg WINDOWS_VERSION=2019"
+            runsOn: windows-x64-8-core
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Build Docker image (${{ matrix.name }})
+        run: docker build ${{ matrix.platformArgs }} -f ${{ matrix.dockerfile }} -t ${{ matrix.image-tag }} ${{ matrix.buildArgs }} .
+
+      - name: Run Trivy on Docker image (${{ matrix.name }})
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: image
+          image-ref: ${{ matrix.image-tag }}
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+          # Commented out as current base image (fluent-bit 5.0.9) has HIGH/CRITICAL vulnerabilities.
+          # Will be uncommented as part of the fluent-bit 5.1.0 base image upgrade.
+          # exit-code: '1'
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
+
+      - name: Notify Slack on scheduled image scan failure
+        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":rotating_light: Trivy image scan detected HIGH/CRITICAL CVEs in ${{ github.repository }} ${{ matrix.name }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\nFindings: ${{ github.server_url }}/${{ github.repository }}/security/code-scanning?query=is%3Aopen+tool%3ATrivy"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TRIVY_WEBHOOK_URL }}
+
+  dependabot-notify:
+    name: Notify Slack on Dependabot PR
+    # IMPORTANT: This job uses pull_request_target which has full secrets access.
+    # Do NOT add a `checkout` step here — that would run PR-supplied code with secrets.
+    # This job's only purpose is to POST to Slack with metadata; nothing else.
+    if: github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":robot_face: Dependabot opened a PR in ${{ github.repository }}\nTitle: ${{ github.event.pull_request.title }}\nPR: ${{ github.event.pull_request.html_url }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TRIVY_WEBHOOK_URL }}
