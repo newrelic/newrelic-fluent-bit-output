@@ -243,6 +243,12 @@ jobs:
             imageTagSuffix: windows-ltsc-2022
             runsOn: windows-2022
             isolation: process
+          - name: Windows Server 2025 (LTSC)
+            windowsVersion: 2025
+            windowsImageTag: ltsc2025-amd64
+            imageTagSuffix: windows-ltsc-2025
+            runsOn: windows-2025
+            isolation: process
 
     runs-on: ${{ matrix.runsOn }}
 
