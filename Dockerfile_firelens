@@ -1,4 +1,4 @@
-FROM golang:1.26.4-bookworm AS builder
+FROM golang:1.27.3-bookworm AS builder
 
 WORKDIR /go/src/github.com/newrelic/newrelic-fluent-bit-output
 
@@ -18,8 +18,8 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-    # aws-for-fluent-bit 3.5.0 is based on Fluent Bit 5.1.2: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.5.0
-FROM amazon/aws-for-fluent-bit:3.5.0
+    # aws-for-fluent-bit 3.5.4 is based on Fluent Bit 5.1.2: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.5.4
+FROM amazon/aws-for-fluent-bit:3.5.4
 
 # Expose this env variable so that the version can be used in the helm chart
 ENV FBVERSION=5.1.2
