@@ -103,7 +103,7 @@ jobs:
         if: matrix.name != 'debug-image'
         env:
           TRIVY_NON_SSL: true
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
