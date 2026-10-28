@@ -14,10 +14,10 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Set up Go 1.26.4
+      - name: Set up Go 1.27.3
         uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
         with:
-          go-version: '1.26.4'
+          go-version: '1.27.3'
         id: go
 
       - name: Check go version
@@ -103,7 +103,7 @@ jobs:
         if: matrix.name != 'debug-image'
         env:
           TRIVY_NON_SSL: true
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: localhost:5000/fb-output-plugin-${{ matrix.name }}
