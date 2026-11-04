@@ -25,18 +25,18 @@ RUN make ${TARGETPLATFORM}
 # throwaway Debian stage and copied in directly, overwriting the vulnerable ones.
 #
 # This stage is built once per target platform by buildx (linux/amd64, linux/arm64,
-# linux/arm/v7), so it resolves its own multiarch lib directory (e.g. x86_64-linux-gnu vs
-# aarch64-linux-gnu vs arm-linux-gnueabihf) via dpkg-architecture rather than hardcoding
-# one -- everything it produces is staged under /out, mirroring the real path for
-# whichever architecture is currently being built, so the final stage's COPY never needs
-# to name an architecture either.
-FROM debian:trixie-slim AS brotli-fix
+# linux/arm/v7), so it resolves its own multiarch lib directory from dpkg -L rather than
+# hardcoding one -- everything it produces is staged under /out, mirroring the real path
+# for whichever architecture is currently being built, so the final stage's COPY never
+# needs to name an architecture either.
+FROM debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4 AS brotli-fix
 RUN apt-get update && apt-get install -y --no-install-recommends libbrotli1 && rm -rf /var/lib/apt/lists/* \
  && libdir="$(dirname "$(dpkg -L libbrotli1 | grep -m1 '\.so')")" \
  && mkdir -p "/out${libdir}" /out/var/lib/dpkg/status.d \
  && cp -a "${libdir}"/libbrotli*.so* "/out${libdir}/" \
  && awk '/^Package: libbrotli1$/{p=1} p{print} p && /^$/{exit}' /var/lib/dpkg/status \
-    | grep -v '^Status:' > /out/var/lib/dpkg/status.d/libbrotli1
+    | grep -v '^Status:' > /out/var/lib/dpkg/status.d/libbrotli1 \
+ && grep -q '^Version: 1.1.0-2+deb13u1$' /out/var/lib/dpkg/status.d/libbrotli1
 
 FROM fluent/fluent-bit:5.1.5
 # Expose this env variable so that the version can be used in the helm chart

@@ -33,17 +33,18 @@ FROM amazon/aws-for-fluent-bit:3.5.4 AS firelens-base
 # swap just the libbrotli entry for the real one from the patched package, and leaves
 # every other package record untouched -- verified locally: only that one line differs
 # from the original database.
-FROM amazonlinux:2023 AS brotli-fix
+FROM amazonlinux:2023@sha256:bb1c85fe00170acd8a653de5f68cf77c7ec67234a130b18fad7ca1de1f61e3d3 AS brotli-fix
 COPY --from=firelens-base /var/lib/rpm /work/rpm
 RUN dnf install -y --downloadonly --downloaddir=/tmp/rpms libbrotli \
- && rpmfile="$(ls /tmp/rpms/*.rpm)" && cp "$rpmfile" /tmp/keep.rpm \
+ && set -- /tmp/rpms/libbrotli-*.rpm && [ "$#" -eq 1 ] && rpmfile="$1" && cp "$rpmfile" /tmp/keep.rpm \
  && dnf install -y "$rpmfile" \
  && libdir="$(dirname "$(rpm -ql libbrotli | grep -m1 '\.so')")" \
  && mkdir -p "/out${libdir}" /out/var/lib \
  && cp -a "${libdir}"/libbrotli*.so* "/out${libdir}/" \
  && rpm --dbpath /work/rpm -e --justdb --nodeps libbrotli \
- && rpm --dbpath /work/rpm -i --justdb --nodeps --ignorearch --ignoreos /tmp/keep.rpm \
- && cp -a /work/rpm /out/var/lib/rpm
+ && rpm --dbpath /work/rpm -i --justdb --nodeps /tmp/keep.rpm \
+ && cp -a /work/rpm /out/var/lib/rpm \
+ && rpm -qp --qf '%{VERSION}-%{RELEASE}' /tmp/keep.rpm | grep -qx '1.1.0-1.amzn2023.0.2'
 
 FROM firelens-base
 # Expose this env variable so that the version can be used in the helm chart
