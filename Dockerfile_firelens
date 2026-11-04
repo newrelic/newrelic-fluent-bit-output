@@ -18,39 +18,18 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-    # aws-for-fluent-bit 3.5.4 is based on Fluent Bit 5.1.2: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.5.4
-FROM amazon/aws-for-fluent-bit:3.5.4 AS firelens-base
+    # aws-for-fluent-bit 3.5.6 is based on Fluent Bit 5.1.4: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.5.6
+    #
+    # Bumped from 3.5.4 (which an earlier PR pinned specifically for the eMudhra CA fix):
+    # verified directly that 3.5.4 still trusts the distrusted eMudhra roots (emSign ECC
+    # Root CA - C3/G3) -- the patched ca-certificates point release landed after 3.5.4
+    # was published, so that earlier fix never actually covered this image. 3.5.6 also
+    # ships the patched libbrotli (1.1.0-1.amzn2023.0.2), fixing CVE-2026-111497. Bumping
+    # the base gets both fixes from upstream instead of carrying a manual rpm-level patch.
+FROM amazon/aws-for-fluent-bit:3.5.6
 
-# CVE-2026-111497: this image's libbrotli (1.1.0-1.amzn2023.0.1) has an out-of-bounds
-# write in the Brotli decoder, fixed in Amazon Linux 2023 as 1.1.0-1.amzn2023.0.2. The
-# image has no dnf/rpm to install the fix in place (confirmed: only bash is present), so
-# the patched library is built in a throwaway Amazon Linux stage and copied in directly.
-#
-# AL2023 tracks installed packages in a sqlite rpmdb (/var/lib/rpm/rpmdb.sqlite), not
-# plain text like dpkg, so a vulnerability scanner reading that database won't see a
-# files-only fix. Rather than hand-build a binary RPM header record, this stage copies
-# the image's own real rpmdb, uses `rpm --justdb` (DB-only, no filesystem changes) to
-# swap just the libbrotli entry for the real one from the patched package, and leaves
-# every other package record untouched -- verified locally: only that one line differs
-# from the original database.
-FROM amazonlinux:2023@sha256:bb1c85fe00170acd8a653de5f68cf77c7ec67234a130b18fad7ca1de1f61e3d3 AS brotli-fix
-COPY --from=firelens-base /var/lib/rpm /work/rpm
-RUN dnf install -y --downloadonly --downloaddir=/tmp/rpms libbrotli \
- && set -- /tmp/rpms/libbrotli-*.rpm && [ "$#" -eq 1 ] && rpmfile="$1" && cp "$rpmfile" /tmp/keep.rpm \
- && dnf install -y "$rpmfile" \
- && libdir="$(dirname "$(rpm -ql libbrotli | grep -m1 '\.so')")" \
- && mkdir -p "/out${libdir}" /out/var/lib \
- && cp -a "${libdir}"/libbrotli*.so* "/out${libdir}/" \
- && rpm --dbpath /work/rpm -e --justdb --nodeps libbrotli \
- && rpm --dbpath /work/rpm -i --justdb --nodeps /tmp/keep.rpm \
- && cp -a /work/rpm /out/var/lib/rpm \
- && rpm -qp --qf '%{VERSION}-%{RELEASE}' /tmp/keep.rpm | grep -qx '1.1.0-1.amzn2023.0.2'
-
-FROM firelens-base
 # Expose this env variable so that the version can be used in the helm chart
-ENV FBVERSION=5.1.2
-COPY --from=brotli-fix /out/usr/ /usr/
-COPY --from=brotli-fix /out/var/lib/rpm/ /var/lib/rpm/
+ENV FBVERSION=5.1.4
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 
