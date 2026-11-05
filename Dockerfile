@@ -17,10 +17,38 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
+# CVE-2026-111497: the fluent/fluent-bit:5.1.5 runtime image ships libbrotli1 1.1.0-2+b7,
+# which has an out-of-bounds write in the Brotli decoder. Fixed in Debian trixie-security
+# as 1.1.0-2+deb13u1 (DSA-6582-1), but the runtime image has no shell or package manager
+# (apt/dpkg) to install the fix in place, and fluent/fluent-bit hasn't republished a base
+# image with the patched package yet -- so the patched shared libraries are built in a
+# throwaway Debian stage and copied in directly, overwriting the vulnerable ones.
+#
+# This stage is built once per target platform by buildx (linux/amd64, linux/arm64,
+# linux/arm/v7), so it resolves its own multiarch lib directory from dpkg -L rather than
+# hardcoding one -- everything it produces is staged under /out, mirroring the real path
+# for whichever architecture is currently being built, so the final stage's COPY never
+# needs to name an architecture either.
+FROM debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4 AS brotli-fix
+RUN apt-get update && apt-get install -y --no-install-recommends libbrotli1 && rm -rf /var/lib/apt/lists/* \
+ && libdir="$(dirname "$(dpkg -L libbrotli1 | grep -m1 '\.so')")" \
+ && mkdir -p "/out${libdir}" /out/var/lib/dpkg/status.d \
+ && cp -a "${libdir}"/libbrotli*.so* "/out${libdir}/" \
+ && awk '/^Package: libbrotli1$/{p=1} p{print} p && /^$/{exit}' /var/lib/dpkg/status \
+    | grep -v '^Status:' > /out/var/lib/dpkg/status.d/libbrotli1 \
+ && grep -q '^Version: 1.1.0-2+deb13u1$' /out/var/lib/dpkg/status.d/libbrotli1
+
 FROM fluent/fluent-bit:5.1.5
 # Expose this env variable so that the version can be used in the helm chart
 ENV FBVERSION=5.1.5
 
+# See the brotli-fix stage above: both paths are staged generically under /out so this
+# works unmodified across all architectures the image is built for.
+COPY --from=brotli-fix /out/usr/lib/ /usr/lib/
+# The runtime image's dpkg database uses a non-standard per-package split layout
+# (/var/lib/dpkg/status.d/<pkg>) that debian:trixie-slim's dpkg doesn't produce, so the
+# fixed stage's package record can't be copied as-is; brotli-fix reformats it to match.
+COPY --from=brotli-fix /out/var/lib/dpkg/status.d/libbrotli1 /var/lib/dpkg/status.d/libbrotli1
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 

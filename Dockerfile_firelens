@@ -18,11 +18,18 @@ ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN echo "Building for ${TARGETPLATFORM} architecture"
 RUN make ${TARGETPLATFORM}
 
-    # aws-for-fluent-bit 3.5.4 is based on Fluent Bit 5.1.2: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.5.4
-FROM amazon/aws-for-fluent-bit:3.5.4
+    # aws-for-fluent-bit 3.5.6 is based on Fluent Bit 5.1.4: https://github.com/aws/aws-for-fluent-bit/releases/tag/v3.5.6
+    #
+    # Bumped from 3.5.4 (which an earlier PR pinned specifically for the eMudhra CA fix):
+    # verified directly that 3.5.4 still trusts the distrusted eMudhra roots (emSign ECC
+    # Root CA - C3/G3) -- the patched ca-certificates point release landed after 3.5.4
+    # was published, so that earlier fix never actually covered this image. 3.5.6 also
+    # ships the patched libbrotli (1.1.0-1.amzn2023.0.2), fixing CVE-2026-111497. Bumping
+    # the base gets both fixes from upstream instead of carrying a manual rpm-level patch.
+FROM amazon/aws-for-fluent-bit:3.5.6
 
 # Expose this env variable so that the version can be used in the helm chart
-ENV FBVERSION=5.1.2
+ENV FBVERSION=5.1.4
 COPY --from=builder /go/src/github.com/newrelic/newrelic-fluent-bit-output/out_newrelic-linux-*.so /fluent-bit/bin/out_newrelic.so
 COPY *.conf /fluent-bit/etc/
 
