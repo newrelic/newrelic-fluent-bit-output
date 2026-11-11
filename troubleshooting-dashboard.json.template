@@ -301,7 +301,7 @@
               "zero": true
             },
             "yAxisRight": {
-              "zero": true
+              "zero": false
             }
           }
         }
