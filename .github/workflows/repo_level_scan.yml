@@ -1,0 +1,144 @@
+name: 'Security Scans'
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Every day at 12:00 AM IST (6:30 PM UTC)
+    - cron: "30 18 * * *"
+
+permissions: {}
+
+jobs:
+  # ==========================================
+  # JOB 1: FILESYSTEM SCAN (Local Repo Scan)
+  # ==========================================
+  trivy_fs_scan:
+    name: Trivy Filesystem Scan
+    # Fork PRs get a read-only token and cannot upload SARIF
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+          limit-severities-for-sarif: true   # SARIF ignores `severity` without this
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db
+
+      - name: Upload Trivy filesystem results to GitHub Security
+        if: always() && hashFiles('trivy-fs-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+          category: 'trivy-fs'
+
+  # ==========================================
+  # JOB 2: BUILD & PUSH DOCKER IMAGES
+  # ==========================================
+  build:
+    name: 'Build and Push ${{ matrix.image.name }}'
+    # Fork PRs get a read-only token and cannot push to GHCR
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: 'linux',    file: 'Dockerfile' }
+          - { name: 'debug',    file: 'Dockerfile_debug' }
+          - { name: 'firelens', file: 'Dockerfile_firelens' }
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image name
+        id: set-image-name
+        # GHCR requires lowercase repository names
+        run: echo "image-name=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}-${{ matrix.image.name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ./
+          file: ./${{ matrix.image.file }}
+          push: true
+          tags: ${{ steps.set-image-name.outputs.image-name }}
+
+  # ==========================================
+  # JOB 3: SCAN THE IMAGES BUILT FROM THIS COMMIT
+  # ==========================================
+  scan-build:
+    name: 'Scan Built ${{ matrix.image.name }} Image'
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: 'linux' }
+          - { name: 'debug' }
+          - { name: 'firelens' }
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    # This repo carries a local copy of the central workflow. To use the
+    # organization copy instead, point this at
+    # newrelic/.github/.github/workflows/org-level-vulnerability-scan.yml@<COMMIT_SHA>
+    uses: ./.github/workflows/org-level-vulnerability-scan.yml
+    with:
+      image-name: ghcr.io/${{ github.repository }}:${{ github.sha }}-${{ matrix.image.name }}
+      scan-name: fluentbit-output-${{ matrix.image.name }}-build
+    secrets:
+      TEAM_SLACK_WEBHOOK_URL: ${{ secrets.TEAM_SLACK_WEBHOOK_URL }}
+
+  # ==========================================
+  # JOB 4: SCAN RELEASED IMAGES (what customers pull)
+  # ==========================================
+  scan-released:
+    name: 'Scan Released Image'
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          # Docker Hub only. The Firelens image lives in private ECR and needs AWS credentials.
+          # The debug image has no `latest` tag, so add a pinned `<version>-debug` tag here if needed.
+          - { ref: 'docker.io/newrelic/newrelic-fluentbit-output:latest', name: 'fluentbit-output-release' }
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    uses: ./.github/workflows/org-level-vulnerability-scan.yml
+    with:
+      image-name: ${{ matrix.image.ref }}
+      scan-name: ${{ matrix.image.name }}
+    secrets:
+      TEAM_SLACK_WEBHOOK_URL: ${{ secrets.TEAM_SLACK_WEBHOOK_URL }}
